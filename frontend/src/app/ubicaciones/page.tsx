@@ -23,6 +23,7 @@ import {
   Package,
   Wrench,
   Settings,
+  type LucideIcon,
 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { toast } from '@/hooks/use-toast'
@@ -83,15 +84,14 @@ export default function UbicacionesPage() {
     return colors[tipo] || 'bg-gray-100 text-gray-800'
   }
 
-  const getTipoIcon = (tipo: string) => {
-    const icons: Record<string, any> = {
+  const getTipoIcon = (tipo: string): LucideIcon => {
+    const icons: Record<string, LucideIcon> = {
       PRODUCCION: Package,
       ALMACEN: Building,
       MANTENIMIENTO: Wrench,
       SERVICIOS: Settings,
     }
-    const Icon = icons[tipo] || MapPin
-    return <Icon className="w-4 h-4" />
+    return icons[tipo] ?? MapPin
   }
 
   return (
