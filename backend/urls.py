@@ -10,6 +10,7 @@ urlpatterns = [
     path('', home, name='home'),  # Página principal redirige al admin
     path('admin/', admin.site.urls),
     path('api/produccion/', include('backend.produccion.urls')),
+    path('api/calidad/', include('backend.calidad.urls')),
     path('api/inventario/', include('backend.inventario.urls')),
     path('api/mantenimiento/', include('backend.mantenimiento.urls')),
     path('api/', include("core.urls")),  # 👈 importante

@@ -58,7 +58,7 @@ export default function DesviacionesPage() {
   const fetchDesviaciones = async () => {
     try {
       setLoading(true)
-      const response = await api.get('/desviaciones/')
+      const response = await api.get('/calidad/desviaciones/')
       setDesviaciones(response.results || response)
     } catch (error: any) {
       toast({

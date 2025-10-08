@@ -8,8 +8,6 @@ from .views import (
     # Catálogos
     UbicacionViewSet, MaquinaViewSet, ProductoViewSet, FormulaViewSet,
     EtapaProduccionViewSet, TurnoViewSet,
-    # Calidad
-    DesviacionViewSet, AccionCorrectivaViewSet, DocumentoVersionadoViewSet,
     # Incidentes
     TipoIncidenteViewSet, IncidenteViewSet,
     # Notificaciones
@@ -36,11 +34,6 @@ router.register(r'productos', ProductoViewSet)
 router.register(r'formulas', FormulaViewSet)
 router.register(r'etapas-produccion', EtapaProduccionViewSet)
 router.register(r'turnos', TurnoViewSet)
-
-# Calidad
-router.register(r'desviaciones', DesviacionViewSet)
-router.register(r'acciones-correctivas', AccionCorrectivaViewSet)
-router.register(r'documentos', DocumentoVersionadoViewSet)
 
 # Incidentes
 router.register(r'tipos-incidente', TipoIncidenteViewSet)

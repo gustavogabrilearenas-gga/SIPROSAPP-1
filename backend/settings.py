@@ -72,6 +72,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'backend.usuarios',
     'backend.produccion',
+    'backend.calidad',
     'backend.inventario',
     'backend.mantenimiento',
     'core',
