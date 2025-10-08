@@ -18,11 +18,10 @@ from core.models import (
     Ubicacion, Maquina, Producto, Formula, EtapaProduccion, Turno, TipoDocumento,
     # Mantenimiento
     TipoMantenimiento, OrdenTrabajo,
-    # Incidentes
-    TipoIncidente, Incidente,
     # Usuarios
     UserProfile
 )
+from backend.incidencias.models import TipoIncidente, Incidente
 from backend.produccion.models import Lote, LoteEtapa
 from backend.inventario.models import CategoriaInsumo, Insumo, LoteInsumo, Repuesto
 

@@ -75,6 +75,8 @@ INSTALLED_APPS = [
     'backend.calidad',
     'backend.inventario',
     'backend.mantenimiento',
+    'backend.incidencias',
+    'backend.auditoria',
     'core',
 ]
 

@@ -7,10 +7,8 @@ from .models import (
     # Catálogos
     Ubicacion, Maquina, Producto, Formula,
     EtapaProduccion, Turno, TipoDocumento,
-    # Incidentes
-    TipoIncidente, Incidente, InvestigacionIncidente,
-    # Auditoría
-    LogAuditoria, Notificacion,
+    # Notificaciones
+    Notificacion,
 )
 from backend.inventario.models import FormulaInsumo
 
@@ -73,50 +71,6 @@ class TipoDocumentoAdmin(admin.ModelAdmin):
     list_display = ['codigo', 'nombre', 'activo']
     list_filter = ['activo']
     search_fields = ['codigo', 'nombre']
-
-
-# ============================================
-# INCIDENTES
-# ============================================
-
-@admin.register(TipoIncidente)
-class TipoIncidenteAdmin(admin.ModelAdmin):
-    list_display = ['codigo', 'nombre', 'requiere_investigacion', 'activo']
-    list_filter = ['requiere_investigacion', 'activo']
-    search_fields = ['codigo', 'nombre']
-
-
-@admin.register(Incidente)
-class IncidenteAdmin(admin.ModelAdmin):
-    list_display = ['codigo', 'tipo', 'severidad', 'estado', 'fecha_ocurrencia', 'reportado_por']
-    list_filter = ['tipo', 'severidad', 'estado', 'fecha_ocurrencia']
-    search_fields = ['codigo', 'titulo']
-    date_hierarchy = 'fecha_ocurrencia'
-
-
-@admin.register(InvestigacionIncidente)
-class InvestigacionIncidenteAdmin(admin.ModelAdmin):
-    list_display = ['incidente', 'metodologia', 'fecha_investigacion', 'investigado_por']
-    list_filter = ['metodologia', 'fecha_investigacion']
-
-
-# ============================================
-# AUDITORÍA
-# ============================================
-
-@admin.register(LogAuditoria)
-class LogAuditoriaAdmin(admin.ModelAdmin):
-    list_display = ['usuario', 'accion', 'modelo', 'objeto_str', 'fecha']
-    list_filter = ['accion', 'modelo', 'fecha']
-    search_fields = ['usuario__username', 'modelo', 'objeto_str']
-    date_hierarchy = 'fecha'
-    readonly_fields = ['usuario', 'accion', 'modelo', 'objeto_id', 'objeto_str', 'cambios', 'ip_address', 'user_agent', 'fecha']
-    
-    def has_add_permission(self, request):
-        return False
-    
-    def has_delete_permission(self, request, obj=None):
-        return False
 
 
 @admin.register(Notificacion)

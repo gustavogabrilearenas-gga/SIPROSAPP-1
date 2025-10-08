@@ -12,8 +12,9 @@ django.setup()
 from django.contrib.auth.models import User
 from core.models import (
     Ubicacion, Maquina, Producto, Formula, Turno,
-    TipoMantenimiento, OrdenTrabajo, TipoIncidente, Incidente
+    TipoMantenimiento, OrdenTrabajo
 )
+from backend.incidencias.models import TipoIncidente, Incidente
 from backend.produccion.models import Lote
 
 def create_sample_data():

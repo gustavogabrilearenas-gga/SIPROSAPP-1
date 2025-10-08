@@ -18,22 +18,17 @@ from .models import (
     Ubicacion, Maquina, Producto, Formula, EtapaProduccion, Turno,
     # Mantenimiento
     OrdenTrabajo,
-    # Incidentes
-    TipoIncidente, Incidente,
-    # Auditoría
-    LogAuditoria, Notificacion, ElectronicSignature,
+    # Notificaciones
+    Notificacion,
 )
+from backend.incidencias.models import Incidente
 
 from .serializers import (
     # Catálogos
     UbicacionSerializer, MaquinaSerializer, ProductoSerializer,
     FormulaSerializer, EtapaProduccionSerializer, TurnoSerializer,
-    # Incidentes
-    TipoIncidenteSerializer, IncidenteSerializer, IncidenteListSerializer,
-    # Notificaciones y Auditoría
-    NotificacionSerializer, LogAuditoriaSerializer,
-    # Firmas Electrónicas
-    ElectronicSignatureSerializer, CreateSignatureSerializer,
+    # Notificaciones
+    NotificacionSerializer,
 )
 
 from .permissions import (
@@ -214,76 +209,6 @@ class TurnoViewSet(viewsets.ModelViewSet):
 
 
 # ============================================
-# INCIDENTES
-# ============================================
-
-class TipoIncidenteViewSet(viewsets.ModelViewSet):
-    """ViewSet para gestionar Tipos de Incidente"""
-    queryset = TipoIncidente.objects.all().order_by('codigo')
-    serializer_class = TipoIncidenteSerializer
-    
-    def get_permissions(self):
-        if self.request.method in permissions.SAFE_METHODS:
-            perm_classes = [permissions.IsAuthenticated]
-        else:
-            perm_classes = [IsAdmin]
-        return [p() for p in perm_classes]
-
-
-class IncidenteViewSet(viewsets.ModelViewSet):
-    """ViewSet para gestionar Incidentes"""
-    queryset = Incidente.objects.select_related(
-        'tipo', 'ubicacion', 'maquina', 'lote_afectado', 'reportado_por'
-    ).all().order_by('-fecha_ocurrencia')
-    serializer_class = IncidenteSerializer
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['codigo', 'titulo', 'descripcion']
-    ordering_fields = ['fecha_ocurrencia', 'severidad']
-    
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        
-        # Filtro por tipo
-        tipo_id = self.request.query_params.get('tipo', None)
-        if tipo_id:
-            queryset = queryset.filter(tipo_id=tipo_id)
-        
-        # Filtro por severidad
-        severidad = self.request.query_params.get('severidad', None)
-        if severidad:
-            queryset = queryset.filter(severidad=severidad.upper())
-        
-        # Filtro por estado
-        estado = self.request.query_params.get('estado', None)
-        if estado:
-            queryset = queryset.filter(estado=estado.upper())
-        
-        return queryset
-    
-    def get_serializer_class(self):
-        if self.action == 'list':
-            return IncidenteListSerializer
-        return IncidenteSerializer
-    
-    def get_permissions(self):
-        if self.request.method in permissions.SAFE_METHODS:
-            perm_classes = [permissions.IsAuthenticated]
-        else:
-            perm_classes = [IsAdmin]
-        return [p() for p in perm_classes]
-    
-    def perform_create(self, serializer):
-        serializer.save(reportado_por=self.request.user)
-    
-    @action(detail=False, methods=['get'])
-    def abiertos(self, request):
-        """Endpoint: /api/incidentes/abiertos/"""
-        incidentes = self.get_queryset().exclude(estado='CERRADO')
-        serializer = self.get_serializer(incidentes, many=True)
-        return Response(serializer.data)
-
-
-# ============================================
 # NOTIFICACIONES
 # ============================================
 
@@ -336,81 +261,6 @@ class NotificacionViewSet(viewsets.ModelViewSet):
         """Endpoint: /api/notificaciones/no_leidas/ - Contador de no leídas"""
         count = self.get_queryset().filter(leida=False).count()
         return Response({'count': count})
-
-
-# ============================================
-# FIRMAS ELECTRÓNICAS
-# ============================================
-
-class ElectronicSignatureViewSet(viewsets.ModelViewSet):
-    """ViewSet para gestionar Firmas Electrónicas"""
-    queryset = ElectronicSignature.objects.select_related(
-        'user', 'invalidated_by'
-    ).all().order_by('-timestamp')
-    serializer_class = ElectronicSignatureSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    filter_backends = [filters.OrderingFilter]
-    ordering_fields = ['timestamp']
-    
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        
-        # Filtro por content_type y object_id
-        content_type = self.request.query_params.get('content_type', None)
-        if content_type:
-            queryset = queryset.filter(content_type=content_type)
-        
-        object_id = self.request.query_params.get('object_id', None)
-        if object_id:
-            queryset = queryset.filter(object_id=object_id)
-        
-        # Filtro por validez
-        is_valid = self.request.query_params.get('is_valid', None)
-        if is_valid is not None:
-            is_valid = is_valid.lower() == 'true'
-            queryset = queryset.filter(is_valid=is_valid)
-        
-        return queryset
-    
-    def get_serializer_class(self):
-        if self.action == 'create':
-            return CreateSignatureSerializer
-        return ElectronicSignatureSerializer
-    
-    def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
-            perm_classes = [permissions.IsAuthenticated]
-        elif self.action == 'create':
-            perm_classes = [permissions.IsAuthenticated]
-        else:
-            perm_classes = [IsAdmin]  # Invalidar solo admin
-        return [p() for p in perm_classes]
-    
-    @action(detail=True, methods=['post'], permission_classes=[IsAdminOrSupervisor])
-    def invalidar(self, request, pk=None):
-        """Endpoint: /api/firmas/{id}/invalidar/"""
-        firma = self.get_object()
-        
-        if not firma.is_valid:
-            return Response(
-                {'error': 'Esta firma ya está invalidada'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        reason = request.data.get('reason', '')
-        if not reason:
-            return Response(
-                {'error': 'Debe proporcionar un motivo de invalidación'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        firma.invalidate(user=request.user, reason=reason)
-        
-        serializer = self.get_serializer(firma)
-        return Response({
-            'message': 'Firma invalidada exitosamente',
-            'firma': serializer.data
-        })
 
 
 # ============================================
@@ -793,71 +643,6 @@ class BusquedaGlobalView(APIView):
                 'ordenes_trabajo': sum(1 for r in resultados if r['tipo'] == 'orden_trabajo'),
                 'incidentes': sum(1 for r in resultados if r['tipo'] == 'incidente')
             }
-        })
-
-
-# ============================================
-# AUDITORÍA GENÉRICA
-# ============================================
-
-class AuditoriaGenericaView(APIView):
-    """
-    Vista para consultar logs de auditoría de cualquier modelo
-    GET /api/auditoria?modelo=Lote&objeto_id=123&desde=YYYY-MM-DD&hasta=YYYY-MM-DD&usuario=1
-    """
-    permission_classes = [permissions.IsAuthenticated]
-    
-    def get(self, request):
-        # Parámetros de filtro
-        modelo = request.query_params.get('modelo')
-        objeto_id = request.query_params.get('objeto_id')
-        desde = request.query_params.get('desde')
-        hasta = request.query_params.get('hasta')
-        usuario_id = request.query_params.get('usuario')
-        accion = request.query_params.get('accion')
-        
-        # Construir query
-        logs = LogAuditoria.objects.all()
-        
-        if modelo:
-            logs = logs.filter(modelo=modelo)
-        
-        if objeto_id:
-            logs = logs.filter(objeto_id=objeto_id)
-        
-        if desde:
-            fecha_desde = datetime.strptime(desde, '%Y-%m-%d')
-            logs = logs.filter(fecha__gte=fecha_desde)
-        
-        if hasta:
-            fecha_hasta = datetime.strptime(hasta, '%Y-%m-%d')
-            # Incluir todo el día
-            fecha_hasta = fecha_hasta.replace(hour=23, minute=59, second=59)
-            logs = logs.filter(fecha__lte=fecha_hasta)
-        
-        if usuario_id:
-            logs = logs.filter(usuario_id=usuario_id)
-        
-        if accion:
-            logs = logs.filter(accion=accion.upper())
-        
-        # Limitar y ordenar
-        logs = logs.select_related('usuario').order_by('-fecha')[:100]
-        
-        # Serializar
-        serializer = LogAuditoriaSerializer(logs, many=True)
-        
-        return Response({
-            'total': logs.count(),
-            'filtros': {
-                'modelo': modelo,
-                'objeto_id': objeto_id,
-                'desde': desde,
-                'hasta': hasta,
-                'usuario': usuario_id,
-                'accion': accion
-            },
-            'logs': serializer.data
         })
 
 
