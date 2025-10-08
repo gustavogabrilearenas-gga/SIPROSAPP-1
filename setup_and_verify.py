@@ -112,7 +112,8 @@ def main():
     # Verificar si ya hay datos
     print_step(2, 4, "Verificando datos existentes")
     try:
-        from core.models import User, Lote, Maquina, Producto
+        from backend.produccion.models import Lote
+        from core.models import User, Maquina, Producto
         
         user_count = User.objects.count()
         lote_count = Lote.objects.count()

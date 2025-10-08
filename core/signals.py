@@ -7,10 +7,9 @@ from django.db.models.signals import post_save, pre_save, post_delete
 from django.dispatch import receiver
 from django.contrib.auth.models import User
 from threading import local
-from .models import (
-    Lote, LogAuditoria, UserProfile, Notificacion, 
-    LoteEtapa, Incidente, OrdenTrabajo
-)
+from backend.produccion.models import Lote, LoteEtapa
+from .models import LogAuditoria, Notificacion, Incidente, OrdenTrabajo
+from backend.usuarios.models import UserProfile
 import json
 
 
