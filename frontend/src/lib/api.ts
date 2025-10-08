@@ -12,8 +12,43 @@ export interface ApiError extends Error {
 }
 
 const DEFAULT_API_BASE = 'http://localhost:8000'
-const RAW_BASE_URL = process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_BASE
-const API_BASE_URL = RAW_BASE_URL.replace(/\/$/, '')
+const DEFAULT_BROWSER_BASE = '/api'
+
+const trimTrailingSlash = (value: string): string => value.replace(/\/+$/, '')
+
+const ensureApiBase = (value: string, fallback: string): string => {
+  if (!value) {
+    return fallback
+  }
+
+  if (/^https?:/i.test(value)) {
+    const sanitized = trimTrailingSlash(value)
+    return sanitized.endsWith('/api') ? sanitized : `${sanitized}/api`
+  }
+
+  const withLeadingSlash = value.startsWith('/') ? value : `/${value}`
+  const sanitized = trimTrailingSlash(withLeadingSlash || DEFAULT_BROWSER_BASE)
+  return sanitized.endsWith('/api') ? sanitized : `${sanitized}/api`
+}
+
+const resolveApiBaseUrl = (): string => {
+  if (typeof window === 'undefined') {
+    const serverBase =
+      process.env.NEXT_PUBLIC_API_URL_SERVER ||
+      process.env.NEXT_PUBLIC_API_URL ||
+      DEFAULT_API_BASE
+
+    return ensureApiBase(serverBase, ensureApiBase(DEFAULT_API_BASE, `${DEFAULT_API_BASE}/api`))
+  }
+
+  const browserBase =
+    process.env.NEXT_PUBLIC_API_URL ||
+    DEFAULT_BROWSER_BASE
+
+  return ensureApiBase(browserBase, ensureApiBase(DEFAULT_BROWSER_BASE, DEFAULT_BROWSER_BASE))
+}
+
+const API_BASE_URL = resolveApiBaseUrl()
 
 const ACCESS_TOKEN_KEY = 'access_token'
 const REFRESH_TOKEN_KEY = 'refresh_token'
@@ -70,7 +105,7 @@ const storeToken = (key: string, value: string | null) => {
 
 const buildClient = (): AxiosInstance => {
   const instance = axios.create({
-    baseURL: `${API_BASE_URL}/api`,
+    baseURL: API_BASE_URL,
     withCredentials: true,
     timeout: 15000,
   })

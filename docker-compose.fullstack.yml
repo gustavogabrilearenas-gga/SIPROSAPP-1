@@ -46,10 +46,10 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=development
-      # ⚠️ IMPORTANTE: Esta variable es usada por Next.js server-side para rewrites
-      # El cliente (navegador) siempre usa rutas relativas /api/*
-      # que Next.js reescribe a http://web:8000/api/* en el servidor
-      - NEXT_PUBLIC_API_URL=http://web:8000
+      # El navegador usa esta URL pública (visible en el bundle) para llamar al backend
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      # Next.js del lado del servidor resuelve el backend vía la red interna de Docker
+      - NEXT_PUBLIC_API_URL_SERVER=http://web:8000
     depends_on:
       - web
     networks:
