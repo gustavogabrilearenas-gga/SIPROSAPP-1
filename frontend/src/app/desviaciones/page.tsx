@@ -18,12 +18,12 @@ import {
   Plus,
   Search,
   ArrowLeft,
-  FileText,
   CheckCircle,
   Clock,
 } from 'lucide-react'
 import { api, handleApiError } from '@/lib/api'
-import { toast } from '@/hooks/use-toast'
+import DataState from '@/components/common/data-state'
+import { showError, showSuccess } from '@/components/common/toast-utils'
 
 interface Desviacion {
   id: number
@@ -43,7 +43,7 @@ interface Desviacion {
   causa_raiz: string
 }
 
-type DataState = 'loading' | 'error' | 'empty' | 'ready'
+type ViewState = 'loading' | 'error' | 'empty' | 'ready'
 
 const FALLBACK_DESVIACIONES: Desviacion[] = [
   {
@@ -82,15 +82,18 @@ const FALLBACK_DESVIACIONES: Desviacion[] = [
   },
 ]
 
+const ERROR_MESSAGE = 'Error al cargar desviaciones'
+
 export default function DesviacionesPage() {
   const router = useRouter()
   const { user } = useAuth()
   const [desviaciones, setDesviaciones] = useState<Desviacion[]>([])
-  const [dataState, setDataState] = useState<DataState>('loading')
+  const [dataState, setDataState] = useState<ViewState>('loading')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterEstado, setFilterEstado] = useState<string>('TODAS')
   const [isPending, startTransition] = useTransition()
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     void fetchDesviaciones()
@@ -106,10 +109,7 @@ export default function DesviacionesPage() {
         setDesviaciones(items)
         setDataState(items.length === 0 ? 'empty' : 'ready')
       })
-      toast({
-        title: 'Desviaciones actualizadas',
-        description: 'Se actualizaron los registros de desviaciones.',
-      })
+      showSuccess('Desviaciones actualizadas correctamente')
     } catch (error) {
       const { status, message } = handleApiError(error)
       if (status === 500) {
@@ -117,57 +117,41 @@ export default function DesviacionesPage() {
           setDesviaciones(FALLBACK_DESVIACIONES)
           setDataState(FALLBACK_DESVIACIONES.length === 0 ? 'empty' : 'ready')
         })
-        toast({
-          title: 'Datos de demostración cargados',
-          description:
-            'No se pudo acceder al servicio, mostrando desviaciones de ejemplo para la demo.',
-        })
+        showSuccess('Datos de demostración cargados')
       } else {
         startTransition(() => {
           setDataState('error')
-          setErrorMessage(message || 'No se pudo obtener la información de desviaciones')
+          setErrorMessage(ERROR_MESSAGE)
         })
-        toast({
-          title: 'Error al cargar desviaciones',
-          description: message || 'No se pudo obtener la información de desviaciones',
-          variant: 'destructive',
-        })
+        showError(message || ERROR_MESSAGE)
       }
     }
   }
 
   const handleCreateDesviacion = async (payload: Record<string, unknown>) => {
+    setIsSubmitting(true)
     try {
       await api.createDesviacion(payload)
-      toast({
-        title: 'Desviación creada',
-        description: 'La desviación se registró correctamente.',
-      })
+      showSuccess('Desviación creada correctamente')
       await fetchDesviaciones()
     } catch (error) {
       const { message } = handleApiError(error)
-      toast({
-        title: 'Error al crear desviación',
-        description: message || 'No fue posible registrar la desviación.',
-        variant: 'destructive',
-      })
+      showError(message || 'No fue posible registrar la desviación.')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   const handleCreateAccionCorrectiva = async (payload: Record<string, unknown>) => {
+    setIsSubmitting(true)
     try {
       await api.createAccionCorrectiva(payload)
-      toast({
-        title: 'Acción correctiva creada',
-        description: 'La acción correctiva se registró correctamente.',
-      })
+      showSuccess('Acción correctiva creada correctamente')
     } catch (error) {
       const { message } = handleApiError(error)
-      toast({
-        title: 'Error al crear acción correctiva',
-        description: message || 'No fue posible registrar la acción correctiva.',
-        variant: 'destructive',
-      })
+      showError(message || 'No fue posible registrar la acción correctiva.')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -200,7 +184,9 @@ export default function DesviacionesPage() {
 
   const estadoOptions = ['TODAS', 'ABIERTA', 'EN_INVESTIGACION', 'EN_CAPA', 'CERRADA']
 
-  const isBusy = dataState === 'loading' || isPending
+  const isBusy = dataState === 'loading' || isPending || isSubmitting
+  const isError = dataState === 'error'
+  const isEmpty = dataState === 'empty'
 
   return (
     <ProtectedRoute>
@@ -238,8 +224,17 @@ export default function DesviacionesPage() {
                   className="bg-orange-600 hover:bg-orange-700 text-white"
                   disabled={isBusy}
                 >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Nueva Desviación
+                  {isSubmitting ? (
+                    <>
+                      <Clock className="w-4 h-4 mr-2 animate-spin" />
+                      Procesando...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Nueva Desviación
+                    </>
+                  )}
                 </Button>
               )}
             </div>
@@ -284,131 +279,114 @@ export default function DesviacionesPage() {
             </div>
           </motion.div>
 
-          {/* Deviations List */}
-          {dataState === 'loading' ? (
-            <div className="flex items-center justify-center py-12">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full"
-              />
-            </div>
-          ) : dataState === 'error' ? (
-            <div className="text-center py-12 space-y-4">
-              <AlertTriangle className="w-12 h-12 text-red-500 mx-auto" />
-              <p className="text-red-600">{errorMessage}</p>
+          <DataState
+            loading={dataState === 'loading'}
+            error={isError ? errorMessage : null}
+            empty={isEmpty}
+            emptyMessage="No se encontraron desviaciones"
+          >
+            {!isError && (
+              <div className="space-y-4">
+                {filteredDesviaciones.map((desv, index) => (
+                  <motion.div
+                    key={desv.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.05 * index }}
+                  >
+                    <Card
+                      className="hover:shadow-xl transition-shadow duration-300 cursor-pointer"
+                      onClick={() => {
+                        /* TODO: Open detail modal */
+                      }}
+                    >
+                      <CardHeader>
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <CardTitle className="text-xl font-bold">{desv.codigo}</CardTitle>
+                              <Badge className={getSeveridadColor(desv.severidad)}>
+                                {desv.severidad}
+                              </Badge>
+                              <Badge className={getEstadoColor(desv.estado)}>
+                                {desv.estado.replace('_', ' ')}
+                              </Badge>
+                              {desv.requiere_capa && (
+                                <Badge className="bg-purple-100 text-purple-800">Requiere CAPA</Badge>
+                              )}
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">{desv.titulo}</h3>
+                            <p className="text-sm text-gray-600 mb-3">{desv.descripcion}</p>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                          <div>
+                            <p className="text-gray-500 text-xs mb-1">Detectado por</p>
+                            <p className="font-medium">{desv.detectado_por_nombre}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500 text-xs mb-1">Fecha Detección</p>
+                            <p className="font-medium">{new Date(desv.fecha_deteccion).toLocaleDateString()}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500 text-xs mb-1">Lote Afectado</p>
+                            <p className="font-medium">{desv.lote_codigo || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500 text-xs mb-1">Área Responsable</p>
+                            <p className="font-medium">{desv.area_responsable || 'N/A'}</p>
+                          </div>
+                        </div>
+
+                        {(desv.impacto_calidad || desv.impacto_seguridad) && (
+                          <div className="mt-4 pt-4 border-t border-gray-200">
+                            <div className="flex gap-4">
+                              {desv.impacto_calidad && (
+                                <div className="flex-1 bg-red-50 p-3 rounded">
+                                  <p className="text-xs font-medium text-red-700 mb-1">Impacto en Calidad</p>
+                                  <p className="text-xs text-red-600">{desv.impacto_calidad}</p>
+                                </div>
+                              )}
+                              {desv.impacto_seguridad && (
+                                <div className="flex-1 bg-orange-50 p-3 rounded">
+                                  <p className="text-xs font-medium text-orange-700 mb-1">Impacto en Seguridad</p>
+                                  <p className="text-xs text-orange-600">{desv.impacto_seguridad}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {desv.causa_raiz && (
+                          <div className="mt-4 bg-blue-50 p-3 rounded">
+                            <p className="text-xs font-medium text-blue-700 mb-1">Causa Raíz</p>
+                            <p className="text-sm text-blue-900">{desv.causa_raiz}</p>
+                          </div>
+                        )}
+
+                        {desv.fecha_cierre && (
+                          <div className="mt-4 flex items-center gap-2 text-sm text-green-600">
+                            <CheckCircle className="w-4 h-4" />
+                            <span>Cerrada el {new Date(desv.fecha_cierre).toLocaleDateString()}</span>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </DataState>
+
+          {isError && (
+            <div className="mt-6 flex justify-center">
               <Button onClick={fetchDesviaciones} disabled={isBusy}>
                 Reintentar
               </Button>
             </div>
-          ) : dataState === 'empty' ? (
-            <div className="text-center py-12 space-y-3">
-              <AlertTriangle className="w-12 h-12 text-gray-400 mx-auto" />
-              <p className="text-gray-600">Sin registros disponibles</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredDesviaciones.map((desv, index) => (
-                <motion.div
-                  key={desv.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.05 * index }}
-                >
-                  <Card className="hover:shadow-xl transition-shadow duration-300 cursor-pointer"
-                        onClick={() => {/* TODO: Open detail modal */}}>
-                    <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <CardTitle className="text-xl font-bold">
-                              {desv.codigo}
-                            </CardTitle>
-                            <Badge className={getSeveridadColor(desv.severidad)}>
-                              {desv.severidad}
-                            </Badge>
-                            <Badge className={getEstadoColor(desv.estado)}>
-                              {desv.estado.replace('_', ' ')}
-                            </Badge>
-                            {desv.requiere_capa && (
-                              <Badge className="bg-purple-100 text-purple-800">
-                                Requiere CAPA
-                              </Badge>
-                            )}
-                          </div>
-                          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                            {desv.titulo}
-                          </h3>
-                          <p className="text-sm text-gray-600 mb-3">
-                            {desv.descripcion}
-                          </p>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        <div>
-                          <p className="text-gray-500 text-xs mb-1">Detectado por</p>
-                          <p className="font-medium">{desv.detectado_por_nombre}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-500 text-xs mb-1">Fecha Detección</p>
-                          <p className="font-medium">
-                            {new Date(desv.fecha_deteccion).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-gray-500 text-xs mb-1">Lote Afectado</p>
-                          <p className="font-medium">{desv.lote_codigo || 'N/A'}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-500 text-xs mb-1">Área Responsable</p>
-                          <p className="font-medium">{desv.area_responsable || 'N/A'}</p>
-                        </div>
-                      </div>
-
-                      {/* Impact Indicators */}
-                      {(desv.impacto_calidad || desv.impacto_seguridad) && (
-                        <div className="mt-4 pt-4 border-t border-gray-200">
-                          <div className="flex gap-4">
-                            {desv.impacto_calidad && (
-                              <div className="flex-1 bg-red-50 p-3 rounded">
-                                <p className="text-xs font-medium text-red-700 mb-1">Impacto en Calidad</p>
-                                <p className="text-xs text-red-600">{desv.impacto_calidad}</p>
-                              </div>
-                            )}
-                            {desv.impacto_seguridad && (
-                              <div className="flex-1 bg-orange-50 p-3 rounded">
-                                <p className="text-xs font-medium text-orange-700 mb-1">Impacto en Seguridad</p>
-                                <p className="text-xs text-orange-600">{desv.impacto_seguridad}</p>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Root Cause */}
-                      {desv.causa_raiz && (
-                        <div className="mt-4 bg-blue-50 p-3 rounded">
-                          <p className="text-xs font-medium text-blue-700 mb-1">Causa Raíz</p>
-                          <p className="text-sm text-blue-900">{desv.causa_raiz}</p>
-                        </div>
-                      )}
-
-                      {/* Closure Info */}
-                      {desv.fecha_cierre && (
-                        <div className="mt-4 flex items-center gap-2 text-sm text-green-600">
-                          <CheckCircle className="w-4 h-4" />
-                          <span>Cerrada el {new Date(desv.fecha_cierre).toLocaleDateString()}</span>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </div>
           )}
-
           {dataState === 'ready' && filteredDesviaciones.length === 0 && (
             <div className="text-center py-12">
               <AlertTriangle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
