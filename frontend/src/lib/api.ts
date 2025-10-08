@@ -778,6 +778,18 @@ const api = {
     return get('/produccion/paradas/', { params })
   },
 
+  async createParada(data: Record<string, unknown>) {
+    return post('/produccion/paradas/', data)
+  },
+
+  async updateParada(id: number | string, data: Record<string, unknown>) {
+    return patch(`/produccion/paradas/${id}/`, data)
+  },
+
+  async finalizarParada(id: number | string, data: Record<string, unknown>) {
+    return post(`/produccion/paradas/${id}/finalizar/`, data)
+  },
+
   async getLotes(params?: Record<string, unknown>) {
     return get('/produccion/lotes/', { params })
   },
@@ -846,8 +858,24 @@ const api = {
     return get('/ubicaciones/', { params })
   },
 
+  async createUbicacion(data: Record<string, unknown>) {
+    return post('/ubicaciones/', data)
+  },
+
+  async updateUbicacion(id: number | string, data: Record<string, unknown>) {
+    return patch(`/ubicaciones/${id}/`, data)
+  },
+
   async getTurnos(params?: Record<string, unknown>) {
     return get('/turnos/', { params })
+  },
+
+  async createTurno(data: Record<string, unknown>) {
+    return post('/turnos/', data)
+  },
+
+  async updateTurno(id: number | string, data: Record<string, unknown>) {
+    return patch(`/turnos/${id}/`, data)
   },
 
   async getIncidentes(params?: Record<string, unknown>) {

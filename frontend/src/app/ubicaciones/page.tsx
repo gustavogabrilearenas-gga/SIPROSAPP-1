@@ -26,6 +26,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { api } from '@/lib/api'
+import UbicacionFormModal from '@/components/ubicaciones/UbicacionFormModal'
 import DataState from '@/components/common/data-state'
 import { showError } from '@/components/common/toast-utils'
 
@@ -58,7 +59,7 @@ export default function UbicacionesPage() {
     try {
       setLoading(true)
       setError(null)
-      const response = await api.get('/ubicaciones/')
+      const response = await api.getUbicaciones()
       setUbicaciones(response.results || response)
     } catch (error: any) {
       const message = error?.message || 'No se pudieron obtener las ubicaciones'
@@ -254,6 +255,33 @@ export default function UbicacionesPage() {
           </DataState>
         </main>
       </div>
+      <UbicacionFormModal
+        open={isFormOpen}
+        onClose={() => {
+          setIsFormOpen(false)
+          setSelectedUbicacionId(null)
+        }}
+        initialData={
+          selectedUbicacionId
+            ? (() => {
+                const ubicacion = ubicaciones.find((item) => item.id === selectedUbicacionId)
+                return ubicacion
+                  ? {
+                      id: ubicacion.id,
+                      codigo: ubicacion.codigo,
+                      nombre: ubicacion.nombre,
+                      tipo: ubicacion.tipo as 'PRODUCCION' | 'ALMACEN' | 'MANTENIMIENTO' | 'SERVICIOS',
+                      descripcion: ubicacion.descripcion ?? '',
+                      activa: ubicacion.activa,
+                    }
+                  : undefined
+              })()
+            : undefined
+        }
+        onSuccess={() => {
+          fetchUbicaciones()
+        }}
+      />
     </ProtectedRoute>
   )
 }

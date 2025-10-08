@@ -1,0 +1,24 @@
+Fase F3.2 – Integración CRUD Ubicaciones, Turnos y Paradas
+========================================================
+
+Flujos implementados
+--------------------
+* Conexión de los formularios modales de **Ubicaciones**, **Turnos** y **Paradas** con los endpoints reales del backend para crear y actualizar registros.
+* Inclusión de validaciones básicas de campos requeridos y mensajes de éxito/error mediante los toasts estándar (`showSuccess`/`showError`).
+* Ejecución de refrescos de los listados principales tras operaciones exitosas (creación/edición/finalización) para reflejar los datos más recientes.
+* Acción de finalización de paradas con captura de solución y notificación del resultado.
+
+Páginas afectadas
+-----------------
+* `frontend/src/app/ubicaciones/page.tsx`
+* `frontend/src/app/turnos/page.tsx`
+* `frontend/src/app/paradas/page.tsx`
+
+Resultados de prueba manual
+---------------------------
+* No se ejecutaron pruebas manuales en este entorno CLI. Se recomienda validar la carga de los listados y las operaciones CRUD desde la interfaz web conectada al backend real.
+
+Pendientes detectados
+---------------------
+* Ajustar la obtención de metadatos adicionales (ej. nombre amigable de lote/etapa en paradas) si el backend expone nuevos campos o endpoints específicos para enriquecer la UI.
+* Verificar en un entorno con backend operativo que los parámetros de paginación para lotes-etapas cubren todos los casos de uso; considerar agregar filtros adicionales si es necesario.
