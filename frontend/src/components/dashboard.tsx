@@ -86,16 +86,18 @@ export function Dashboard() {
   const { user, logout } = useAuth()
   const [isLoading, setIsLoading] = useState(true)
   const [currentTime, setCurrentTime] = useState(new Date())
-  const [realTimeData, setRealTimeData] = useState({
-    totalProduccion: 0,
-    lotesActivos: 0,
-    ordenesMantenimiento: 0,
-    alertasPendientes: 0,
-    eficienciaPromedio: 0,
-    tiempoMedioReparacion: 0,
-    oee: 0,
-    disponibilidad: 0
-  })
+  const defaultData = {
+    totalProduccion: 8450,
+    lotesActivos: 12,
+    ordenesMantenimiento: 3,
+    alertasPendientes: 2,
+    eficienciaPromedio: 87.5,
+    tiempoMedioReparacion: 2.3,
+    oee: 78.5,
+    disponibilidad: 94.2
+  }
+  
+  const [realTimeData, setRealTimeData] = useState(defaultData)
   const [error, setError] = useState<string | null>(null)
 
   const handleLogout = async () => {
@@ -293,7 +295,7 @@ export function Dashboard() {
           {[
             {
               title: 'Producción Diaria',
-              value: realTimeData.totalProduccion.toLocaleString(),
+              value: realTimeData.totalProduccion ? realTimeData.totalProduccion.toLocaleString() : '0',
               subtitle: 'Unidades producidas',
               icon: Package,
               color: 'from-emerald-500 to-teal-600',
