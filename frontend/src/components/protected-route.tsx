@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/stores/auth-store'
 import { Loader2 } from 'lucide-react'
@@ -11,22 +11,24 @@ import { Loader2 } from 'lucide-react'
  */
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const router = useRouter()
-  const { isAuthenticated, isLoading, initializeAuth } = useAuth()
-  const [isClient, setIsClient] = useState(false)
+  const { isAuthenticated, isLoading, initializeAuth, _hasHydrated } = useAuth()
+  const hasRedirectedRef = useRef(false)
 
   useEffect(() => {
-    setIsClient(true)
-    initializeAuth()
-  }, [initializeAuth])
-
-  useEffect(() => {
-    if (isClient && !isLoading && !isAuthenticated) {
-      router.push('/login')
+    if (!_hasHydrated) {
+      void initializeAuth()
     }
-  }, [isClient, isAuthenticated, isLoading, router])
+  }, [_hasHydrated, initializeAuth])
+
+  useEffect(() => {
+    if (_hasHydrated && !isLoading && !isAuthenticated && !hasRedirectedRef.current) {
+      hasRedirectedRef.current = true
+      router.replace('/login')
+    }
+  }, [_hasHydrated, isAuthenticated, isLoading, router])
 
   // Durante la hidratación, mostrar loading
-  if (!isClient || isLoading) {
+  if (!_hasHydrated || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">

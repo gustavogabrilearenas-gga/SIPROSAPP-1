@@ -13,7 +13,7 @@ interface AuthState {
   login: (username: string, password: string) => Promise<void>
   logout: () => Promise<void>
   getCurrentUser: () => Promise<void>
-  initializeAuth: () => void
+  initializeAuth: () => Promise<void>
   clearError: () => void
   setHasHydrated: (state: boolean) => void
 }
@@ -91,15 +91,38 @@ export const useAuth = create<AuthState>((set, get) => ({
   },
 
   // Inicializar autenticación al cargar la app
-  initializeAuth: () => {
-    if (typeof window !== 'undefined') {
-      const hasToken = !!localStorage.getItem('access_token')
-      set({ isAuthenticated: hasToken, _hasHydrated: true })
-      
-      // Si hay token, obtener info del usuario
-      if (hasToken) {
-        get().getCurrentUser()
-      }
+  initializeAuth: async () => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    if (get()._hasHydrated) {
+      return
+    }
+
+    if (get().isLoading) {
+      return
+    }
+
+    const hasToken = !!localStorage.getItem('access_token')
+
+    if (!hasToken) {
+      set({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
+        _hasHydrated: true,
+      })
+      return
+    }
+
+    set({ isLoading: true, error: null })
+
+    try {
+      await get().getCurrentUser()
+    } finally {
+      set({ isLoading: false, _hasHydrated: true })
     }
   },
 
