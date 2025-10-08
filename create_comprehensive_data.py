@@ -17,8 +17,9 @@ from django.utils import timezone
 from core.models import (
     UserProfile, Ubicacion, Maquina, Producto, Formula, EtapaProduccion,
     Turno, TipoMantenimiento, OrdenTrabajo,
-    TipoIncidente, Incidente, Notificacion, TipoDocumento
+    Notificacion, TipoDocumento
 )
+from backend.incidencias.models import TipoIncidente, Incidente
 from backend.produccion.models import Lote, LoteEtapa, Parada, ControlCalidad
 from backend.inventario.models import (
     CategoriaInsumo, FormulaInsumo, Insumo,

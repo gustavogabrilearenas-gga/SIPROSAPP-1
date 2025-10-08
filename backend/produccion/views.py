@@ -14,9 +14,10 @@ from backend.produccion.serializers import (
     LoteSerializer,
     ParadaSerializer,
 )
-from core.models import ElectronicSignature, LogAuditoria, Notificacion
+from core.models import Notificacion
+from backend.auditoria.models import ElectronicSignature, LogAuditoria
+from backend.auditoria.serializers import ElectronicSignatureSerializer
 from core.permissions import IsAdmin, IsAdminOrOperario, IsAdminOrSupervisor
-from core.serializers import ElectronicSignatureSerializer
 
 
 class LoteViewSet(viewsets.ModelViewSet):
