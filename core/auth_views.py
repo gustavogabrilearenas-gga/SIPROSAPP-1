@@ -11,7 +11,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
-from core.serializers import UserSerializer
+from backend.usuarios.serializers import UserSerializer
 
 
 @csrf_exempt
