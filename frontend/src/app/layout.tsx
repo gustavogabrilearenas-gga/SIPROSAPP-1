@@ -4,6 +4,8 @@ import './globals.css'
 import { AuthProvider } from '@/stores/auth-store'
 import { AuthInit } from '@/components/auth-init'
 import { QueryProvider } from '@/lib/query-provider'
+import DataState from '@/components/common/data-state'
+import { ToastProvider } from '@/components/ui/toast'
 import { Toaster } from '@/components/ui/toaster'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -22,12 +24,14 @@ export default function RootLayout({
     <html lang="es">
       <body className={inter.className}>
         <QueryProvider>
-          <AuthProvider>
-            <AuthInit>
-              {children}
+          <ToastProvider>
+            <AuthProvider>
+              <AuthInit>
+                <DataState>{children}</DataState>
+              </AuthInit>
               <Toaster />
-            </AuthInit>
-          </AuthProvider>
+            </AuthProvider>
+          </ToastProvider>
         </QueryProvider>
       </body>
     </html>
