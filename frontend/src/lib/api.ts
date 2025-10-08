@@ -1123,4 +1123,4 @@ Object.assign(api, {
   exportCSV,
 })
 
-export { api, request, get, post, put, patch, del as delete, createApiError, handleApiError }
+export { api, request, get, post, put, patch, del as delete, createApiError }
