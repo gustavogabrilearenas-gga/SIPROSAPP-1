@@ -22,6 +22,8 @@ import {
   Sun,
   Moon,
   Sunset,
+  Package,
+  type LucideIcon,
 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { toast } from '@/hooks/use-toast'
@@ -70,14 +72,13 @@ export default function TurnosPage() {
     t.nombre.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  const getTurnoIcon = (codigo: string) => {
-    const icons: Record<string, any> = {
-      'M': Sun,
-      'T': Sunset,
-      'N': Moon,
+  const getTurnoIcon = (codigo: string): LucideIcon => {
+    const icons: Record<string, LucideIcon> = {
+      M: Sun,
+      T: Sunset,
+      N: Moon,
     }
-    const Icon = icons[codigo] || Clock
-    return <Icon className="w-4 h-4" />
+    return icons[codigo] ?? Clock
   }
 
   const getTurnoColor = (codigo: string) => {
