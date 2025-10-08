@@ -16,8 +16,6 @@ from datetime import datetime, timedelta
 import django
 
 from .models import (
-    # Usuarios
-    UserProfile,
     # Cat�logos
     Ubicacion, Maquina, Producto, Formula, EtapaProduccion, Turno,
     # Producci�n
@@ -33,8 +31,6 @@ from .models import (
 )
 
 from .serializers import (
-    # Usuarios
-    UserSerializer, UsuarioDetalleSerializer, UsuarioPerfilSerializer, CrearUsuarioSerializer, CambiarPasswordSerializer,
     # Cat�logos
     UbicacionSerializer, MaquinaSerializer, ProductoSerializer,
     FormulaSerializer, EtapaProduccionSerializer, TurnoSerializer,
@@ -57,139 +53,6 @@ from .serializers import (
 from .permissions import (
     IsAdmin, IsAdminOrSupervisor, IsAdminOrOperario
 )
-
-
-# ============================================
-# USUARIOS
-# ============================================
-
-class UsuarioViewSet(viewsets.ModelViewSet):
-    """ViewSet para gesti�n de usuarios (solo admin/superuser)"""
-    queryset = User.objects.all().select_related('profile').order_by('username')
-    serializer_class = UsuarioDetalleSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['username', 'first_name', 'last_name', 'email', 'profile__legajo']
-    ordering_fields = ['username', 'date_joined', 'last_login', 'is_active']
-    
-    def get_permissions(self):
-        """Permisos personalizados seg�n la acci�n"""
-        if self.action in ['me', 'cambiar_mi_password', 'update_me']:
-            # Cualquier usuario autenticado puede ver/editar su perfil
-            return [permissions.IsAuthenticated()]
-        elif self.action in ['update', 'partial_update'] and self.kwargs.get('pk'):
-            # Un usuario puede editar su propio perfil
-            user_id = self.kwargs['pk']
-            if str(self.request.user.id) == str(user_id):
-                return [permissions.IsAuthenticated()]
-            else:
-                return [IsAdmin()]
-        else:
-            # Solo admin/superuser puede gestionar otros usuarios
-            return [IsAdmin()]
-    
-    def get_serializer_class(self):
-        """Usar diferentes serializers seg�n la acci�n"""
-        if self.action == 'create':
-            return CrearUsuarioSerializer
-        elif self.action in ['cambiar_password', 'cambiar_mi_password']:
-            return CambiarPasswordSerializer
-        elif self.action == 'me':
-            return UsuarioDetalleSerializer
-        elif self.action == 'update_me':
-            return UsuarioPerfilSerializer
-        elif self.action in ['update', 'partial_update'] and self.kwargs.get('pk'):
-            # Si es el propio usuario editando su perfil, usar serializer simplificado
-            user_id = self.kwargs['pk']
-            if str(self.request.user.id) == str(user_id):
-                return UsuarioPerfilSerializer
-            else:
-                return UsuarioDetalleSerializer
-        return UsuarioDetalleSerializer
-    
-    @action(detail=False, methods=['get'])
-    def me(self, request):
-        """Obtener perfil del usuario actual"""
-        serializer = self.get_serializer(request.user)
-        return Response(serializer.data)
-
-    @action(detail=False, methods=['put', 'patch'])
-    def update_me(self, request):
-        """Actualizar perfil del usuario actual"""
-        serializer = self.get_serializer(request.user, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data)
-    
-    @action(detail=False, methods=['post'])
-    def cambiar_mi_password(self, request):
-        """Cambiar contrase�a del usuario actual"""
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        user = request.user
-        password_actual = serializer.validated_data.get('password_actual')
-        
-        # Verificar contrase�a actual
-        if password_actual and not user.check_password(password_actual):
-            return Response(
-                {'error': 'La contrase�a actual es incorrecta'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Cambiar contrase�a
-        user.set_password(serializer.validated_data['password_nueva'])
-        user.save()
-        
-        return Response({'message': 'Contrase�a cambiada exitosamente'})
-    
-    @action(detail=True, methods=['post'], permission_classes=[IsAdmin])
-    def cambiar_password(self, request, pk=None):
-        """Cambiar contrase�a de otro usuario (solo admin)"""
-        usuario = self.get_object()
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        # Admin puede cambiar sin verificar contrase�a actual
-        usuario.set_password(serializer.validated_data['password_nueva'])
-        usuario.save()
-        
-        return Response({'message': f'Contrase�a de {usuario.username} cambiada exitosamente'})
-    
-    def destroy(self, request, *args, **kwargs):
-        """Desactivar usuario en lugar de eliminarlo (soft delete)"""
-        usuario = self.get_object()
-        
-        # No permitir eliminar al propio usuario
-        if usuario == request.user:
-            return Response(
-                {'error': 'No puedes eliminar tu propia cuenta'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Desactivar en lugar de eliminar
-        usuario.is_active = False
-        usuario.save()
-        
-        # Tambi�n desactivar el perfil si existe
-        if hasattr(usuario, 'profile'):
-            usuario.profile.activo = False
-            usuario.profile.save()
-        
-        return Response({'message': f'Usuario {usuario.username} desactivado exitosamente'})
-    
-    @action(detail=True, methods=['post'], permission_classes=[IsAdmin])
-    def reactivar(self, request, pk=None):
-        """Reactivar un usuario desactivado"""
-        usuario = self.get_object()
-        usuario.is_active = True
-        usuario.save()
-        
-        if hasattr(usuario, 'profile'):
-            usuario.profile.activo = True
-            usuario.profile.save()
-        
-        return Response({'message': f'Usuario {usuario.username} reactivado exitosamente'})
 
 
 # ============================================
