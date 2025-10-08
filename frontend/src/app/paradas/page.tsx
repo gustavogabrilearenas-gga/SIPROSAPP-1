@@ -13,35 +13,28 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import {
-  Clock,
-  Plus,
-  Search,
-  Edit,
-  ArrowLeft,
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  User,
-  Calendar,
-} from 'lucide-react'
+import { Clock, Plus, Search, Edit, ArrowLeft, CheckCircle } from 'lucide-react'
 import { api } from '@/lib/api'
+import ParadaFormModal from '@/components/paradas/ParadaFormModal'
 import DataState from '@/components/common/data-state'
-import { showError } from '@/components/common/toast-utils'
+import { showError, showSuccess } from '@/components/common/toast-utils'
 
 interface Parada {
   id: number
-  lote_etapa_codigo: string
-  lote_codigo: string
+  lote_etapa: number
+  lote_etapa_codigo?: string
+  lote_codigo?: string
   tipo: string
+  tipo_display?: string
   categoria: string
+  categoria_display?: string
   fecha_inicio: string
   fecha_fin: string | null
   duracion_minutos: number | null
   descripcion: string
   solucion: string
-  registrado_por_nombre: string
-  estado: string
+  registrado_por: number
+  registrado_por_nombre?: string
 }
 
 export default function ParadasPage() {
@@ -63,7 +56,7 @@ export default function ParadasPage() {
     try {
       setLoading(true)
       setError(null)
-      const response = await api.get('/paradas/')
+      const response = await api.getParadas({ ordering: '-fecha_inicio' })
       setParadas(response.results || response)
     } catch (error: any) {
       const message = error?.message || 'No se pudieron obtener las paradas'
@@ -75,9 +68,13 @@ export default function ParadasPage() {
   }
 
   const filteredParadas = paradas.filter(p => {
-    const matchesSearch = p.lote_codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         p.categoria.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         p.descripcion.toLowerCase().includes(searchTerm.toLowerCase())
+    const loteCodigo = p.lote_codigo ?? `LOTE-${p.lote_etapa}`
+    const categoria = p.categoria ?? ''
+    const descripcion = p.descripcion ?? ''
+    const matchesSearch =
+      loteCodigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      categoria.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      descripcion.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesFilter = filterTipo === 'TODAS' || p.tipo === filterTipo
     return matchesSearch && matchesFilter
   })
@@ -116,6 +113,29 @@ export default function ParadasPage() {
     const horas = Math.floor(minutos / 60)
     const mins = minutos % 60
     return `${horas}h ${mins}min`
+  }
+
+  const handleFinalizarParada = async (parada: Parada) => {
+    const solucion = window.prompt(
+      `Ingrese la solución aplicada para la parada del ${
+        parada.lote_codigo ?? `lote ${parada.lote_etapa}`
+      }`,
+      parada.solucion ?? '',
+    )
+
+    if (!solucion || !solucion.trim()) {
+      showError('Operación cancelada', 'Debes ingresar una solución para finalizar la parada.')
+      return
+    }
+
+    try {
+      await api.finalizarParada(parada.id, { solucion: solucion.trim() })
+      showSuccess('Parada finalizada', 'La parada se finalizó correctamente.')
+      fetchParadas()
+    } catch (error: any) {
+      const message = error?.message || 'No se pudo finalizar la parada'
+      showError('Error al finalizar', message)
+    }
   }
 
   const hasError = Boolean(error)
@@ -212,6 +232,10 @@ export default function ParadasPage() {
               {filteredParadas.map((parada, index) => {
                 const EstadoIcon = getEstadoIcon(parada.fecha_fin)
                 const isEnCurso = !parada.fecha_fin
+                const loteCodigo = parada.lote_codigo ?? `Lote #${parada.lote_etapa}`
+                const etapaCodigo = parada.lote_etapa_codigo ?? `Etapa #${parada.lote_etapa}`
+                const registradoPor =
+                  parada.registrado_por_nombre ?? `Usuario #${parada.registrado_por}`
 
                 return (
                   <motion.div
@@ -229,12 +253,12 @@ export default function ParadasPage() {
                         <div className="flex justify-between items-start mb-4">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
-                              <h3 className="text-lg font-bold">{parada.lote_codigo}</h3>
+                              <h3 className="text-lg font-bold">{loteCodigo}</h3>
                               <Badge className={getTipoColor(parada.tipo)}>
-                                {parada.tipo}
+                                {parada.tipo_display ?? parada.tipo}
                               </Badge>
                               <Badge className={getCategoriaColor(parada.categoria)}>
-                                {parada.categoria.replace('_', ' ')}
+                                {(parada.categoria_display ?? parada.categoria).replace('_', ' ')}
                               </Badge>
                               <Badge className={getEstadoColor(parada.fecha_fin)}>
                                 <EstadoIcon className="w-3 h-3 mr-1" />
@@ -242,13 +266,13 @@ export default function ParadasPage() {
                               </Badge>
                             </div>
                             <p className="text-sm text-gray-600 mb-2">
-                              Etapa: {parada.lote_etapa_codigo}
+                              Etapa: {etapaCodigo}
                             </p>
                             <p className="text-gray-800">{parada.descripcion}</p>
                           </div>
                           <div className="text-right text-sm text-gray-500">
                             <p>{new Date(parada.fecha_inicio).toLocaleString()}</p>
-                            <p>Por: {parada.registrado_por_nombre}</p>
+                            <p>Por: {registradoPor}</p>
                           </div>
                         </div>
 
@@ -297,7 +321,7 @@ export default function ParadasPage() {
                               variant="outline"
                               size="sm"
                               className="bg-green-50 text-green-700 border-green-200"
-                              onClick={() => {/* TODO: Finalizar parada */}}
+                              onClick={() => handleFinalizarParada(parada)}
                             >
                               <CheckCircle className="w-4 h-4 mr-1" />
                               Finalizar
@@ -313,6 +337,42 @@ export default function ParadasPage() {
           </DataState>
         </main>
       </div>
+      <ParadaFormModal
+        open={isFormOpen}
+        onClose={() => {
+          setIsFormOpen(false)
+          setSelectedParadaId(null)
+        }}
+        initialData={
+          selectedParadaId
+            ? (() => {
+                const parada = paradas.find((item) => item.id === selectedParadaId)
+                return parada
+                  ? {
+                      id: parada.id,
+                      loteEtapa: parada.lote_etapa,
+                      tipo: (parada.tipo as 'PLANIFICADA' | 'NO_PLANIFICADA') ?? 'PLANIFICADA',
+                      categoria:
+                        (parada.categoria as
+                          | 'FALLA_EQUIPO'
+                          | 'FALTA_INSUMO'
+                          | 'CAMBIO_FORMATO'
+                          | 'LIMPIEZA'
+                          | 'CALIDAD'
+                          | 'OTROS') ?? 'OTROS',
+                      fechaInicio: parada.fecha_inicio,
+                      descripcion: parada.descripcion ?? '',
+                      solucion: parada.solucion ?? '',
+                    }
+                  : undefined
+              })()
+            : undefined
+        }
+        onSuccess={() => {
+          fetchParadas()
+        }}
+        currentUserId={user?.id ?? null}
+      />
     </ProtectedRoute>
   )
 }

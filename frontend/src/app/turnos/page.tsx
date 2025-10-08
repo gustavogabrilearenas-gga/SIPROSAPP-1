@@ -26,6 +26,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { api } from '@/lib/api'
+import TurnoFormModal from '@/components/turnos/TurnoFormModal'
 import DataState from '@/components/common/data-state'
 import { showError } from '@/components/common/toast-utils'
 
@@ -57,7 +58,7 @@ export default function TurnosPage() {
     try {
       setLoading(true)
       setError(null)
-      const response = await api.get('/turnos/')
+      const response = await api.getTurnos()
       setTurnos(response.results || response)
     } catch (error: any) {
       const message = error?.message || 'No se pudieron obtener los turnos'
@@ -314,6 +315,33 @@ export default function TurnosPage() {
           </DataState>
         </main>
       </div>
+      <TurnoFormModal
+        open={isFormOpen}
+        onClose={() => {
+          setIsFormOpen(false)
+          setSelectedTurnoId(null)
+        }}
+        initialData={
+          selectedTurnoId
+            ? (() => {
+                const turno = turnos.find((item) => item.id === selectedTurnoId)
+                return turno
+                  ? {
+                      id: turno.id,
+                      codigo: turno.codigo,
+                      nombre: turno.nombre,
+                      horaInicio: turno.hora_inicio?.slice(0, 5) ?? '',
+                      horaFin: turno.hora_fin?.slice(0, 5) ?? '',
+                      activo: turno.activo,
+                    }
+                  : undefined
+              })()
+            : undefined
+        }
+        onSuccess={() => {
+          fetchTurnos()
+        }}
+      />
     </ProtectedRoute>
   )
 }
