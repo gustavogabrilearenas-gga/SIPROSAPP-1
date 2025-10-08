@@ -2,11 +2,9 @@
 URLs para SIPROSA MES
 """
 
-from django.urls import path
+from django.urls import include, path
 from rest_framework import routers
 from .views import (
-    # Usuarios
-    UsuarioViewSet,
     # Catálogos
     UbicacionViewSet, MaquinaViewSet, ProductoViewSet, FormulaViewSet,
     EtapaProduccionViewSet, TurnoViewSet,
@@ -37,9 +35,6 @@ from .auth_views import (
 )
 
 router = routers.DefaultRouter()
-
-# Usuarios
-router.register(r'usuarios', UsuarioViewSet)
 
 # Catálogos Maestros
 router.register(r'ubicaciones', UbicacionViewSet)
@@ -87,6 +82,8 @@ urlpatterns = [
     # Health check
     path("health/", health_check, name="health_check"),
     
+    path("usuarios/", include("backend.usuarios.urls")),
+
     # Autenticación
     path("auth/login/", login_view, name="login"),
     path("auth/logout/", logout_view, name="logout"),
