@@ -8,7 +8,7 @@ from .models import (
     Ubicacion, Maquina, Producto, Formula,
     EtapaProduccion, Turno, TipoDocumento,
     # Incidentes
-    TipoIncidente, Incidente, InvestigacionIncidente, AccionCorrectiva,
+    TipoIncidente, Incidente, InvestigacionIncidente,
     # Auditoría
     LogAuditoria, Notificacion,
 )
@@ -98,13 +98,6 @@ class IncidenteAdmin(admin.ModelAdmin):
 class InvestigacionIncidenteAdmin(admin.ModelAdmin):
     list_display = ['incidente', 'metodologia', 'fecha_investigacion', 'investigado_por']
     list_filter = ['metodologia', 'fecha_investigacion']
-
-
-@admin.register(AccionCorrectiva)
-class AccionCorrectivaAdmin(admin.ModelAdmin):
-    list_display = ['incidente', 'tipo', 'estado', 'responsable', 'fecha_planificada', 'eficacia_verificada']
-    list_filter = ['tipo', 'estado', 'eficacia_verificada']
-    date_hierarchy = 'fecha_planificada'
 
 
 # ============================================
