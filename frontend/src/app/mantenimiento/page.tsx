@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Wrench, Plus, Search, Filter, Home, Loader2, Clock, AlertTriangle, CheckCircle, User, Calendar } from 'lucide-react'
@@ -11,18 +11,55 @@ import { ProtectedRoute } from '@/components/protected-route'
 import OrdenTrabajoDetailModal from '@/components/orden-trabajo-detail-modal'
 import OrdenTrabajoFormModal from '@/components/orden-trabajo-form-modal'
 import { useAuth } from '@/stores/auth-store'
-import { api } from '@/lib/api'
+import { api, handleApiError } from '@/lib/api'
 import { toast } from '@/hooks/use-toast'
 import type { OrdenTrabajoListItem } from '@/types/models'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
+type DataState = 'loading' | 'error' | 'empty' | 'ready'
+
+const FALLBACK_ORDENES: OrdenTrabajoListItem[] = [
+  {
+    id: 1,
+    codigo: 'OT-2024-001',
+    maquina: 12,
+    maquina_nombre: 'Llenadora A1',
+    tipo: 3,
+    tipo_nombre: 'Mantenimiento Preventivo',
+    prioridad: 'ALTA',
+    prioridad_display: 'Alta',
+    estado: 'EN_PROCESO',
+    estado_display: 'En proceso',
+    titulo: 'Inspección de sistema neumático',
+    fecha_creacion: new Date().toISOString(),
+    fecha_planificada: new Date().toISOString(),
+    asignada_a: null,
+  },
+  {
+    id: 2,
+    codigo: 'OT-2024-002',
+    maquina: 7,
+    maquina_nombre: 'Etiquetadora B2',
+    tipo: 2,
+    tipo_nombre: 'Correctivo',
+    prioridad: 'NORMAL',
+    prioridad_display: 'Normal',
+    estado: 'ABIERTA',
+    estado_display: 'Abierta',
+    titulo: 'Reemplazo de rodillos',
+    fecha_creacion: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+    fecha_planificada: null,
+    asignada_a: null,
+  },
+]
+
 function MantenimientoContent() {
   const router = useRouter()
   const { user } = useAuth()
   const [ordenes, setOrdenes] = useState<OrdenTrabajoListItem[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [dataState, setDataState] = useState<DataState>('loading')
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [filtroEstado, setFiltroEstado] = useState<string>('todos')
   const [filtroPrioridad, setFiltroPrioridad] = useState<string>('todos')
   const [page, setPage] = useState<number>(1)
@@ -31,32 +68,56 @@ function MantenimientoContent() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isFormModalOpen, setIsFormModalOpen] = useState(false)
   const [selectedOrdenForEdit, setSelectedOrdenForEdit] = useState<OrdenTrabajoListItem | null>(null)
+  const [isPending, startTransition] = useTransition()
 
   useEffect(() => {
-    fetchOrdenes(1)
+    void fetchOrdenes(1)
   }, [filtroEstado, filtroPrioridad])
 
   const fetchOrdenes = async (requestedPage: number = page) => {
-    setIsLoading(true)
-    setError(null)
+    setDataState('loading')
+    setErrorMessage(null)
     try {
       const params: Record<string, any> = { page: requestedPage }
       if (filtroEstado !== 'todos') params.estado = filtroEstado
       if (filtroPrioridad !== 'todos') params.prioridad = filtroPrioridad
       const response = await api.getOrdenesTrabajo(params)
-      setOrdenes(response.results)
-      setCount(response.count)
-      setPage(requestedPage)
-    } catch (err: any) {
-      const message = err?.message || 'No se pudieron cargar las órdenes de trabajo'
-      toast({
-        title: 'Error en órdenes de trabajo',
-        description: message,
-        variant: 'destructive',
+      const results = response.results || []
+      startTransition(() => {
+        setOrdenes(results)
+        setCount(response.count ?? results.length)
+        setPage(requestedPage)
+        setDataState(results.length === 0 ? 'empty' : 'ready')
       })
-      setError('Error al cargar las órdenes de trabajo')
-    } finally {
-      setIsLoading(false)
+      toast({
+        title: 'Órdenes actualizadas',
+        description: 'Se actualizó el listado de órdenes de trabajo.',
+      })
+    } catch (err: unknown) {
+      const { status, message } = handleApiError(err)
+      if (status === 500) {
+        startTransition(() => {
+          setOrdenes(FALLBACK_ORDENES)
+          setCount(FALLBACK_ORDENES.length)
+          setPage(1)
+          setDataState(FALLBACK_ORDENES.length === 0 ? 'empty' : 'ready')
+        })
+        toast({
+          title: 'Datos de demostración cargados',
+          description:
+            'No se pudo acceder al servicio, mostrando información de ejemplo para continuar con la demo.',
+        })
+      } else {
+        startTransition(() => {
+          setDataState('error')
+          setErrorMessage(message || 'No se pudieron cargar las órdenes de trabajo')
+        })
+        toast({
+          title: 'Error en órdenes de trabajo',
+          description: message || 'No se pudieron cargar las órdenes de trabajo',
+          variant: 'destructive',
+        })
+      }
     }
   }
 
@@ -86,7 +147,7 @@ function MantenimientoContent() {
   }
 
   const handleUpdate = () => {
-    fetchOrdenes(page)
+    void fetchOrdenes(page)
   }
 
   const getEstadoBadge = (estado: string) => {
@@ -139,6 +200,7 @@ function MantenimientoContent() {
   }
 
   const totalPages = Math.ceil(count / 10)
+  const isBusy = dataState === 'loading' || isPending
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
@@ -174,6 +236,7 @@ function MantenimientoContent() {
               <Button
                 onClick={handleCreateOrden}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
+                disabled={isBusy}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Nueva Orden
@@ -199,12 +262,17 @@ function MantenimientoContent() {
                   {['todos', 'ABIERTA', 'ASIGNADA', 'EN_PROCESO', 'COMPLETADA'].map((estado) => (
                     <button
                       key={estado}
-                      onClick={() => setFiltroEstado(estado)}
+                      onClick={() =>
+                        startTransition(() => {
+                          setFiltroEstado(estado)
+                        })
+                      }
                       className={`px-4 py-2 rounded-lg transition-all ${
                         filtroEstado === estado
                           ? 'bg-blue-600 text-white shadow-md'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
+                      disabled={isBusy}
                     >
                       {estado === 'todos' ? 'Todos' : estado.replace('_', ' ')}
                     </button>
@@ -215,12 +283,17 @@ function MantenimientoContent() {
                   {['todos', 'BAJA', 'NORMAL', 'ALTA', 'URGENTE'].map((prioridad) => (
                     <button
                       key={prioridad}
-                      onClick={() => setFiltroPrioridad(prioridad)}
+                      onClick={() =>
+                        startTransition(() => {
+                          setFiltroPrioridad(prioridad)
+                        })
+                      }
                       className={`px-4 py-2 rounded-lg transition-all ${
                         filtroPrioridad === prioridad
                           ? 'bg-orange-600 text-white shadow-md'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
+                      disabled={isBusy}
                     >
                       {prioridad === 'todos' ? 'Todas' : prioridad}
                     </button>
@@ -249,24 +322,31 @@ function MantenimientoContent() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {isLoading ? (
+              {dataState === 'loading' ? (
                 <div className="text-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
                   <p className="text-gray-600">Cargando órdenes de trabajo...</p>
                 </div>
-              ) : error ? (
+              ) : dataState === 'error' ? (
                 <div className="text-center py-12">
                   <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                  <p className="text-red-600 mb-4">{error}</p>
-                  <Button onClick={() => fetchOrdenes(page)}>
+                  <p className="text-red-600 mb-4">{errorMessage}</p>
+                  <Button
+                    onClick={() =>
+                      startTransition(() => {
+                        void fetchOrdenes(page)
+                      })
+                    }
+                    disabled={isBusy}
+                  >
                     Reintentar
                   </Button>
                 </div>
-              ) : ordenes.length === 0 ? (
+              ) : dataState === 'empty' ? (
                 <div className="text-center py-12">
                   <Wrench className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 mb-4">No se encontraron órdenes de trabajo</p>
-                  <Button onClick={handleCreateOrden}>
+                  <p className="text-gray-600 mb-4">Sin registros disponibles</p>
+                  <Button onClick={handleCreateOrden} disabled={isBusy}>
                     <Plus className="h-4 w-4 mr-2" />
                     Crear Primera Orden
                   </Button>
@@ -355,8 +435,12 @@ function MantenimientoContent() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => fetchOrdenes(page - 1)}
-                disabled={page === 1}
+                onClick={() =>
+                  startTransition(() => {
+                    void fetchOrdenes(page - 1)
+                  })
+                }
+                disabled={page === 1 || isBusy}
               >
                 Anterior
               </Button>
@@ -364,19 +448,28 @@ function MantenimientoContent() {
               {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
                 <Button
                   key={pageNum}
-                  variant={pageNum === page ? "default" : "outline"}
+                  variant={pageNum === page ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => fetchOrdenes(pageNum)}
+                  onClick={() =>
+                    startTransition(() => {
+                      void fetchOrdenes(pageNum)
+                    })
+                  }
+                  disabled={isBusy}
                 >
                   {pageNum}
                 </Button>
               ))}
-              
+
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => fetchOrdenes(page + 1)}
-                disabled={page === totalPages}
+                onClick={() =>
+                  startTransition(() => {
+                    void fetchOrdenes(page + 1)
+                  })
+                }
+                disabled={page === totalPages || isBusy}
               >
                 Siguiente
               </Button>

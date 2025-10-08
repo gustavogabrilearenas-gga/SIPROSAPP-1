@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { useAuth } from '@/stores/auth-store'
@@ -25,7 +25,7 @@ import {
   Clock,
   User,
 } from 'lucide-react'
-import { api } from '@/lib/api'
+import { api, handleApiError } from '@/lib/api'
 import { toast } from '@/hooks/use-toast'
 
 interface ControlCalidad {
@@ -43,33 +43,49 @@ interface ControlCalidad {
   observaciones: string
 }
 
+type DataState = 'loading' | 'error' | 'empty' | 'ready'
+
 export default function ControlCalidadPage() {
   const router = useRouter()
   const { user } = useAuth()
   const [controles, setControles] = useState<ControlCalidad[]>([])
-  const [loading, setLoading] = useState(true)
+  const [dataState, setDataState] = useState<DataState>('loading')
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterConforme, setFilterConforme] = useState<string>('TODOS')
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [selectedControlId, setSelectedControlId] = useState<number | null>(null)
+  const [isPending, startTransition] = useTransition()
 
   useEffect(() => {
     fetchControles()
   }, [])
 
   const fetchControles = async () => {
+    setDataState('loading')
+    setErrorMessage(null)
     try {
-      setLoading(true)
-      const response = await api.get('/controles-calidad/')
-      setControles(response.results || response)
-    } catch (error: any) {
+      const response = await api.getControlesCalidad()
+      const items = Array.isArray(response) ? response : response?.results ?? []
+      startTransition(() => {
+        setControles(items)
+        setDataState(items.length === 0 ? 'empty' : 'ready')
+      })
+      toast({
+        title: 'Controles actualizados',
+        description: 'Se actualizaron los registros de control de calidad.',
+      })
+    } catch (error) {
+      const { message } = handleApiError(error)
+      startTransition(() => {
+        setDataState('error')
+        setErrorMessage(message || 'No se pudieron obtener los controles de calidad')
+      })
       toast({
         title: 'Error al cargar controles',
-        description: error?.message || 'No se pudieron obtener los controles de calidad',
+        description: message || 'No se pudieron obtener los controles de calidad',
         variant: 'destructive',
       })
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -77,11 +93,13 @@ export default function ControlCalidadPage() {
     const matchesSearch = c.tipo_control.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          c.lote_codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          c.controlado_por_nombre.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesFilter = filterConforme === 'TODOS' || 
+    const matchesFilter = filterConforme === 'TODOS' ||
                          (filterConforme === 'CONFORME' && c.conforme) ||
                          (filterConforme === 'NO_CONFORME' && !c.conforme)
     return matchesSearch && matchesFilter
   })
+
+  const isBusy = dataState === 'loading' || isPending
 
   const getConformeColor = (conforme: boolean) => {
     return conforme ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
@@ -164,7 +182,12 @@ export default function ControlCalidadPage() {
                   key={filter}
                   variant={filterConforme === filter ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => setFilterConforme(filter)}
+                  onClick={() =>
+                    startTransition(() => {
+                      setFilterConforme(filter)
+                    })
+                  }
+                  disabled={isBusy}
                 >
                   {filter.replace('_', ' ')}
                 </Button>
@@ -173,13 +196,26 @@ export default function ControlCalidadPage() {
           </motion.div>
 
           {/* Controls List */}
-          {loading ? (
+          {dataState === 'loading' ? (
             <div className="flex items-center justify-center py-12">
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                 className="w-12 h-12 border-4 border-green-200 border-t-green-600 rounded-full"
               />
+            </div>
+          ) : dataState === 'error' ? (
+            <div className="text-center py-12 space-y-4">
+              <AlertTriangle className="w-12 h-12 text-red-500 mx-auto" />
+              <p className="text-red-600">{errorMessage}</p>
+              <Button onClick={fetchControles} disabled={isBusy}>
+                Reintentar
+              </Button>
+            </div>
+          ) : dataState === 'empty' ? (
+            <div className="text-center py-12 space-y-3">
+              <Shield className="w-12 h-12 text-gray-400 mx-auto" />
+              <p className="text-gray-600">Sin registros disponibles</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -271,10 +307,12 @@ export default function ControlCalidadPage() {
             </div>
           )}
 
-          {!loading && filteredControles.length === 0 && (
+          {dataState === 'ready' && filteredControles.length === 0 && (
             <div className="text-center py-12">
               <Shield className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">No se encontraron controles de calidad</p>
+              <p className="text-gray-500 text-lg">
+                No se encontraron controles de calidad con los filtros aplicados
+              </p>
             </div>
           )}
         </main>
