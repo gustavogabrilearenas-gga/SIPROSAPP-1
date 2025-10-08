@@ -26,6 +26,7 @@ import {
   Calendar,
 } from 'lucide-react'
 import { api } from '@/lib/api'
+import { toast } from '@/hooks/use-toast'
 
 interface Parada {
   id: number
@@ -61,8 +62,12 @@ export default function ParadasPage() {
       setLoading(true)
       const response = await api.get('/paradas/')
       setParadas(response.results || response)
-    } catch (error) {
-      console.error('Error fetching paradas:', error)
+    } catch (error: any) {
+      toast({
+        title: 'Error al cargar paradas',
+        description: error?.message || 'No se pudieron obtener las paradas',
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false)
     }

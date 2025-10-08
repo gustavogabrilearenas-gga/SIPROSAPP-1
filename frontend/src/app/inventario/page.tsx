@@ -23,6 +23,7 @@ import {
   Calendar,
 } from 'lucide-react'
 import { api } from '@/lib/api'
+import { toast } from '@/hooks/use-toast'
 
 interface Insumo {
   id: number
@@ -72,8 +73,12 @@ export default function InventarioPage() {
       setLoading(true)
       const response = await api.get('/insumos/')
       setInsumos(response.results || response)
-    } catch (error) {
-      console.error('Error fetching insumos:', error)
+    } catch (error: any) {
+      toast({
+        title: 'Error al cargar insumos',
+        description: error?.message || 'No se pudieron obtener los insumos',
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false)
     }
@@ -84,8 +89,12 @@ export default function InventarioPage() {
       setLoading(true)
       const response = await api.get('/lotes-insumo/')
       setLotesInsumo(response.results || response)
-    } catch (error) {
-      console.error('Error fetching lotes insumo:', error)
+    } catch (error: any) {
+      toast({
+        title: 'Error al cargar lotes de insumo',
+        description: error?.message || 'No se pudieron obtener los lotes de insumo',
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false)
     }

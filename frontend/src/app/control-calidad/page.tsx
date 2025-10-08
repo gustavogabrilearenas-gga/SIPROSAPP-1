@@ -26,6 +26,7 @@ import {
   User,
 } from 'lucide-react'
 import { api } from '@/lib/api'
+import { toast } from '@/hooks/use-toast'
 
 interface ControlCalidad {
   id: number
@@ -61,8 +62,12 @@ export default function ControlCalidadPage() {
       setLoading(true)
       const response = await api.get('/controles-calidad/')
       setControles(response.results || response)
-    } catch (error) {
-      console.error('Error fetching controles:', error)
+    } catch (error: any) {
+      toast({
+        title: 'Error al cargar controles',
+        description: error?.message || 'No se pudieron obtener los controles de calidad',
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false)
     }

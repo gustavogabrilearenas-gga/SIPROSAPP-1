@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import UsuarioFormModal from '@/components/usuario-form-modal'
 import { ProtectedRoute } from '@/components/protected-route'
 import { useAuth } from '@/stores/auth-store'
+import { toast } from '@/hooks/use-toast'
 import { 
   Users, 
   Plus, 
@@ -49,8 +50,13 @@ function UsuariosPageContent() {
       const users = response.results || response
       setUsuarios(Array.isArray(users) ? users : [])
     } catch (error: any) {
-      console.error('Error al cargar usuarios:', error)
-      setError(`Error: ${error.response?.data?.detail || error.message}`)
+      const message = error?.message || 'No se pudieron cargar los usuarios'
+      toast({
+        title: 'Error al cargar usuarios',
+        description: message,
+        variant: 'destructive',
+      })
+      setError(`Error: ${message}`)
     } finally {
       setLoading(false)
     }
@@ -91,7 +97,12 @@ function UsuariosPageContent() {
       }
       fetchUsuarios()
     } catch (error: any) {
-      alert(`Error: ${error.response?.data?.error || error.message}`)
+      const message = error?.message || 'No se pudo actualizar el estado del usuario'
+      toast({
+        title: 'Error al actualizar usuario',
+        description: message,
+        variant: 'destructive',
+      })
     }
   }
 
@@ -119,13 +130,21 @@ function UsuariosPageContent() {
       await api.cambiarPasswordUsuario(selectedUsuario.id, {
         password_nueva: newPassword,
       })
-      alert('Contraseña cambiada exitosamente')
+      toast({
+        title: 'Contraseña actualizada',
+        description: `Se cambió la contraseña de ${selectedUsuario.username}`,
+      })
       setIsPasswordModalOpen(false)
       setSelectedUsuario(null)
       setNewPassword('')
       setConfirmPassword('')
     } catch (error: any) {
-      alert(`Error: ${error.response?.data?.error || error.message}`)
+      const message = error?.message || 'No se pudo cambiar la contraseña'
+      toast({
+        title: 'Error al cambiar contraseña',
+        description: message,
+        variant: 'destructive',
+      })
     }
   }
 

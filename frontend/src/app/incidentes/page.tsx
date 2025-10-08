@@ -12,6 +12,7 @@ import IncidenteDetailModal from '@/components/incidente-detail-modal'
 import IncidenteFormModal from '@/components/incidente-form-modal'
 import { useAuth } from '@/stores/auth-store'
 import { api } from '@/lib/api'
+import { toast } from '@/hooks/use-toast'
 import type { IncidenteListItem } from '@/types/models'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -48,7 +49,12 @@ function IncidentesContent() {
       setCount(response.count)
       setPage(requestedPage)
     } catch (err: any) {
-      console.error('Error al cargar incidentes:', err)
+      const message = err?.message || 'No se pudieron cargar los incidentes'
+      toast({
+        title: 'Error al cargar incidentes',
+        description: message,
+        variant: 'destructive',
+      })
       setError('Error al cargar los incidentes')
     } finally {
       setIsLoading(false)

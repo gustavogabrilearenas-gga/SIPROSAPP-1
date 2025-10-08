@@ -7,6 +7,7 @@ import { Lock, User, AlertCircle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAuth } from '@/stores/auth-store'
+import { toast } from '@/hooks/use-toast'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -49,9 +50,12 @@ export default function LoginPage() {
       await login(formData.username, formData.password)
       // Usar window.location para forzar una recarga completa y asegurar que el estado se inicialice
       window.location.href = '/'
-    } catch (err) {
-      // El error ya está manejado por el store
-      console.error('Login error:', err)
+    } catch (err: any) {
+      toast({
+        title: 'No se pudo iniciar sesión',
+        description: err?.message || 'Revisa tus credenciales e intenta nuevamente.',
+        variant: 'destructive',
+      })
     }
   }
 

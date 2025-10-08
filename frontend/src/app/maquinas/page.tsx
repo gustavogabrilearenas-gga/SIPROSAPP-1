@@ -27,6 +27,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { api } from '@/lib/api'
+import { toast } from '@/hooks/use-toast'
 import MaquinaFormModal from '@/components/maquina-form-modal'
 
 interface Maquina {
@@ -62,8 +63,12 @@ export default function MaquinasPage() {
       setLoading(true)
       const response = await api.get('/maquinas/')
       setMaquinas(response.results || response)
-    } catch (error) {
-      console.error('Error fetching maquinas:', error)
+    } catch (error: any) {
+      toast({
+        title: 'Error al cargar máquinas',
+        description: error?.message || 'No se pudieron obtener las máquinas',
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false)
     }

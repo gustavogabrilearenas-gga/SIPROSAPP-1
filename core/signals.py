@@ -179,13 +179,16 @@ def lote_post_delete(sender, instance, **kwargs):
 
 
 @receiver(post_save, sender=User)
-def create_or_update_user_profile(sender, instance, created, **kwargs):
-    """
-    Crea o actualiza automáticamente un UserProfile cuando se crea/guarda un User.
-    """
-    if created:
-        UserProfile.objects.create(user=instance)
-    instance.profile.save() # Guarda el perfil si ya existe y hay cambios
+def update_existing_user_profile(sender, instance, created, **kwargs):
+    """Actualiza el perfil del usuario solo si ya existe."""
+    try:
+        profile = instance.profile
+    except UserProfile.DoesNotExist:
+        # La creación del perfil se delega al serializer de usuarios
+        return
+
+    if not created:
+        profile.save()
 
 
 # ============================================

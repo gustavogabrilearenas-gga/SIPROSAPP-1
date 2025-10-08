@@ -183,13 +183,14 @@ class UsuarioDetalleSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
         instance.save()
 
-        profile, _ = UserProfile.objects.get_or_create(user=instance)
-        for attr, value in filtered_profile_data.items():
-            if attr == "fecha_ingreso":
-                setattr(profile, attr, value if value else None)
-            elif value is not None:
-                setattr(profile, attr, value if value is not None else "")
-        profile.save()
+        profile = UserProfile.objects.filter(user=instance).first()
+        if profile:
+            for attr, value in filtered_profile_data.items():
+                if attr == "fecha_ingreso":
+                    setattr(profile, attr, value if value else None)
+                elif value is not None:
+                    setattr(profile, attr, value if value is not None else "")
+            profile.save()
 
         return instance
 
@@ -242,11 +243,12 @@ class UsuarioPerfilSerializer(serializers.ModelSerializer):
                 setattr(instance, attr, validated_data[attr])
         instance.save()
 
-        profile, _ = UserProfile.objects.get_or_create(user=instance)
-        for attr, value in profile_data.items():
-            if value is not None:
-                setattr(profile, attr, value if value is not None else "")
-        profile.save()
+        profile = UserProfile.objects.filter(user=instance).first()
+        if profile:
+            for attr, value in profile_data.items():
+                if value is not None:
+                    setattr(profile, attr, value if value is not None else "")
+            profile.save()
 
         return instance
 
