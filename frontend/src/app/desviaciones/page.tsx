@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { useAuth } from '@/stores/auth-store'
@@ -22,7 +22,7 @@ import {
   CheckCircle,
   Clock,
 } from 'lucide-react'
-import { api } from '@/lib/api'
+import { api, handleApiError } from '@/lib/api'
 import { toast } from '@/hooks/use-toast'
 
 interface Desviacion {
@@ -43,31 +43,131 @@ interface Desviacion {
   causa_raiz: string
 }
 
+type DataState = 'loading' | 'error' | 'empty' | 'ready'
+
+const FALLBACK_DESVIACIONES: Desviacion[] = [
+  {
+    id: 1,
+    codigo: 'DESV-001',
+    titulo: 'Desviación en lote L-2024-15',
+    descripcion: 'Se detectó diferencia en el pH durante el control final del lote.',
+    severidad: 'MAYOR',
+    estado: 'EN_INVESTIGACION',
+    fecha_deteccion: new Date().toISOString(),
+    detectado_por_nombre: 'Laura Fernández',
+    lote_codigo: 'L-2024-15',
+    area_responsable: 'Calidad',
+    requiere_capa: true,
+    fecha_cierre: null,
+    impacto_calidad: 'Posible impacto en especificaciones de producto terminado.',
+    impacto_seguridad: 'Sin impacto',
+    causa_raiz: 'En investigación',
+  },
+  {
+    id: 2,
+    codigo: 'DESV-002',
+    titulo: 'Incumplimiento de procedimiento de limpieza',
+    descripcion: 'El registro de limpieza no fue completado según el instructivo SOP-CL-09.',
+    severidad: 'MENOR',
+    estado: 'ABIERTA',
+    fecha_deteccion: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
+    detectado_por_nombre: 'Marcos Díaz',
+    lote_codigo: 'L-2024-09',
+    area_responsable: 'Producción',
+    requiere_capa: false,
+    fecha_cierre: null,
+    impacto_calidad: 'No se detectó impacto directo en producto.',
+    impacto_seguridad: 'Sin impacto',
+    causa_raiz: 'En revisión',
+  },
+]
+
 export default function DesviacionesPage() {
   const router = useRouter()
   const { user } = useAuth()
   const [desviaciones, setDesviaciones] = useState<Desviacion[]>([])
-  const [loading, setLoading] = useState(true)
+  const [dataState, setDataState] = useState<DataState>('loading')
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterEstado, setFilterEstado] = useState<string>('TODAS')
+  const [isPending, startTransition] = useTransition()
 
   useEffect(() => {
-    fetchDesviaciones()
+    void fetchDesviaciones()
   }, [])
 
   const fetchDesviaciones = async () => {
+    setDataState('loading')
+    setErrorMessage(null)
     try {
-      setLoading(true)
-      const response = await api.get('/calidad/desviaciones/')
-      setDesviaciones(response.results || response)
-    } catch (error: any) {
+      const response = await api.getDesviaciones()
+      const items = Array.isArray(response) ? response : response?.results ?? []
+      startTransition(() => {
+        setDesviaciones(items)
+        setDataState(items.length === 0 ? 'empty' : 'ready')
+      })
       toast({
-        title: 'Error al cargar desviaciones',
-        description: error?.message || 'No se pudo obtener la información de desviaciones',
+        title: 'Desviaciones actualizadas',
+        description: 'Se actualizaron los registros de desviaciones.',
+      })
+    } catch (error) {
+      const { status, message } = handleApiError(error)
+      if (status === 500) {
+        startTransition(() => {
+          setDesviaciones(FALLBACK_DESVIACIONES)
+          setDataState(FALLBACK_DESVIACIONES.length === 0 ? 'empty' : 'ready')
+        })
+        toast({
+          title: 'Datos de demostración cargados',
+          description:
+            'No se pudo acceder al servicio, mostrando desviaciones de ejemplo para la demo.',
+        })
+      } else {
+        startTransition(() => {
+          setDataState('error')
+          setErrorMessage(message || 'No se pudo obtener la información de desviaciones')
+        })
+        toast({
+          title: 'Error al cargar desviaciones',
+          description: message || 'No se pudo obtener la información de desviaciones',
+          variant: 'destructive',
+        })
+      }
+    }
+  }
+
+  const handleCreateDesviacion = async (payload: Record<string, unknown>) => {
+    try {
+      await api.createDesviacion(payload)
+      toast({
+        title: 'Desviación creada',
+        description: 'La desviación se registró correctamente.',
+      })
+      await fetchDesviaciones()
+    } catch (error) {
+      const { message } = handleApiError(error)
+      toast({
+        title: 'Error al crear desviación',
+        description: message || 'No fue posible registrar la desviación.',
         variant: 'destructive',
       })
-    } finally {
-      setLoading(false)
+    }
+  }
+
+  const handleCreateAccionCorrectiva = async (payload: Record<string, unknown>) => {
+    try {
+      await api.createAccionCorrectiva(payload)
+      toast({
+        title: 'Acción correctiva creada',
+        description: 'La acción correctiva se registró correctamente.',
+      })
+    } catch (error) {
+      const { message } = handleApiError(error)
+      toast({
+        title: 'Error al crear acción correctiva',
+        description: message || 'No fue posible registrar la acción correctiva.',
+        variant: 'destructive',
+      })
     }
   }
 
@@ -100,6 +200,8 @@ export default function DesviacionesPage() {
 
   const estadoOptions = ['TODAS', 'ABIERTA', 'EN_INVESTIGACION', 'EN_CAPA', 'CERRADA']
 
+  const isBusy = dataState === 'loading' || isPending
+
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
@@ -130,8 +232,11 @@ export default function DesviacionesPage() {
               </div>
               {(user?.is_superuser || user?.is_staff) && (
                 <Button
-                  onClick={() => {/* TODO: Open create modal */}}
+                  onClick={() => {
+                    /* TODO: Abrir modal de creación */
+                  }}
                   className="bg-orange-600 hover:bg-orange-700 text-white"
+                  disabled={isBusy}
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Nueva Desviación
@@ -166,7 +271,12 @@ export default function DesviacionesPage() {
                   key={estado}
                   variant={filterEstado === estado ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => setFilterEstado(estado)}
+                  onClick={() =>
+                    startTransition(() => {
+                      setFilterEstado(estado)
+                    })
+                  }
+                  disabled={isBusy}
                 >
                   {estado.replace('_', ' ')}
                 </Button>
@@ -175,13 +285,26 @@ export default function DesviacionesPage() {
           </motion.div>
 
           {/* Deviations List */}
-          {loading ? (
+          {dataState === 'loading' ? (
             <div className="flex items-center justify-center py-12">
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                 className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full"
               />
+            </div>
+          ) : dataState === 'error' ? (
+            <div className="text-center py-12 space-y-4">
+              <AlertTriangle className="w-12 h-12 text-red-500 mx-auto" />
+              <p className="text-red-600">{errorMessage}</p>
+              <Button onClick={fetchDesviaciones} disabled={isBusy}>
+                Reintentar
+              </Button>
+            </div>
+          ) : dataState === 'empty' ? (
+            <div className="text-center py-12 space-y-3">
+              <AlertTriangle className="w-12 h-12 text-gray-400 mx-auto" />
+              <p className="text-gray-600">Sin registros disponibles</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -286,10 +409,10 @@ export default function DesviacionesPage() {
             </div>
           )}
 
-          {!loading && filteredDesviaciones.length === 0 && (
+          {dataState === 'ready' && filteredDesviaciones.length === 0 && (
             <div className="text-center py-12">
               <AlertTriangle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">No se encontraron desviaciones</p>
+              <p className="text-gray-500 text-lg">No se encontraron desviaciones con los filtros aplicados</p>
             </div>
           )}
         </main>
