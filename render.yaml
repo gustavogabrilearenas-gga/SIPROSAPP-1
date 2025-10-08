@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: abc1
+    env: python
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate --noinput && python manage.py create_superuser_if_none
+    startCommand: gunicorn backend.wsgi
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.4
+      - key: ENVIRONMENT
+        value: production
