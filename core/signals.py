@@ -8,9 +8,10 @@ from django.dispatch import receiver
 from django.contrib.auth.models import User
 from threading import local
 from .models import (
-    Lote, LogAuditoria, UserProfile, Notificacion, 
+    Lote, LogAuditoria, Notificacion,
     LoteEtapa, Incidente, OrdenTrabajo
 )
+from backend.usuarios.models import UserProfile
 import json
 
 

@@ -11,7 +11,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
 django.setup()
 
 from django.contrib.auth.models import User
-from core.models import UserProfile
+from backend.usuarios.models import UserProfile
 
 def create_test_users():
     """Crear usuarios específicos para testing"""
