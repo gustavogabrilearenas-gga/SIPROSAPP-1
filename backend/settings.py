@@ -73,6 +73,7 @@ INSTALLED_APPS = [
     'backend.usuarios',
     'backend.produccion',
     'backend.inventario',
+    'backend.mantenimiento',
     'core',
 ]
 

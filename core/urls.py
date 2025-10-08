@@ -10,8 +10,6 @@ from .views import (
     EtapaProduccionViewSet, TurnoViewSet,
     # Calidad
     DesviacionViewSet, AccionCorrectivaViewSet, DocumentoVersionadoViewSet,
-    # Mantenimiento
-    TipoMantenimientoViewSet, OrdenTrabajoViewSet,
     # Incidentes
     TipoIncidenteViewSet, IncidenteViewSet,
     # Notificaciones
@@ -43,10 +41,6 @@ router.register(r'turnos', TurnoViewSet)
 router.register(r'desviaciones', DesviacionViewSet)
 router.register(r'acciones-correctivas', AccionCorrectivaViewSet)
 router.register(r'documentos', DocumentoVersionadoViewSet)
-
-# Mantenimiento
-router.register(r'tipos-mantenimiento', TipoMantenimientoViewSet)
-router.register(r'ordenes-trabajo', OrdenTrabajoViewSet)
 
 # Incidentes
 router.register(r'tipos-incidente', TipoIncidenteViewSet)
