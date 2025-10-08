@@ -14,10 +14,10 @@ export function AuthInit({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Marcar como montado en el cliente
     setMounted(true)
-    
+
     // Inicializar autenticación solo en el cliente
     if (!_hasHydrated) {
-      initializeAuth()
+      void initializeAuth()
     }
   }, [initializeAuth, _hasHydrated])
 
