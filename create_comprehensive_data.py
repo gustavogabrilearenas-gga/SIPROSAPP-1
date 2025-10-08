@@ -15,10 +15,15 @@ django.setup()
 from django.contrib.auth.models import User
 from django.utils import timezone
 from core.models import (
-    UserProfile, Ubicacion, Maquina, Producto, Formula, FormulaInsumo, EtapaProduccion,
-    Turno, Lote, LoteEtapa, Parada, ControlCalidad, CategoriaInsumo, Insumo,
-    LoteInsumo, LoteInsumoConsumo, Repuesto, TipoMantenimiento, OrdenTrabajo,
+    UserProfile, Ubicacion, Maquina, Producto, Formula, EtapaProduccion,
+    Turno,
     TipoIncidente, Incidente, Notificacion, TipoDocumento
+)
+from backend.mantenimiento.models import TipoMantenimiento, OrdenTrabajo
+from backend.produccion.models import Lote, LoteEtapa, Parada, ControlCalidad
+from backend.inventario.models import (
+    CategoriaInsumo, FormulaInsumo, Insumo,
+    LoteInsumo, LoteInsumoConsumo, Repuesto,
 )
 
 def create_users():

@@ -11,9 +11,11 @@ django.setup()
 
 from django.contrib.auth.models import User
 from core.models import (
-    Ubicacion, Maquina, Producto, Formula, Turno, Lote,
-    TipoMantenimiento, OrdenTrabajo, TipoIncidente, Incidente
+    Ubicacion, Maquina, Producto, Formula, Turno,
+    TipoIncidente, Incidente
 )
+from backend.mantenimiento.models import TipoMantenimiento, OrdenTrabajo
+from backend.produccion.models import Lote
 
 def create_sample_data():
     print("🏭 Creando datos de prueba para SIPROSA MES...")

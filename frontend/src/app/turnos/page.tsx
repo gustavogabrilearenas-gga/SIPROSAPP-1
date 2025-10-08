@@ -24,6 +24,7 @@ import {
   Sunset,
 } from 'lucide-react'
 import { api } from '@/lib/api'
+import { toast } from '@/hooks/use-toast'
 
 interface Turno {
   id: number
@@ -53,8 +54,12 @@ export default function TurnosPage() {
       setLoading(true)
       const response = await api.get('/turnos/')
       setTurnos(response.results || response)
-    } catch (error) {
-      console.error('Error fetching turnos:', error)
+    } catch (error: any) {
+      toast({
+        title: 'Error al cargar turnos',
+        description: error?.message || 'No se pudieron obtener los turnos',
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false)
     }

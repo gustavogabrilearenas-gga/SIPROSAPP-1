@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/stores/auth-store'
 import { api } from '@/lib/api'
+import { toast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { User, Key, Mail, Calendar, Shield, Save, Eye, EyeOff, Edit2 } from 'lucide-react'
@@ -17,12 +18,10 @@ const formatFecha = (fecha: string | null | undefined, formato: string = 'dd/MM/
     const date = new Date(fecha)
     // Verificar si la fecha es válida
     if (isNaN(date.getTime())) {
-      console.error('Fecha inválida:', fecha, 'Tipo:', typeof fecha)
       return '-'
     }
     return format(date, formato, { locale: es })
   } catch (error) {
-    console.error('Error formateando fecha:', fecha, error)
     return '-'
   }
 }
@@ -63,9 +62,6 @@ export default function PerfilPage() {
     try {
       setLoading(true)
       const usuario = await api.getMiPerfil()
-      console.log('Datos del usuario recibidos:', usuario)
-      console.log('date_joined:', usuario.date_joined, 'Tipo:', typeof usuario.date_joined)
-      console.log('last_login:', usuario.last_login, 'Tipo:', typeof usuario.last_login)
       setUsuario(usuario)
       // Cargar datos iniciales en el formulario de edición
       setProfileData({
@@ -77,8 +73,12 @@ export default function PerfilPage() {
         turno_habitual: usuario.turno_habitual || '',
         telefono: usuario.telefono || '',
       })
-    } catch (error) {
-      console.error('Error al cargar perfil:', error)
+    } catch (error: any) {
+      toast({
+        title: 'Error al cargar perfil',
+        description: error?.message || 'No se pudo obtener la información del usuario',
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false)
     }
@@ -92,9 +92,16 @@ export default function PerfilPage() {
       const updatedUsuario = await api.updateMiPerfil(profileData)
       setUsuario(updatedUsuario)
       setEditingProfile(false)
-      alert('Perfil actualizado exitosamente')
+      toast({
+        title: 'Perfil actualizado',
+        description: 'Los cambios se guardaron correctamente.',
+      })
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Error al actualizar perfil')
+      toast({
+        title: 'Error al actualizar perfil',
+        description: error?.message || 'No se pudo guardar el perfil',
+        variant: 'destructive',
+      })
     } finally {
       setSavingProfile(false)
     }
@@ -124,19 +131,30 @@ export default function PerfilPage() {
     e.preventDefault()
     
     if (passwordData.password_nueva !== passwordData.password_confirmacion) {
-      alert('Las contraseñas nuevas no coinciden')
+      toast({
+        title: 'Contraseña no coincide',
+        description: 'Las contraseñas nuevas deben coincidir.',
+        variant: 'destructive',
+      })
       return
     }
 
     if (passwordData.password_nueva.length < 4) {
-      alert('La contraseña debe tener al menos 4 caracteres')
+      toast({
+        title: 'Contraseña muy corta',
+        description: 'Debe tener al menos 4 caracteres.',
+        variant: 'destructive',
+      })
       return
     }
 
     try {
       setChangingPassword(true)
       await api.cambiarMiPassword(passwordData)
-      alert('Contraseña cambiada exitosamente')
+      toast({
+        title: 'Contraseña actualizada',
+        description: 'La contraseña se cambió correctamente.',
+      })
       setShowPasswordForm(false)
       setPasswordData({
         password_actual: '',
@@ -144,7 +162,11 @@ export default function PerfilPage() {
         password_confirmacion: '',
       })
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Error al cambiar contraseña')
+      toast({
+        title: 'Error al cambiar contraseña',
+        description: error?.message || 'No se pudo cambiar la contraseña',
+        variant: 'destructive',
+      })
     } finally {
       setChangingPassword(false)
     }

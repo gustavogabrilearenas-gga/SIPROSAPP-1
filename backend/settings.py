@@ -3,9 +3,17 @@ Django settings for SIPROSA MES Backend
 Configuración unificada para desarrollo y producción
 """
 
+import logging
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+
+
+if not logging.getLogger().handlers:
+    logging.basicConfig(level=logging.INFO)
+
+
+logger = logging.getLogger(__name__)
 
 # ============================================
 # BASE CONFIGURATION
@@ -24,11 +32,11 @@ else:
 
 if env_path.exists():
     load_dotenv(env_path)
-    print(f"[*] Entorno: {ENVIRONMENT}")
-    print(f"[*] Archivo .env cargado: {env_path}")
+    logger.info("Entorno detectado: %s", ENVIRONMENT)
+    logger.info("Archivo .env cargado: %s", env_path)
 else:
-    print(f"[!] ADVERTENCIA: Archivo {env_path} no existe")
-    print(f"[!] Intente primero ejecutar: python setup_dev.py")
+    logger.warning("Archivo %s no existe", env_path)
+    logger.warning("Intente primero ejecutar: python setup_dev.py")
     # Intentar cargar variables de entorno del sistema
     load_dotenv()
 
@@ -46,6 +54,9 @@ ALLOWED_HOSTS = [
     if host.strip()
 ]
 
+if "testserver" not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append("testserver")
+
 # ============================================
 # APPLICATION DEFINITION
 # ============================================
@@ -60,6 +71,9 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'backend.usuarios',
+    'backend.produccion',
+    'backend.inventario',
+    'backend.mantenimiento',
     'core',
 ]
 
@@ -110,7 +124,7 @@ if os.getenv('DB_HOST') and os.getenv('DB_NAME'):
             'PORT': os.getenv('DB_PORT', '5432'),
         }
     }
-    print("[*] Usando PostgreSQL")
+    logger.info("Base de datos configurada: PostgreSQL")
 else:
     # Fallback a SQLite para desarrollo sin PostgreSQL
     DATABASES = {
@@ -119,7 +133,7 @@ else:
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
-    print("[*] Usando SQLite (desarrollo local)")
+    logger.info("Base de datos configurada: SQLite (desarrollo local)")
 
 # ============================================
 # PASSWORD VALIDATION
@@ -227,68 +241,72 @@ if IS_PRODUCTION:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_SSL_REDIRECT = True
-    
+
     # HSTS (HTTP Strict Transport Security)
     SECURE_HSTS_SECONDS = 31536000  # 1 año
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
-    
-    print("[*] Configuracion de seguridad para PRODUCCION activada")
+
+    logger.info("Configuración de seguridad para PRODUCCIÓN activada")
 else:
     # Desarrollo: cookies sin HTTPS
     SESSION_COOKIE_SECURE = False
     CSRF_COOKIE_SECURE = False
     SECURE_SSL_REDIRECT = False
     SECURE_HSTS_SECONDS = 0
-    
-    print("[*] Configuracion de seguridad para DESARROLLO")
+
+    logger.info("Configuración de seguridad para DESARROLLO activa")
 
 # ============================================
 # LOGGING CONFIGURATION
 # ============================================
-LOG_DIR = BASE_DIR / "logs"
-LOG_DIR.mkdir(exist_ok=True)
+LOGGING_FORMATTERS = {
+    "verbose": {
+        "format": "[{asctime}] {levelname} {name} - {message}",
+        "style": "{",
+    },
+    "simple": {
+        "format": "{levelname}: {message}",
+        "style": "{",
+    },
+}
+
+LOGGING_HANDLERS = {}
+default_handlers = []
+
+if IS_PRODUCTION:
+    LOG_DIR = BASE_DIR / "logs"
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    LOGGING_HANDLERS["app_file"] = {
+        "level": "INFO",
+        "class": "logging.handlers.RotatingFileHandler",
+        "filename": str(LOG_DIR / "app.log"),
+        "maxBytes": 5 * 1024 * 1024,
+        "backupCount": 3,
+        "formatter": "verbose",
+    }
+    default_handlers.append("app_file")
+else:
+    LOGGING_HANDLERS["console"] = {
+        "class": "logging.StreamHandler",
+        "formatter": "simple",
+        "level": "INFO",
+    }
+    default_handlers.append("console")
 
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "formatters": {
-        "verbose": {
-            "format": "[{asctime}] {levelname} {name} - {message}",
-            "style": "{",
-        },
-        "simple": {
-            "format": "{levelname}: {message}",
-            "style": "{",
-        },
-    },
-    "handlers": {
-        "file": {
-            "level": "INFO",
-            "class": "logging.handlers.RotatingFileHandler",
-            "filename": LOG_DIR / "app.log",
-            "maxBytes": 1024 * 1024 * 5,  # 5 MB
-            "backupCount": 3,
-            "formatter": "verbose",
-        },
-        "console": {
-            "class": "logging.StreamHandler",
-            "formatter": "simple",
-        },
-    },
+    "formatters": LOGGING_FORMATTERS,
+    "handlers": LOGGING_HANDLERS,
     "root": {
-        "handlers": ["console", "file"],
+        "handlers": default_handlers,
         "level": "INFO",
     },
     "loggers": {
         "django": {
-            "handlers": ["console", "file"],
+            "handlers": default_handlers,
             "level": "INFO",
-            "propagate": False,
-        },
-        "core": {
-            "handlers": ["console", "file"],
-            "level": "DEBUG" if DEBUG else "INFO",
             "propagate": False,
         },
     },
@@ -357,4 +375,4 @@ SIMPLE_JWT = {
     'USER_ID_CLAIM': 'user_id',
 }
 
-print("[OK] Configuracion cargada correctamente")
+logger.info("Configuración cargada correctamente")

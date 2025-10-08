@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { ProtectedRoute } from '@/components/protected-route'
 import { api } from '@/lib/api'
+import { toast } from '@/hooks/use-toast'
 import {
   ResponsiveContainer,
   BarChart,
@@ -68,7 +69,12 @@ function KPIsContent() {
 
       setLotesPorEstado(lotesPorEstadoData)
     } catch (err: any) {
-      console.error('Error al cargar datos:', err)
+      const message = err?.message || 'No se pudieron cargar los datos de KPIs'
+      toast({
+        title: 'Error al cargar KPIs',
+        description: message,
+        variant: 'destructive',
+      })
       setError('Error al cargar los datos de KPIs')
     } finally {
       setIsLoading(false)

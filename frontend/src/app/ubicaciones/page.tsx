@@ -25,6 +25,7 @@ import {
   Settings,
 } from 'lucide-react'
 import { api } from '@/lib/api'
+import { toast } from '@/hooks/use-toast'
 
 interface Ubicacion {
   id: number
@@ -55,8 +56,12 @@ export default function UbicacionesPage() {
       setLoading(true)
       const response = await api.get('/ubicaciones/')
       setUbicaciones(response.results || response)
-    } catch (error) {
-      console.error('Error fetching ubicaciones:', error)
+    } catch (error: any) {
+      toast({
+        title: 'Error al cargar ubicaciones',
+        description: error?.message || 'No se pudieron obtener las ubicaciones',
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false)
     }

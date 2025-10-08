@@ -24,6 +24,7 @@ import {
   Clock,
 } from 'lucide-react'
 import { api } from '@/lib/api'
+import { toast } from '@/hooks/use-toast'
 
 interface EtapaProduccion {
   id: number
@@ -55,8 +56,12 @@ export default function EtapasProduccionPage() {
       setLoading(true)
       const response = await api.get('/etapas-produccion/')
       setEtapas(response.results || response)
-    } catch (error) {
-      console.error('Error fetching etapas:', error)
+    } catch (error: any) {
+      toast({
+        title: 'Error al cargar etapas',
+        description: error?.message || 'No se pudieron obtener las etapas',
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false)
     }

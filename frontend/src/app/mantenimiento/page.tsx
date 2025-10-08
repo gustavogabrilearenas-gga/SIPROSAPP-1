@@ -12,6 +12,7 @@ import OrdenTrabajoDetailModal from '@/components/orden-trabajo-detail-modal'
 import OrdenTrabajoFormModal from '@/components/orden-trabajo-form-modal'
 import { useAuth } from '@/stores/auth-store'
 import { api } from '@/lib/api'
+import { toast } from '@/hooks/use-toast'
 import type { OrdenTrabajoListItem } from '@/types/models'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -47,7 +48,12 @@ function MantenimientoContent() {
       setCount(response.count)
       setPage(requestedPage)
     } catch (err: any) {
-      console.error('Error al cargar órdenes de trabajo:', err)
+      const message = err?.message || 'No se pudieron cargar las órdenes de trabajo'
+      toast({
+        title: 'Error en órdenes de trabajo',
+        description: message,
+        variant: 'destructive',
+      })
       setError('Error al cargar las órdenes de trabajo')
     } finally {
       setIsLoading(false)

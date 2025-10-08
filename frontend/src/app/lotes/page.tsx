@@ -12,6 +12,7 @@ import LoteDetailModal from '@/components/lote-detail-modal'
 import LoteFormModal from '@/components/lote-form-modal'
 import { useAuth } from '@/stores/auth-store'
 import { api } from '@/lib/api'
+import { toast } from '@/hooks/use-toast'
 import type { LoteListItem } from '@/types/models'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -47,7 +48,12 @@ function LotesContent() {
       setCount(response.count)
       setPage(requestedPage)
     } catch (err: any) {
-      console.error('Error al cargar lotes:', err)
+      const message = err?.message || 'No se pudieron cargar los lotes'
+      toast({
+        title: 'Error al cargar lotes',
+        description: message,
+        variant: 'destructive',
+      })
       setError('Error al cargar los lotes')
     } finally {
       setIsLoading(false)
