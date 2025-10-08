@@ -51,9 +51,49 @@ import {
   Area,
   AreaChart
 } from 'recharts'
-import { api } from '@/lib/api'
+import { api, handleApiError } from '@/lib/api'
+import { toast } from '@/hooks/use-toast'
+import { DashboardStats } from '@/types/models'
 import NotificationCenter from '@/components/notification-center'
 import GlobalSearch from '@/components/global-search'
+
+type DashboardViewData = {
+  fecha: string
+  totalProduccion: number
+  lotesActivos: number
+  ordenesMantenimiento: number
+  alertasPendientes: number
+  eficienciaPromedio: number
+  tiempoMedioReparacion: number
+  oee: number
+  disponibilidad: number
+}
+
+const FALLBACK_DASHBOARD_DATA: DashboardViewData = {
+  fecha: new Date().toISOString(),
+  totalProduccion: 8450,
+  lotesActivos: 12,
+  ordenesMantenimiento: 3,
+  alertasPendientes: 2,
+  eficienciaPromedio: 87.5,
+  tiempoMedioReparacion: 2.3,
+  oee: 78.5,
+  disponibilidad: 94.2
+}
+
+const toDashboardViewData = (stats?: DashboardStats | null): DashboardViewData => ({
+  fecha: stats?.fecha ?? new Date().toISOString(),
+  totalProduccion: stats?.lotes?.total ?? FALLBACK_DASHBOARD_DATA.totalProduccion,
+  lotesActivos: stats?.lotes?.activos ?? FALLBACK_DASHBOARD_DATA.lotesActivos,
+  ordenesMantenimiento:
+    stats?.ordenes_trabajo?.abiertas ?? FALLBACK_DASHBOARD_DATA.ordenesMantenimiento,
+  alertasPendientes: stats?.incidentes?.criticos ?? stats?.incidentes?.abiertos ?? FALLBACK_DASHBOARD_DATA.alertasPendientes,
+  eficienciaPromedio:
+    stats?.oee_7_dias?.rendimiento ?? FALLBACK_DASHBOARD_DATA.eficienciaPromedio,
+  tiempoMedioReparacion: FALLBACK_DASHBOARD_DATA.tiempoMedioReparacion,
+  oee: stats?.oee_7_dias?.oee ?? FALLBACK_DASHBOARD_DATA.oee,
+  disponibilidad: stats?.oee_7_dias?.disponibilidad ?? FALLBACK_DASHBOARD_DATA.disponibilidad
+})
 
 // Datos mock para gráficos dinámicos
 const productionData = [
@@ -86,18 +126,7 @@ export function Dashboard() {
   const { user, logout } = useAuth()
   const [isLoading, setIsLoading] = useState(true)
   const [currentTime, setCurrentTime] = useState(new Date())
-  const defaultData = {
-    totalProduccion: 8450,
-    lotesActivos: 12,
-    ordenesMantenimiento: 3,
-    alertasPendientes: 2,
-    eficienciaPromedio: 87.5,
-    tiempoMedioReparacion: 2.3,
-    oee: 78.5,
-    disponibilidad: 94.2
-  }
-  
-  const [realTimeData, setRealTimeData] = useState(defaultData)
+  const [realTimeData, setRealTimeData] = useState(FALLBACK_DASHBOARD_DATA)
   const [error, setError] = useState<string | null>(null)
 
   const handleLogout = async () => {
@@ -111,22 +140,17 @@ export function Dashboard() {
       try {
         setIsLoading(true)
         const stats = await api.getDashboardStats()
-        setRealTimeData(stats)
+        setRealTimeData(toDashboardViewData(stats))
         setError(null)
       } catch (err) {
-        console.error('Error fetching dashboard data:', err)
-        setError('No se pudo conectar con el backend. Mostrando datos de ejemplo.')
-        // Use mock data as fallback
-        setRealTimeData({
-          totalProduccion: 8450,
-          lotesActivos: 12,
-          ordenesMantenimiento: 3,
-          alertasPendientes: 2,
-          eficienciaPromedio: 87.5,
-          tiempoMedioReparacion: 2.3,
-          oee: 78.5,
-          disponibilidad: 94.2
+        const { message } = handleApiError(err)
+        toast({
+          title: 'Error al cargar el dashboard',
+          description: message,
+          variant: 'destructive'
         })
+        setError(message ?? 'No se pudo conectar con el backend. Mostrando datos de ejemplo.')
+        setRealTimeData(FALLBACK_DASHBOARD_DATA)
       } finally {
         setIsLoading(false)
       }

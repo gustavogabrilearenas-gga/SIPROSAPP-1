@@ -4,7 +4,20 @@ import { useState, useEffect } from 'react'
 import { Bell, X, Check, CheckCheck, AlertCircle, Info, AlertTriangle, CheckCircle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Notificacion } from '@/types/models'
-import { api } from '@/lib/api'
+import { api, handleApiError } from '@/lib/api'
+import { toast } from '@/hooks/use-toast'
+
+const createFallbackNotifications = (): Notificacion[] => [
+  {
+    id: 0,
+    usuario: 0,
+    tipo: 'INFO',
+    titulo: 'Notificaciones no disponibles',
+    mensaje: 'No se pudieron cargar las notificaciones en tiempo real. Mostrando datos de ejemplo.',
+    fecha_creacion: new Date().toISOString(),
+    leida: false
+  }
+]
 
 export default function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false)
@@ -30,13 +43,22 @@ export default function NotificationCenter() {
     setLoading(true)
     try {
       const response = await api.getNotificaciones()
-      setNotificaciones(Array.isArray(response) ? response : [])
-      
+      const items = Array.isArray(response) ? response : []
+      setNotificaciones(items)
+
       // Actualizar contador de no leídas
-      const unread = response?.filter((n: Notificacion) => !n.leida).length || 0
+      const unread = items.filter((n: Notificacion) => !n.leida).length
       setUnreadCount(unread)
     } catch (err) {
-      console.error('Error loading notificaciones:', err)
+      const { message } = handleApiError(err)
+      toast({
+        title: 'No se pudieron cargar las notificaciones',
+        description: message,
+        variant: 'destructive'
+      })
+      const fallback = createFallbackNotifications()
+      setNotificaciones(fallback)
+      setUnreadCount(fallback.filter((n) => !n.leida).length)
     } finally {
       setLoading(false)
     }
@@ -47,7 +69,7 @@ export default function NotificationCenter() {
       const response = await api.getContadorNotificacionesNoLeidas()
       setUnreadCount(response.no_leidas)
     } catch (err) {
-      console.error('Error loading unread count:', err)
+      console.error('Error loading unread count:', handleApiError(err))
     }
   }
 
