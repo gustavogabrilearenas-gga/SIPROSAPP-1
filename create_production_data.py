@@ -16,10 +16,6 @@ from django.contrib.auth.models import User
 from core.models import (
     # Catálogos
     Ubicacion, Maquina, Producto, Formula, EtapaProduccion, Turno, TipoDocumento,
-    # Producción
-    Lote, LoteEtapa,
-    # Inventario
-    CategoriaInsumo, Insumo, LoteInsumo, Repuesto,
     # Mantenimiento
     TipoMantenimiento, OrdenTrabajo,
     # Incidentes
@@ -27,6 +23,8 @@ from core.models import (
     # Usuarios
     UserProfile
 )
+from backend.produccion.models import Lote, LoteEtapa
+from backend.inventario.models import CategoriaInsumo, Insumo, LoteInsumo, Repuesto
 
 def create_etapas_produccion():
     """Create production stages"""
