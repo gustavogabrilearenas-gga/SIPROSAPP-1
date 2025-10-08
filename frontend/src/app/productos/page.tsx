@@ -25,8 +25,9 @@ import {
   ArrowLeft,
 } from 'lucide-react'
 import { api } from '@/lib/api'
-import { toast } from '@/hooks/use-toast'
 import ProductoFormModal from '@/components/producto-form-modal'
+import DataState from '@/components/common/data-state'
+import { showError } from '@/components/common/toast-utils'
 
 interface Producto {
   id: number
@@ -49,6 +50,7 @@ export default function ProductosPage() {
   const { user } = useAuth()
   const [productos, setProductos] = useState<Producto[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [selectedProductoId, setSelectedProductoId] = useState<number | null>(null)
@@ -60,14 +62,13 @@ export default function ProductosPage() {
   const fetchProductos = async () => {
     try {
       setLoading(true)
+      setError(null)
       const response = await api.get('/productos/')
       setProductos(response.results || response)
     } catch (error: any) {
-      toast({
-        title: 'Error al cargar productos',
-        description: error?.message || 'No se pudieron obtener los productos',
-        variant: 'destructive',
-      })
+      const message = error?.message || 'No se pudieron obtener los productos'
+      setError(message)
+      showError('Error al cargar productos', message)
     } finally {
       setLoading(false)
     }
@@ -87,6 +88,10 @@ export default function ProductosPage() {
     }
     return colors[forma] || 'bg-gray-100 text-gray-800'
   }
+
+  const hasError = Boolean(error)
+  const dataStateError = hasError ? `Error al cargar productos${error ? `: ${error}` : ''}` : null
+  const isEmptyState = !loading && !hasError && filteredProductos.length === 0
 
   return (
     <ProtectedRoute>
@@ -153,16 +158,17 @@ export default function ProductosPage() {
             </div>
           </motion.div>
 
-          {/* Products Grid */}
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full"
-              />
-            </div>
-          ) : (
+          <DataState
+            loading={loading}
+            error={dataStateError}
+            empty={isEmptyState}
+            emptyMessage={
+              <div className="text-center py-12">
+                <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500 text-lg">No se encontraron productos</p>
+              </div>
+            }
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredProductos.map((producto, index) => (
                 <motion.div
@@ -251,14 +257,7 @@ export default function ProductosPage() {
                 </motion.div>
               ))}
             </div>
-          )}
-
-          {!loading && filteredProductos.length === 0 && (
-            <div className="text-center py-12">
-              <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">No se encontraron productos</p>
-            </div>
-          )}
+          </DataState>
         </main>
 
         {/* Modals */}

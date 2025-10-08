@@ -26,17 +26,19 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { api } from '@/lib/api'
-import { toast } from '@/hooks/use-toast'
+import DataState from '@/components/common/data-state'
+import { showError } from '@/components/common/toast-utils'
+import UbicacionFormModal from '@/components/ubicaciones/UbicacionFormModal'
 
 interface Ubicacion {
   id: number
-  codigo: string
+  codigo?: string
   nombre: string
-  tipo: string
-  descripcion: string
-  activa: boolean
-  maquinas_count: number
-  lotes_insumo_count: number
+  tipo?: string
+  descripcion?: string | null
+  activa?: boolean
+  maquinas_count?: number
+  lotes_insumo_count?: number
 }
 
 export default function UbicacionesPage() {
@@ -44,6 +46,7 @@ export default function UbicacionesPage() {
   const { user } = useAuth()
   const [ubicaciones, setUbicaciones] = useState<Ubicacion[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [selectedUbicacionId, setSelectedUbicacionId] = useState<number | null>(null)
@@ -55,24 +58,27 @@ export default function UbicacionesPage() {
   const fetchUbicaciones = async () => {
     try {
       setLoading(true)
-      const response = await api.get('/ubicaciones/')
-      setUbicaciones(response.results || response)
+      setError(null)
+      const response = await api.getUbicaciones()
+      const items = Array.isArray(response) ? response : response?.results ?? []
+      setUbicaciones(items)
     } catch (error: any) {
-      toast({
-        title: 'Error al cargar ubicaciones',
-        description: error?.message || 'No se pudieron obtener las ubicaciones',
-        variant: 'destructive',
-      })
+      const message = error?.message || 'No se pudieron obtener las ubicaciones'
+      setError(message)
+      showError('Error al cargar ubicaciones', message)
     } finally {
       setLoading(false)
     }
   }
 
-  const filteredUbicaciones = ubicaciones.filter(u =>
-    u.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.tipo.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredUbicaciones = ubicaciones.filter((u) => {
+    const search = searchTerm.toLowerCase()
+    const codigo = (u.codigo ?? '').toLowerCase()
+    const nombre = u.nombre.toLowerCase()
+    const tipo = (u.tipo ?? '').toLowerCase()
+
+    return codigo.includes(search) || nombre.includes(search) || tipo.includes(search)
+  })
 
   const getTipoColor = (tipo: string) => {
     const colors: Record<string, string> = {
@@ -92,6 +98,21 @@ export default function UbicacionesPage() {
       SERVICIOS: Settings,
     }
     return icons[tipo] ?? MapPin
+  }
+
+  const hasError = Boolean(error)
+  const dataStateError = hasError ? `Error al cargar ubicaciones${error ? `: ${error}` : ''}` : null
+  const isEmptyState = !loading && !hasError && filteredUbicaciones.length === 0
+
+  const selectedUbicacion = selectedUbicacionId
+    ? ubicaciones.find((item) => item.id === selectedUbicacionId) ?? null
+    : null
+
+  const handleModalOpenChange = (openState: boolean) => {
+    setIsFormOpen(openState)
+    if (!openState) {
+      setSelectedUbicacionId(null)
+    }
   }
 
   return (
@@ -159,16 +180,17 @@ export default function UbicacionesPage() {
             </div>
           </motion.div>
 
-          {/* Ubicaciones Grid */}
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full"
-              />
-            </div>
-          ) : (
+          <DataState
+            loading={loading}
+            error={dataStateError}
+            empty={isEmptyState}
+            emptyMessage={
+              <div className="text-center py-12">
+                <MapPin className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500 text-lg">No se encontraron ubicaciones</p>
+              </div>
+            }
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredUbicaciones.map((ubicacion, index) => {
                 const TipoIcon = getTipoIcon(ubicacion.tipo)
@@ -186,10 +208,10 @@ export default function UbicacionesPage() {
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
                               <TipoIcon className="w-4 h-4 text-gray-500" />
-                              <Badge className={getTipoColor(ubicacion.tipo)}>
-                                {ubicacion.tipo}
+                              <Badge className={getTipoColor(ubicacion.tipo ?? 'DESCONOCIDO')}>
+                                {ubicacion.tipo ?? 'SIN TIPO'}
                               </Badge>
-                              {!ubicacion.activa && (
+                              {ubicacion.activa === false && (
                                 <Badge className="bg-gray-100 text-gray-800">Inactiva</Badge>
                               )}
                             </div>
@@ -208,11 +230,11 @@ export default function UbicacionesPage() {
                           <div className="grid grid-cols-2 gap-2 text-sm">
                             <div>
                               <p className="text-gray-500 text-xs">Máquinas</p>
-                              <p className="font-bold text-blue-600">{ubicacion.maquinas_count}</p>
+                              <p className="font-bold text-blue-600">{ubicacion.maquinas_count ?? 0}</p>
                             </div>
                             <div>
                               <p className="text-gray-500 text-xs">Lotes Insumo</p>
-                              <p className="font-bold text-green-600">{ubicacion.lotes_insumo_count}</p>
+                              <p className="font-bold text-green-600">{ubicacion.lotes_insumo_count ?? 0}</p>
                             </div>
                           </div>
                           <div className="flex gap-2 pt-2">
@@ -245,15 +267,25 @@ export default function UbicacionesPage() {
                 )
               })}
             </div>
-          )}
-
-          {!loading && filteredUbicaciones.length === 0 && (
-            <div className="text-center py-12">
-              <MapPin className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">No se encontraron ubicaciones</p>
-            </div>
-          )}
+          </DataState>
         </main>
+        <UbicacionFormModal
+          open={isFormOpen}
+          onClose={handleModalOpenChange}
+          onSubmitSuccess={fetchUbicaciones}
+          initialData={
+            selectedUbicacion
+              ? {
+                  id: selectedUbicacion.id,
+                  codigo: selectedUbicacion.codigo ?? '',
+                  nombre: selectedUbicacion.nombre,
+                  tipo: selectedUbicacion.tipo ?? 'PRODUCCION',
+                  descripcion: selectedUbicacion.descripcion ?? '',
+                  activa: selectedUbicacion.activa ?? true,
+                }
+              : undefined
+          }
+        />
       </div>
     </ProtectedRoute>
   )

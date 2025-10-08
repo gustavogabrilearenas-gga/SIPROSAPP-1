@@ -24,7 +24,7 @@ import {
   Calendar,
 } from 'lucide-react'
 import { api, handleApiError } from '@/lib/api'
-import { toast } from '@/hooks/use-toast'
+import { showError } from '@/components/common/toast-utils'
 
 interface Insumo {
   id: number
@@ -142,9 +142,7 @@ export default function InventarioPage() {
         setInsumos(FALLBACK_INSUMOS)
       }
       setError(message ?? 'No se pudieron obtener los insumos')
-      toast.error('Error al cargar inventario', {
-        description: message ?? 'No se pudieron obtener los insumos',
-      })
+      showError('Error al cargar inventario', message ?? 'No se pudieron obtener los insumos')
     } finally {
       setLoading(false)
     }
@@ -162,9 +160,10 @@ export default function InventarioPage() {
         setLotesInsumo(FALLBACK_LOTES_INSUMO)
       }
       setError(message ?? 'No se pudieron obtener los lotes de insumo')
-      toast.error('Error al cargar inventario', {
-        description: message ?? 'No se pudieron obtener los lotes de insumo',
-      })
+      showError(
+        'Error al cargar inventario',
+        message ?? 'No se pudieron obtener los lotes de insumo',
+      )
     } finally {
       setLoading(false)
     }
@@ -323,154 +322,160 @@ export default function InventarioPage() {
             }
           >
             {activeTab === 'insumos' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredInsumos.map((insumo, index) => {
-                const status = getStockStatus(insumo)
-                const StatusIcon = status.icon
-                const stockPorcentaje = (insumo.stock_actual / insumo.stock_maximo) * 100
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredInsumos.map((insumo, index) => {
+                  const status = getStockStatus(insumo)
+                  const StatusIcon = status.icon
+                  const stockPorcentaje = (insumo.stock_actual / insumo.stock_maximo) * 100
 
-                return (
-                  <motion.div
-                    key={insumo.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 * index }}
-                  >
-                    <Card className="hover:shadow-xl transition-shadow duration-300">
-                      <CardHeader>
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Badge className={status.color}>
-                                <StatusIcon className="w-3 h-3 mr-1" />
-                                {status.label}
-                              </Badge>
-                              {insumo.requiere_cadena_frio && (
-                                <Badge className="bg-blue-100 text-blue-800">❄️</Badge>
-                              )}
-                            </div>
-                            <CardTitle className="text-lg font-bold mb-1">
-                              {insumo.codigo}
-                            </CardTitle>
-                            <p className="text-sm font-medium text-gray-900">{insumo.nombre}</p>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-3">
-                          <div className="text-sm">
-                            <Badge className="bg-gray-100 text-gray-800">
-                              {insumo.categoria_nombre}
-                            </Badge>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2 text-sm">
-                            <div>
-                              <p className="text-gray-500 text-xs">Stock Actual</p>
-                              <p className="text-2xl font-bold">{insumo.stock_actual}</p>
-                            </div>
-                            <div>
-                              <p className="text-gray-500 text-xs">Unidad</p>
-                              <p className="text-lg font-medium">{insumo.unidad_medida}</p>
-                            </div>
-                            <div>
-                              <p className="text-gray-500 text-xs">Mínimo</p>
-                              <p className="font-medium">{insumo.stock_minimo}</p>
-                            </div>
-                            <div>
-                              <p className="text-gray-500 text-xs">Máximo</p>
-                              <p className="font-medium">{insumo.stock_maximo}</p>
-                            </div>
-                          </div>
-                          <div className="pt-2">
-                            <div className="flex justify-between text-xs mb-1">
-                              <span>Nivel de Stock</span>
-                              <span>{stockPorcentaje.toFixed(0)}%</span>
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                              <motion.div
-                                initial={{ width: 0 }}
-                                animate={{ width: `${Math.min(100, stockPorcentaje)}%` }}
-                                transition={{ duration: 0.5 }}
-                                className={`h-2 rounded-full ${
-                                  stockPorcentaje <= 30 ? 'bg-red-500' :
-                                  stockPorcentaje <= 50 ? 'bg-yellow-500' :
-                                  'bg-green-500'
-                                }`}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                )
-              })}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredLotes.map((lote, index) => {
-                const diasVencimiento = getDiasVencimiento(lote.fecha_vencimiento)
-                const esProximoVencer = diasVencimiento <= 90
-
-                return (
-                  <motion.div
-                    key={lote.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.05 * index }}
-                  >
-                    <Card className={`hover:shadow-lg transition-shadow ${esProximoVencer ? 'border-orange-300 border-2' : ''}`}>
-                      <CardContent className="p-6">
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h3 className="font-bold text-lg">{lote.insumo_nombre}</h3>
-                              <Badge className={getEstadoLoteColor(lote.estado)}>
-                                {lote.estado}
-                              </Badge>
-                              {esProximoVencer && (
-                                <Badge className="bg-orange-500 text-white">
-                                  <Calendar className="w-3 h-3 mr-1" />
-                                  Próx. Vencer
+                  return (
+                    <motion.div
+                      key={insumo.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 * index }}
+                    >
+                      <Card className="hover:shadow-xl transition-shadow duration-300">
+                        <CardHeader>
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Badge className={status.color}>
+                                  <StatusIcon className="w-3 h-3 mr-1" />
+                                  {status.label}
                                 </Badge>
-                              )}
+                                {insumo.requiere_cadena_frio && (
+                                  <Badge className="bg-blue-100 text-blue-800">❄️</Badge>
+                                )}
+                              </div>
+                              <CardTitle className="text-lg font-bold mb-1">
+                                {insumo.codigo}
+                              </CardTitle>
+                              <p className="text-sm font-medium text-gray-900">{insumo.nombre}</p>
                             </div>
-                            <p className="text-sm text-gray-600 mb-4">
-                              Lote: {lote.codigo_lote_proveedor} | Proveedor: {lote.proveedor}
-                            </p>
-                            <div className="grid grid-cols-4 gap-4 text-sm">
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-3">
+                            <div className="text-sm">
+                              <Badge className="bg-gray-100 text-gray-800">
+                                {insumo.categoria_nombre}
+                              </Badge>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-sm">
                               <div>
-                                <p className="text-gray-500 text-xs">Cantidad</p>
-                                <p className="font-bold text-lg">{lote.cantidad_actual} {lote.unidad}</p>
+                                <p className="text-gray-500 text-xs">Stock Actual</p>
+                                <p className="text-2xl font-bold">{insumo.stock_actual}</p>
                               </div>
                               <div>
-                                <p className="text-gray-500 text-xs">Ubicación</p>
-                                <p className="font-medium">{lote.ubicacion_nombre}</p>
+                                <p className="text-gray-500 text-xs">Unidad</p>
+                                <p className="text-lg font-medium">{insumo.unidad_medida}</p>
                               </div>
                               <div>
-                                <p className="text-gray-500 text-xs">Vencimiento</p>
-                                <p className="font-medium">{new Date(lote.fecha_vencimiento).toLocaleDateString()}</p>
+                                <p className="text-gray-500 text-xs">Mínimo</p>
+                                <p className="font-medium">{insumo.stock_minimo}</p>
                               </div>
                               <div>
-                                <p className="text-gray-500 text-xs">Días Restantes</p>
-                                <p className={`font-bold ${
-                                  diasVencimiento < 30 ? 'text-red-600' :
-                                  diasVencimiento < 90 ? 'text-orange-600' :
-                                  'text-green-600'
-                                }`}>
-                                  {diasVencimiento} días
-                                </p>
+                                <p className="text-gray-500 text-xs">Máximo</p>
+                                <p className="font-medium">{insumo.stock_maximo}</p>
+                              </div>
+                            </div>
+                            <div className="pt-2">
+                              <div className="flex justify-between text-xs mb-1">
+                                <span>Nivel de Stock</span>
+                                <span>{stockPorcentaje.toFixed(0)}%</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <motion.div
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${Math.min(100, stockPorcentaje)}%` }}
+                                  transition={{ duration: 0.5 }}
+                                  className={`h-2 rounded-full ${
+                                    stockPorcentaje <= 30
+                                      ? 'bg-red-500'
+                                      : stockPorcentaje <= 50
+                                      ? 'bg-yellow-500'
+                                      : 'bg-green-500'
+                                  }`}
+                                />
                               </div>
                             </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                )
-              })}
-            </div>
-          )}
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredLotes.map((lote, index) => {
+                  const diasVencimiento = getDiasVencimiento(lote.fecha_vencimiento)
+                  const esProximoVencer = diasVencimiento <= 90
+
+                  return (
+                    <motion.div
+                      key={lote.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.05 * index }}
+                    >
+                      <Card className={`hover:shadow-lg transition-shadow ${esProximoVencer ? 'border-orange-300 border-2' : ''}`}>
+                        <CardContent className="p-6">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h3 className="font-bold text-lg">{lote.insumo_nombre}</h3>
+                                <Badge className={getEstadoLoteColor(lote.estado)}>
+                                  {lote.estado}
+                                </Badge>
+                                {esProximoVencer && (
+                                  <Badge className="bg-orange-500 text-white">
+                                    <Calendar className="w-3 h-3 mr-1" />
+                                    Próx. Vencer
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-600 mb-4">
+                                Lote: {lote.codigo_lote_proveedor} | Proveedor: {lote.proveedor}
+                              </p>
+                              <div className="grid grid-cols-4 gap-4 text-sm">
+                                <div>
+                                  <p className="text-gray-500 text-xs">Cantidad</p>
+                                  <p className="font-bold text-lg">{lote.cantidad_actual} {lote.unidad}</p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-500 text-xs">Ubicación</p>
+                                  <p className="font-medium">{lote.ubicacion_nombre}</p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-500 text-xs">Vencimiento</p>
+                                  <p className="font-medium">{new Date(lote.fecha_vencimiento).toLocaleDateString()}</p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-500 text-xs">Días Restantes</p>
+                                  <p
+                                    className={`font-bold ${
+                                      diasVencimiento < 30
+                                        ? 'text-red-600'
+                                        : diasVencimiento < 90
+                                        ? 'text-orange-600'
+                                        : 'text-green-600'
+                                    }`}
+                                  >
+                                    {diasVencimiento} días
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  )
+                })}
+              </div>
+            )}
           </DataState>
         </main>
       </div>

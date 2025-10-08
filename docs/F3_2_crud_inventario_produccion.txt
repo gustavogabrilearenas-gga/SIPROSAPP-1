@@ -1,0 +1,22 @@
+Flujos implementados
+- Ubicaciones: el modal ahora valida código/nombre/tipo, persiste contra api.createUbicacion y api.updateUbicacion y vuelve a cargar la grilla al cerrar.
+- Turnos: el formulario controla código/horarios, ejecuta api.createTurno o api.updateTurno según corresponda y refresca la vista tras guardar.
+- Paradas: el modal recopila datos obligatorios, envía altas/ediciones mediante api.createParada y api.updateParada, y se agregó el flujo de finalización con api.finalizarParada.
+
+Páginas afectadas
+- frontend/src/app/ubicaciones/page.tsx
+- frontend/src/app/turnos/page.tsx
+- frontend/src/app/paradas/page.tsx
+- frontend/src/components/ubicaciones/UbicacionFormModal.tsx
+- frontend/src/components/turnos/TurnoFormModal.tsx
+- frontend/src/components/paradas/ParadaFormModal.tsx
+- frontend/src/lib/api.ts
+
+Resultados de prueba manual
+- Apertura/cierre de los tres modales y validaciones locales verificadas en desarrollo.
+- Confirmado refresco automático de listados tras guardar mediante inspección de estados React.
+- Flujo de finalización de parada validado con prompt local (sin backend real disponible).
+
+Pendientes detectados
+- Falta integrar catálogos auxiliares (por ejemplo selector de etapas de lote) para que el ID de lote/etapa no se ingrese manualmente.
+- Se requieren pruebas end-to-end contra la API real para confirmar esquemas y mensajes finales.

@@ -26,16 +26,18 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { api } from '@/lib/api'
-import { toast } from '@/hooks/use-toast'
+import DataState from '@/components/common/data-state'
+import { showError } from '@/components/common/toast-utils'
+import TurnoFormModal from '@/components/turnos/TurnoFormModal'
 
 interface Turno {
   id: number
-  codigo: string
+  codigo?: string
   nombre: string
-  hora_inicio: string
-  hora_fin: string
-  activo: boolean
-  lotes_count: number
+  hora_inicio?: string
+  hora_fin?: string
+  activo?: boolean
+  lotes_count?: number
 }
 
 export default function TurnosPage() {
@@ -43,6 +45,7 @@ export default function TurnosPage() {
   const { user } = useAuth()
   const [turnos, setTurnos] = useState<Turno[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [selectedTurnoId, setSelectedTurnoId] = useState<number | null>(null)
@@ -54,23 +57,25 @@ export default function TurnosPage() {
   const fetchTurnos = async () => {
     try {
       setLoading(true)
-      const response = await api.get('/turnos/')
-      setTurnos(response.results || response)
+      setError(null)
+      const response = await api.getTurnos()
+      const items = Array.isArray(response) ? response : response?.results ?? []
+      setTurnos(items)
     } catch (error: any) {
-      toast({
-        title: 'Error al cargar turnos',
-        description: error?.message || 'No se pudieron obtener los turnos',
-        variant: 'destructive',
-      })
+      const message = error?.message || 'No se pudieron obtener los turnos'
+      setError(message)
+      showError('Error al cargar turnos', message)
     } finally {
       setLoading(false)
     }
   }
 
-  const filteredTurnos = turnos.filter(t =>
-    t.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    t.nombre.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredTurnos = turnos.filter((t) => {
+    const search = searchTerm.toLowerCase()
+    const codigo = (t.codigo ?? '').toLowerCase()
+    const nombre = t.nombre.toLowerCase()
+    return codigo.includes(search) || nombre.includes(search)
+  })
 
   const getTurnoIcon = (codigo: string): LucideIcon => {
     const icons: Record<string, LucideIcon> = {
@@ -91,22 +96,28 @@ export default function TurnosPage() {
   }
 
   const formatTime = (time: string) => {
+    if (!time) {
+      return '—'
+    }
     return new Date(`2000-01-01T${time}`).toLocaleTimeString('es-AR', {
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
     })
   }
 
   const getCurrentTurno = () => {
     const now = new Date()
     const currentTime = now.getHours() * 60 + now.getMinutes()
-    
-    return turnos.find(turno => {
-      const startTime = new Date(`2000-01-01T${turno.hora_inicio}`).getHours() * 60 + 
-                       new Date(`2000-01-01T${turno.hora_inicio}`).getMinutes()
-      const endTime = new Date(`2000-01-01T${turno.hora_fin}`).getHours() * 60 + 
-                     new Date(`2000-01-01T${turno.hora_fin}`).getMinutes()
-      
+
+    return turnos.find((turno) => {
+      if (!turno.hora_inicio || !turno.hora_fin) {
+        return false
+      }
+      const startDate = new Date(`2000-01-01T${turno.hora_inicio}`)
+      const endDate = new Date(`2000-01-01T${turno.hora_fin}`)
+      const startTime = startDate.getHours() * 60 + startDate.getMinutes()
+      const endTime = endDate.getHours() * 60 + endDate.getMinutes()
+
       if (startTime <= endTime) {
         return currentTime >= startTime && currentTime < endTime
       } else {
@@ -117,6 +128,21 @@ export default function TurnosPage() {
   }
 
   const currentTurno = getCurrentTurno()
+
+  const selectedTurno = selectedTurnoId
+    ? turnos.find((item) => item.id === selectedTurnoId) ?? null
+    : null
+
+  const handleModalOpenChange = (openState: boolean) => {
+    setIsFormOpen(openState)
+    if (!openState) {
+      setSelectedTurnoId(null)
+    }
+  }
+
+  const hasError = Boolean(error)
+  const dataStateError = hasError ? `Error al cargar turnos${error ? `: ${error}` : ''}` : null
+  const isEmptyState = !loading && !hasError && filteredTurnos.length === 0
 
   return (
     <ProtectedRoute>
@@ -208,19 +234,21 @@ export default function TurnosPage() {
             </div>
           </motion.div>
 
-          {/* Turnos Grid */}
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full"
-              />
-            </div>
-          ) : (
+          <DataState
+            loading={loading}
+            error={dataStateError}
+            empty={isEmptyState}
+            emptyMessage={
+              <div className="text-center py-12">
+                <Clock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500 text-lg">No se encontraron turnos</p>
+              </div>
+            }
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredTurnos.map((turno, index) => {
-                const TurnoIcon = getTurnoIcon(turno.codigo)
+                const turnoCodigo = turno.codigo ?? ''
+                const TurnoIcon = getTurnoIcon(turnoCodigo)
                 const isCurrent = currentTurno?.id === turno.id
 
                 return (
@@ -230,16 +258,18 @@ export default function TurnosPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 * index }}
                   >
-                    <Card className={`hover:shadow-xl transition-shadow duration-300 ${
-                      isCurrent ? 'ring-2 ring-green-500 bg-green-50' : ''
-                    }`}>
+                    <Card
+                      className={`hover:shadow-xl transition-shadow duration-300 ${
+                        isCurrent ? 'ring-2 ring-green-500 bg-green-50' : ''
+                      }`}
+                    >
                       <CardHeader>
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
                               <TurnoIcon className="w-4 h-4 text-gray-500" />
-                              <Badge className={getTurnoColor(turno.codigo)}>
-                                {turno.codigo}
+                              <Badge className={getTurnoColor(turnoCodigo)}>
+                                {turnoCodigo || '—'}
                               </Badge>
                               {isCurrent && (
                                 <Badge className="bg-green-100 text-green-800">
@@ -247,7 +277,7 @@ export default function TurnosPage() {
                                   Actual
                                 </Badge>
                               )}
-                              {!turno.activo && (
+                              {turno.activo === false && (
                                 <Badge className="bg-gray-100 text-gray-800">Inactivo</Badge>
                               )}
                             </div>
@@ -270,7 +300,7 @@ export default function TurnosPage() {
                             </div>
                             <div className="col-span-2">
                               <p className="text-gray-500 text-xs">Lotes Asignados</p>
-                              <p className="font-bold text-green-600">{turno.lotes_count}</p>
+                              <p className="font-bold text-green-600">{turno.lotes_count ?? 0}</p>
                             </div>
                           </div>
                           <div className="flex gap-2 pt-2">
@@ -303,15 +333,25 @@ export default function TurnosPage() {
                 )
               })}
             </div>
-          )}
-
-          {!loading && filteredTurnos.length === 0 && (
-            <div className="text-center py-12">
-              <Clock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">No se encontraron turnos</p>
-            </div>
-          )}
+          </DataState>
         </main>
+        <TurnoFormModal
+          open={isFormOpen}
+          onClose={handleModalOpenChange}
+          onSubmitSuccess={fetchTurnos}
+          initialData={
+            selectedTurno
+              ? {
+                  id: selectedTurno.id,
+                  nombre: selectedTurno.nombre,
+                  codigo: selectedTurno.codigo ?? '',
+                  horaInicio: selectedTurno.hora_inicio ?? '',
+                  horaFin: selectedTurno.hora_fin ?? '',
+                  activo: selectedTurno.activo ?? true,
+                }
+              : undefined
+          }
+        />
       </div>
     </ProtectedRoute>
   )

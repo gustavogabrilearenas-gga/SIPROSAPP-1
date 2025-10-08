@@ -268,6 +268,74 @@ export interface PaginatedResponse<T> {
   results: T[]
 }
 
+export interface Ubicacion {
+  id: number
+  codigo: string
+  nombre: string
+  tipo: string
+  descripcion?: string
+  activa: boolean
+}
+
+export interface CreateUbicacionPayload {
+  codigo: string
+  nombre: string
+  tipo: string
+  descripcion?: string
+  activa?: boolean
+}
+
+export type UpdateUbicacionPayload = Partial<CreateUbicacionPayload>
+
+export interface Turno {
+  id: number
+  codigo: string
+  nombre: string
+  hora_inicio: string
+  hora_fin: string
+  activo: boolean
+}
+
+export interface CreateTurnoPayload {
+  codigo: string
+  nombre: string
+  hora_inicio: string
+  hora_fin: string
+  activo?: boolean
+}
+
+export type UpdateTurnoPayload = Partial<CreateTurnoPayload>
+
+export interface Parada {
+  id: number
+  lote_etapa: number
+  tipo: string
+  categoria: string
+  fecha_inicio: string
+  fecha_fin: string | null
+  duracion_minutos: number | null
+  descripcion: string
+  solucion?: string
+  registrado_por: number
+}
+
+export interface CreateParadaPayload {
+  lote_etapa: number
+  tipo: string
+  categoria: string
+  descripcion: string
+  fecha_inicio?: string
+  solucion?: string
+  registrado_por?: number
+}
+
+export type UpdateParadaPayload = Partial<CreateParadaPayload>
+
+export interface ParadaFinalizarResponse {
+  message: string
+  parada: Parada
+}
+
 export interface Insumo {
   id: number
   codigo: string
@@ -778,6 +846,18 @@ const api = {
     return get('/produccion/paradas/', { params })
   },
 
+  async createParada(data: CreateParadaPayload) {
+    return post<Parada>('/produccion/paradas/', data)
+  },
+
+  async updateParada(id: number | string, data: UpdateParadaPayload) {
+    return put<Parada>(`/produccion/paradas/${id}/`, data)
+  },
+
+  async finalizarParada(id: number | string, data: { solucion: string }) {
+    return post<ParadaFinalizarResponse>(`/produccion/paradas/${id}/finalizar/`, data)
+  },
+
   async getLotes(params?: Record<string, unknown>) {
     return get('/produccion/lotes/', { params })
   },
@@ -846,8 +926,24 @@ const api = {
     return get('/ubicaciones/', { params })
   },
 
+  async createUbicacion(data: CreateUbicacionPayload) {
+    return post<Ubicacion>('/ubicaciones/', data)
+  },
+
+  async updateUbicacion(id: number | string, data: UpdateUbicacionPayload) {
+    return put<Ubicacion>(`/ubicaciones/${id}/`, data)
+  },
+
   async getTurnos(params?: Record<string, unknown>) {
     return get('/turnos/', { params })
+  },
+
+  async createTurno(data: CreateTurnoPayload) {
+    return post<Turno>('/turnos/', data)
+  },
+
+  async updateTurno(id: number | string, data: UpdateTurnoPayload) {
+    return put<Turno>(`/turnos/${id}/`, data)
   },
 
   async getIncidentes(params?: Record<string, unknown>) {

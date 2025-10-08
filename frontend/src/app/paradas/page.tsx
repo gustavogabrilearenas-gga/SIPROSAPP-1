@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { useAuth } from '@/stores/auth-store'
 import { ProtectedRoute } from '@/components/protected-route'
 import {
   Card,
@@ -13,41 +12,43 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import {
-  Clock,
-  Plus,
-  Search,
-  Edit,
-  ArrowLeft,
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  User,
-  Calendar,
-} from 'lucide-react'
-import { api } from '@/lib/api'
-import { toast } from '@/hooks/use-toast'
+import { Clock, Plus, Search, Edit, ArrowLeft, CheckCircle } from 'lucide-react'
+import { api, handleApiError } from '@/lib/api'
+import DataState from '@/components/common/data-state'
+import { showError, showSuccess } from '@/components/common/toast-utils'
+import ParadaFormModal from '@/components/paradas/ParadaFormModal'
 
 interface Parada {
   id: number
-  lote_etapa_codigo: string
-  lote_codigo: string
-  tipo: string
-  categoria: string
-  fecha_inicio: string
-  fecha_fin: string | null
-  duracion_minutos: number | null
-  descripcion: string
-  solucion: string
-  registrado_por_nombre: string
-  estado: string
+  lote_etapa: number
+  lote_etapa_codigo?: string
+  lote_codigo?: string
+  tipo?: string
+  tipo_display?: string
+  categoria?: string
+  categoria_display?: string
+  fecha_inicio?: string
+  fecha_fin?: string | null
+  duracion_minutos?: number | null
+  descripcion?: string
+  solucion?: string
+  registrado_por?: number
+  registrado_por_nombre?: string
+  estado?: string
+}
+
+const toLocalDateTimeInput = (value: string) => {
+  const date = new Date(value)
+  const offset = date.getTimezoneOffset()
+  const local = new Date(date.getTime() - offset * 60000)
+  return local.toISOString().slice(0, 16)
 }
 
 export default function ParadasPage() {
   const router = useRouter()
-  const { user } = useAuth()
   const [paradas, setParadas] = useState<Parada[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterTipo, setFilterTipo] = useState<string>('TODAS')
   const [isFormOpen, setIsFormOpen] = useState(false)
@@ -60,24 +61,26 @@ export default function ParadasPage() {
   const fetchParadas = async () => {
     try {
       setLoading(true)
-      const response = await api.get('/paradas/')
-      setParadas(response.results || response)
-    } catch (error: any) {
-      toast({
-        title: 'Error al cargar paradas',
-        description: error?.message || 'No se pudieron obtener las paradas',
-        variant: 'destructive',
-      })
+      setError(null)
+      const response = await api.getParadas()
+      const items = Array.isArray(response) ? response : response?.results ?? []
+      setParadas(items)
+    } catch (error) {
+      const { message } = handleApiError(error)
+      setError(message || 'No se pudieron obtener las paradas')
+      showError('Error al cargar paradas', message || 'No se pudieron obtener las paradas')
     } finally {
       setLoading(false)
     }
   }
 
-  const filteredParadas = paradas.filter(p => {
-    const matchesSearch = p.lote_codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         p.categoria.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         p.descripcion.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesFilter = filterTipo === 'TODAS' || p.tipo === filterTipo
+  const filteredParadas = paradas.filter((p) => {
+    const search = searchTerm.toLowerCase()
+    const lote = (p.lote_codigo ?? `Lote ${p.lote_etapa ?? ''}`).toLowerCase()
+    const categoria = (p.categoria ?? '').toLowerCase()
+    const descripcion = (p.descripcion ?? '').toLowerCase()
+    const matchesSearch = lote.includes(search) || categoria.includes(search) || descripcion.includes(search)
+    const matchesFilter = filterTipo === 'TODAS' || (p.tipo ?? '').toUpperCase() === filterTipo
     return matchesSearch && matchesFilter
   })
 
@@ -115,6 +118,47 @@ export default function ParadasPage() {
     const horas = Math.floor(minutos / 60)
     const mins = minutos % 60
     return `${horas}h ${mins}min`
+  }
+
+  const hasError = Boolean(error)
+  const dataStateError = hasError ? `Error al cargar paradas${error ? `: ${error}` : ''}` : null
+  const isEmptyState = !loading && !hasError && filteredParadas.length === 0
+
+  const selectedParada = selectedParadaId
+    ? paradas.find((item) => item.id === selectedParadaId) ?? null
+    : null
+
+  const handleModalOpenChange = (openState: boolean) => {
+    setIsFormOpen(openState)
+    if (!openState) {
+      setSelectedParadaId(null)
+    }
+  }
+
+  const handleFinalizarParada = async (parada: Parada) => {
+    const solucion = window.prompt(
+      'Ingrese la solución para finalizar la parada',
+      parada.solucion ?? '',
+    )
+
+    if (solucion === null) {
+      return
+    }
+
+    const trimmed = solucion.trim()
+    if (!trimmed) {
+      showError('Solución requerida', 'Debe ingresar una solución para finalizar la parada')
+      return
+    }
+
+    try {
+      await api.finalizarParada(parada.id, { solucion: trimmed })
+      showSuccess('Parada finalizada', 'La parada se finalizó correctamente')
+      await fetchParadas()
+    } catch (error) {
+      const { message } = handleApiError(error)
+      showError('No se pudo finalizar la parada', message)
+    }
   }
 
   return (
@@ -192,20 +236,26 @@ export default function ParadasPage() {
             </div>
           </motion.div>
 
-          {/* Paradas List */}
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                className="w-12 h-12 border-4 border-orange-200 border-t-orange-600 rounded-full"
-              />
-            </div>
-          ) : (
+          <DataState
+            loading={loading}
+            error={dataStateError}
+            empty={isEmptyState}
+            emptyMessage={
+              <div className="text-center py-12">
+                <Clock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500 text-lg">No se encontraron paradas</p>
+              </div>
+            }
+          >
             <div className="space-y-4">
               {filteredParadas.map((parada, index) => {
                 const EstadoIcon = getEstadoIcon(parada.fecha_fin)
                 const isEnCurso = !parada.fecha_fin
+                const tipo = (parada.tipo ?? 'DESCONOCIDO').toUpperCase()
+                const categoria = parada.categoria ?? 'OTROS'
+                const loteCodigo = parada.lote_codigo ?? `Lote ${parada.lote_etapa ?? '—'}`
+                const etapaCodigo = parada.lote_etapa_codigo ?? String(parada.lote_etapa ?? '—')
+                const fechaInicio = parada.fecha_inicio ? new Date(parada.fecha_inicio) : null
 
                 return (
                   <motion.div
@@ -214,40 +264,42 @@ export default function ParadasPage() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.05 * index }}
                   >
-                    <Card className={`hover:shadow-xl transition-shadow duration-300 ${
-                      isEnCurso ? 'border-orange-200 bg-orange-50' : 'border-gray-200'
-                    }`}>
+                    <Card
+                      className={`hover:shadow-xl transition-shadow duration-300 ${
+                        isEnCurso ? 'border-orange-200 bg-orange-50' : 'border-gray-200'
+                      }`}
+                    >
                       <CardContent className="p-6">
                         <div className="flex justify-between items-start mb-4">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
-                              <h3 className="text-lg font-bold">{parada.lote_codigo}</h3>
-                              <Badge className={getTipoColor(parada.tipo)}>
-                                {parada.tipo}
+                              <h3 className="text-lg font-bold">{loteCodigo}</h3>
+                              <Badge className={getTipoColor(tipo)}>
+                                {parada.tipo_display ?? tipo}
                               </Badge>
-                              <Badge className={getCategoriaColor(parada.categoria)}>
-                                {parada.categoria.replace('_', ' ')}
+                              <Badge className={getCategoriaColor(categoria)}>
+                                {(parada.categoria_display ?? categoria).replace('_', ' ')}
                               </Badge>
                               <Badge className={getEstadoColor(parada.fecha_fin)}>
                                 <EstadoIcon className="w-3 h-3 mr-1" />
                                 {isEnCurso ? 'En Curso' : 'Finalizada'}
                               </Badge>
                             </div>
-                            <p className="text-sm text-gray-600 mb-2">
-                              Etapa: {parada.lote_etapa_codigo}
-                            </p>
-                            <p className="text-gray-800">{parada.descripcion}</p>
+                            <p className="text-sm text-gray-600 mb-2">Etapa: {etapaCodigo}</p>
+                            <p className="text-gray-800">{parada.descripcion ?? 'Sin descripción'}</p>
                           </div>
                           <div className="text-right text-sm text-gray-500">
-                            <p>{new Date(parada.fecha_inicio).toLocaleString()}</p>
-                            <p>Por: {parada.registrado_por_nombre}</p>
+                            <p>{fechaInicio ? fechaInicio.toLocaleString() : 'Sin fecha'}</p>
+                            <p>Por: {parada.registrado_por_nombre ?? '—'}</p>
                           </div>
                         </div>
 
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                           <div>
                             <p className="text-xs text-gray-500 mb-1">Inicio</p>
-                            <p className="font-medium">{new Date(parada.fecha_inicio).toLocaleTimeString()}</p>
+                            <p className="font-medium">
+                              {fechaInicio ? fechaInicio.toLocaleTimeString() : '—'}
+                            </p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-500 mb-1">Fin</p>
@@ -289,7 +341,7 @@ export default function ParadasPage() {
                               variant="outline"
                               size="sm"
                               className="bg-green-50 text-green-700 border-green-200"
-                              onClick={() => {/* TODO: Finalizar parada */}}
+                              onClick={() => handleFinalizarParada(parada)}
                             >
                               <CheckCircle className="w-4 h-4 mr-1" />
                               Finalizar
@@ -302,15 +354,28 @@ export default function ParadasPage() {
                 )
               })}
             </div>
-          )}
-
-          {!loading && filteredParadas.length === 0 && (
-            <div className="text-center py-12">
-              <Clock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">No se encontraron paradas</p>
-            </div>
-          )}
+          </DataState>
         </main>
+        <ParadaFormModal
+          open={isFormOpen}
+          onClose={handleModalOpenChange}
+          onSubmitSuccess={fetchParadas}
+          initialData={
+            selectedParada
+              ? {
+                  id: selectedParada.id,
+                  loteEtapa: String(selectedParada.lote_etapa ?? ''),
+                  tipo: selectedParada.tipo ?? 'PLANIFICADA',
+                  categoria: selectedParada.categoria ?? 'FALLA_EQUIPO',
+                  descripcion: selectedParada.descripcion ?? '',
+                  fechaInicio: selectedParada.fecha_inicio
+                    ? toLocalDateTimeInput(selectedParada.fecha_inicio)
+                    : toLocalDateTimeInput(new Date().toISOString()),
+                  solucion: selectedParada.solucion ?? '',
+                }
+              : undefined
+          }
+        />
       </div>
     </ProtectedRoute>
   )
