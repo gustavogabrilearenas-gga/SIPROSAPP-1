@@ -14,5 +14,6 @@ urlpatterns = [
     path('api/', include("core.urls")),  # 👈 importante
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path("api/health/", health_check),
+    path("api/health/", health_check, name="api_health"),
+    path("api/health_check/", health_check, name="api_health_check"),
 ]

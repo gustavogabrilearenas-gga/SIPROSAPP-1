@@ -13,7 +13,6 @@ from django.db import connections
 from django.db.utils import OperationalError
 from django.contrib.auth.models import User
 from datetime import datetime, timedelta
-import django
 
 from .models import (
     # Catálogos
@@ -1313,29 +1312,13 @@ def home(request):
 
 
 def health_check(request):
-    """
-    Devuelve el estado general del backend
-    """
-    db_ok = True
+    """Comprueba la conexión a la base de datos y responde rápidamente."""
+
     try:
-        connections['default'].cursor()
+        with connections['default'].cursor() as cursor:
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
     except OperationalError:
-        db_ok = False
+        return JsonResponse({"status": "error"}, status=503)
 
-    data = {
-        "status": "ok" if db_ok else "error",
-        "database": db_ok,
-        "debug": settings.DEBUG,
-        "django_version": django.get_version(),
-        "server_time": datetime.now().isoformat(timespec='seconds'),
-        "environment": "development" if settings.DEBUG else "production",
-        "models_count": {
-            "maquinas": Maquina.objects.count(),
-            "productos": Producto.objects.count(),
-            "lotes": Lote.objects.count(),
-            "ordenes_trabajo": OrdenTrabajo.objects.count(),
-            "incidentes": Incidente.objects.count(),
-        }
-    }
-
-    return JsonResponse(data)
+    return JsonResponse({"status": "ok"})
