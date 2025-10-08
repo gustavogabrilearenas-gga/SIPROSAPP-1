@@ -1,0 +1,39 @@
+frontend/src/app/inventario/page.tsx
+Estado: ✅ OK
+Descripción: La vista utilizaba llamadas directas a toast.* que podían generar objetos inválidos en DataState y carecía de manejo uniforme de errores.
+Solución sugerida: Centralizar los avisos con showError y mantener DataState como wrapper principal para asegurar un renderizado consistente.
+
+frontend/src/app/lotes/page.tsx
+Estado: ✅ OK
+Descripción: Las acciones CRUD emitían toasts directos y podían devolver estados vacíos sin mensaje legible.
+Solución sugerida: Migrar a showSuccess/showError y reutilizar DataState para mostrar estados de carga, error y vacío.
+
+frontend/src/app/formulas/page.tsx
+Estado: ✅ OK
+Descripción: La página dependía de spinners manuales y de toast({}) con objetos, lo que hacía el render propenso a errores de tipo.
+Solución sugerida: Incorporar DataState como raíz, manejar errores con showError y propagar mensajes amigables.
+
+frontend/src/app/productos/page.tsx
+Estado: ✅ OK
+Descripción: Se detectaron avisos destructivos con toast({}) y ausencia de envoltorio DataState.
+Solución sugerida: Usar showError con fallback y DataState para controlar loading/error/empty.
+
+frontend/src/app/maquinas/page.tsx
+Estado: ✅ OK
+Descripción: El componente utilizaba toasts manuales y carecía de un renderizado protegido por DataState.
+Solución sugerida: Unificar notificaciones con showError y envolver el grid con DataState para evitar retornos no válidos.
+
+frontend/src/app/ubicaciones/page.tsx
+Estado: ❌ Error
+Descripción: Aunque se normalizó DataState y los toasts, la página mantiene lógica para abrir un modal inexistente (no hay UbicacionFormModal), lo que deja el CRUD incompleto.
+Solución sugerida: Implementar un UbicacionFormModal o eliminar los handlers hasta contar con el componente definitivo.
+
+frontend/src/app/turnos/page.tsx
+Estado: ❌ Error
+Descripción: Persisten handlers que abren un modal inexistente para crear/editar turnos; esto rompe el flujo CRUD esperado.
+Solución sugerida: Crear un TurnoFormModal y conectar los callbacks actuales o retirar los botones hasta disponer del formulario.
+
+frontend/src/app/paradas/page.tsx
+Estado: ❌ Error
+Descripción: El botón "Nueva Parada" abre un estado interno sin modal asociado, y la acción "Finalizar" permanece como TODO.
+Solución sugerida: Desarrollar un ParadaFormModal y completar la lógica de finalización para evitar interacciones rotas.

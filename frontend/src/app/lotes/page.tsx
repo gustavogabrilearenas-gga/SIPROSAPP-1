@@ -24,7 +24,7 @@ import LoteDetailModal from '@/components/lote-detail-modal'
 import LoteFormModal from '@/components/lote-form-modal'
 import { useAuth } from '@/stores/auth-store'
 import { api, handleApiError } from '@/lib/api'
-import { toast } from '@/hooks/use-toast'
+import { showError, showSuccess } from '@/components/common/toast-utils'
 import type { LoteListItem } from '@/types/models'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -66,10 +66,9 @@ function LotesContent() {
       setPage(requestedPage)
     } catch (err) {
       const { message } = handleApiError(err)
-      toast.error('Error al cargar lotes', {
-        description: message ?? 'No se pudo obtener la información de los lotes.',
-      })
-      setError(message ?? 'No se pudo cargar la información de los lotes')
+      const errorMessage = message ?? 'No se pudo obtener la información de los lotes.'
+      showError('Error al cargar lotes', errorMessage)
+      setError(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -111,9 +110,7 @@ function LotesContent() {
         `Ingrese un motivo para ${action === 'cancelar' ? 'cancelar' : 'pausar'} el lote ${lote.codigo_lote}`,
       )
       if (!motivo || !motivo.trim()) {
-        toast.error('Acción cancelada', {
-          description: 'Debes proporcionar un motivo para continuar.',
-        })
+        showError('Acción cancelada', 'Debes proporcionar un motivo para continuar.')
         return
       }
       motivo = motivo.trim()
@@ -141,16 +138,12 @@ function LotesContent() {
           response = null
       }
 
-      toast.success('Lote actualizado correctamente', {
-        description: response?.message,
-      })
+      showSuccess('Lote actualizado correctamente', response?.message)
 
       await fetchLotes(page)
     } catch (err) {
       const { message } = handleApiError(err)
-      toast.error('Error al procesar el lote', {
-        description: message ?? 'Ocurrió un error al ejecutar la acción.',
-      })
+      showError('Error al procesar el lote', message ?? 'Ocurrió un error al ejecutar la acción.')
     } finally {
       setIsTransitioning(false)
       setTransitioningLoteId(null)

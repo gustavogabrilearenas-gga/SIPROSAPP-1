@@ -26,7 +26,8 @@ import {
   Calendar,
 } from 'lucide-react'
 import { api } from '@/lib/api'
-import { toast } from '@/hooks/use-toast'
+import DataState from '@/components/common/data-state'
+import { showError } from '@/components/common/toast-utils'
 
 interface Parada {
   id: number
@@ -48,6 +49,7 @@ export default function ParadasPage() {
   const { user } = useAuth()
   const [paradas, setParadas] = useState<Parada[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterTipo, setFilterTipo] = useState<string>('TODAS')
   const [isFormOpen, setIsFormOpen] = useState(false)
@@ -60,14 +62,13 @@ export default function ParadasPage() {
   const fetchParadas = async () => {
     try {
       setLoading(true)
+      setError(null)
       const response = await api.get('/paradas/')
       setParadas(response.results || response)
     } catch (error: any) {
-      toast({
-        title: 'Error al cargar paradas',
-        description: error?.message || 'No se pudieron obtener las paradas',
-        variant: 'destructive',
-      })
+      const message = error?.message || 'No se pudieron obtener las paradas'
+      setError(message)
+      showError('Error al cargar paradas', message)
     } finally {
       setLoading(false)
     }
@@ -116,6 +117,10 @@ export default function ParadasPage() {
     const mins = minutos % 60
     return `${horas}h ${mins}min`
   }
+
+  const hasError = Boolean(error)
+  const dataStateError = hasError ? `Error al cargar paradas${error ? `: ${error}` : ''}` : null
+  const isEmptyState = !loading && !hasError && filteredParadas.length === 0
 
   return (
     <ProtectedRoute>
@@ -192,16 +197,17 @@ export default function ParadasPage() {
             </div>
           </motion.div>
 
-          {/* Paradas List */}
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                className="w-12 h-12 border-4 border-orange-200 border-t-orange-600 rounded-full"
-              />
-            </div>
-          ) : (
+          <DataState
+            loading={loading}
+            error={dataStateError}
+            empty={isEmptyState}
+            emptyMessage={
+              <div className="text-center py-12">
+                <Clock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500 text-lg">No se encontraron paradas</p>
+              </div>
+            }
+          >
             <div className="space-y-4">
               {filteredParadas.map((parada, index) => {
                 const EstadoIcon = getEstadoIcon(parada.fecha_fin)
@@ -214,9 +220,11 @@ export default function ParadasPage() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.05 * index }}
                   >
-                    <Card className={`hover:shadow-xl transition-shadow duration-300 ${
-                      isEnCurso ? 'border-orange-200 bg-orange-50' : 'border-gray-200'
-                    }`}>
+                    <Card
+                      className={`hover:shadow-xl transition-shadow duration-300 ${
+                        isEnCurso ? 'border-orange-200 bg-orange-50' : 'border-gray-200'
+                      }`}
+                    >
                       <CardContent className="p-6">
                         <div className="flex justify-between items-start mb-4">
                           <div className="flex-1">
@@ -302,14 +310,7 @@ export default function ParadasPage() {
                 )
               })}
             </div>
-          )}
-
-          {!loading && filteredParadas.length === 0 && (
-            <div className="text-center py-12">
-              <Clock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">No se encontraron paradas</p>
-            </div>
-          )}
+          </DataState>
         </main>
       </div>
     </ProtectedRoute>
