@@ -27,8 +27,9 @@ import {
   XCircle,
 } from 'lucide-react'
 import { api } from '@/lib/api'
-import { toast } from '@/hooks/use-toast'
 import MaquinaFormModal from '@/components/maquina-form-modal'
+import DataState from '@/components/common/data-state'
+import { showError } from '@/components/common/toast-utils'
 
 interface Maquina {
   id: number
@@ -50,6 +51,7 @@ export default function MaquinasPage() {
   const { user } = useAuth()
   const [maquinas, setMaquinas] = useState<Maquina[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [selectedMaquinaId, setSelectedMaquinaId] = useState<number | null>(null)
@@ -61,14 +63,13 @@ export default function MaquinasPage() {
   const fetchMaquinas = async () => {
     try {
       setLoading(true)
+      setError(null)
       const response = await api.get('/maquinas/')
       setMaquinas(response.results || response)
     } catch (error: any) {
-      toast({
-        title: 'Error al cargar máquinas',
-        description: error?.message || 'No se pudieron obtener las máquinas',
-        variant: 'destructive',
-      })
+      const message = error?.message || 'No se pudieron obtener las máquinas'
+      setError(message)
+      showError('Error al cargar máquinas', message)
     } finally {
       setLoading(false)
     }
@@ -100,6 +101,10 @@ export default function MaquinasPage() {
     ]
     return estados[Math.floor(Math.random() * estados.length)]
   }
+
+  const hasError = Boolean(error)
+  const dataStateError = hasError ? `Error al cargar máquinas${error ? `: ${error}` : ''}` : null
+  const isEmptyState = !loading && !hasError && filteredMaquinas.length === 0
 
   return (
     <ProtectedRoute>
@@ -166,16 +171,17 @@ export default function MaquinasPage() {
             </div>
           </motion.div>
 
-          {/* Machines Grid */}
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full"
-              />
-            </div>
-          ) : (
+          <DataState
+            loading={loading}
+            error={dataStateError}
+            empty={isEmptyState}
+            emptyMessage={
+              <div className="text-center py-12">
+                <Settings className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500 text-lg">No se encontraron máquinas</p>
+              </div>
+            }
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredMaquinas.map((maquina, index) => {
                 const estado = getEstadoMaquina(maquina)
@@ -265,14 +271,7 @@ export default function MaquinasPage() {
                 )
               })}
             </div>
-          )}
-
-          {!loading && filteredMaquinas.length === 0 && (
-            <div className="text-center py-12">
-              <Settings className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">No se encontraron máquinas</p>
-            </div>
-          )}
+          </DataState>
         </main>
 
         {/* Modals */}
