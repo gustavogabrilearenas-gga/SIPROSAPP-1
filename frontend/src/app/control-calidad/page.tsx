@@ -26,7 +26,8 @@ import {
   User,
 } from 'lucide-react'
 import { api, handleApiError } from '@/lib/api'
-import { toast } from '@/hooks/use-toast'
+import DataState from '@/components/common/data-state'
+import { showError, showSuccess } from '@/components/common/toast-utils'
 
 interface ControlCalidad {
   id: number
@@ -43,19 +44,22 @@ interface ControlCalidad {
   observaciones: string
 }
 
-type DataState = 'loading' | 'error' | 'empty' | 'ready'
+type ViewState = 'loading' | 'error' | 'empty' | 'ready'
+
+const ERROR_MESSAGE = 'Error al cargar controles de calidad'
 
 export default function ControlCalidadPage() {
   const router = useRouter()
   const { user } = useAuth()
   const [controles, setControles] = useState<ControlCalidad[]>([])
-  const [dataState, setDataState] = useState<DataState>('loading')
+  const [dataState, setDataState] = useState<ViewState>('loading')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterConforme, setFilterConforme] = useState<string>('TODOS')
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [selectedControlId, setSelectedControlId] = useState<number | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
     fetchControles()
@@ -71,21 +75,34 @@ export default function ControlCalidadPage() {
         setControles(items)
         setDataState(items.length === 0 ? 'empty' : 'ready')
       })
-      toast({
-        title: 'Controles actualizados',
-        description: 'Se actualizaron los registros de control de calidad.',
-      })
+      showSuccess('Controles de calidad actualizados correctamente')
     } catch (error) {
       const { message } = handleApiError(error)
       startTransition(() => {
         setDataState('error')
-        setErrorMessage(message || 'No se pudieron obtener los controles de calidad')
+        setErrorMessage(ERROR_MESSAGE)
       })
-      toast({
-        title: 'Error al cargar controles',
-        description: message || 'No se pudieron obtener los controles de calidad',
-        variant: 'destructive',
-      })
+      showError(message || ERROR_MESSAGE)
+    }
+  }
+
+  const handleSaveControl = async (payload: Record<string, unknown>) => {
+    setIsSaving(true)
+    try {
+      if (selectedControlId) {
+        await api.updateControlCalidad(selectedControlId, payload)
+      } else {
+        await api.createControlCalidad(payload)
+      }
+      showSuccess('Control guardado correctamente')
+      setIsFormOpen(false)
+      setSelectedControlId(null)
+      await fetchControles()
+    } catch (error) {
+      const { message } = handleApiError(error)
+      showError(message || 'No se pudo guardar el control de calidad')
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -99,7 +116,9 @@ export default function ControlCalidadPage() {
     return matchesSearch && matchesFilter
   })
 
-  const isBusy = dataState === 'loading' || isPending
+  const isBusy = dataState === 'loading' || isPending || isSaving
+  const isError = dataState === 'error'
+  const isEmpty = dataState === 'empty'
 
   const getConformeColor = (conforme: boolean) => {
     return conforme ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
@@ -149,6 +168,7 @@ export default function ControlCalidadPage() {
                   setIsFormOpen(true)
                 }}
                 className="bg-green-600 hover:bg-green-700 text-white"
+                disabled={isBusy}
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Nuevo Control
@@ -196,114 +216,109 @@ export default function ControlCalidadPage() {
           </motion.div>
 
           {/* Controls List */}
-          {dataState === 'loading' ? (
-            <div className="flex items-center justify-center py-12">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                className="w-12 h-12 border-4 border-green-200 border-t-green-600 rounded-full"
-              />
-            </div>
-          ) : dataState === 'error' ? (
-            <div className="text-center py-12 space-y-4">
-              <AlertTriangle className="w-12 h-12 text-red-500 mx-auto" />
-              <p className="text-red-600">{errorMessage}</p>
+          <DataState
+            loading={dataState === 'loading'}
+            error={isError ? errorMessage : null}
+            empty={isEmpty}
+            emptyMessage="Sin controles de calidad disponibles"
+          >
+            {!isError && (
+              <div className="space-y-4">
+                {filteredControles.map((control, index) => {
+                  const ConformeIcon = getConformeIcon(control.conforme)
+                  const valorStatus = getValorStatus(control.valor_medido, control.valor_minimo, control.valor_maximo)
+                  const StatusIcon = valorStatus.icon
+
+                  return (
+                    <motion.div
+                      key={control.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.05 * index }}
+                    >
+                      <Card className={`hover:shadow-xl transition-shadow duration-300 ${
+                        control.conforme ? 'border-green-200' : 'border-red-200'
+                      }`}>
+                        <CardContent className="p-6">
+                          <div className="flex justify-between items-start mb-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h3 className="text-lg font-bold">{control.tipo_control}</h3>
+                                <Badge className={getConformeColor(control.conforme)}>
+                                  <ConformeIcon className="w-3 h-3 mr-1" />
+                                  {control.conforme ? 'CONFORME' : 'NO CONFORME'}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-gray-600 mb-2">
+                                Lote: {control.lote_codigo} | Etapa: {control.lote_etapa_codigo}
+                              </p>
+                            </div>
+                            <div className="text-right text-sm text-gray-500">
+                              <p>{new Date(control.fecha_control).toLocaleString()}</p>
+                              <p>Por: {control.controlado_por_nombre}</p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                            <div className="text-center">
+                              <p className="text-xs text-gray-500 mb-1">Valor Medido</p>
+                              <div className="flex items-center justify-center gap-1">
+                                <StatusIcon className={`w-4 h-4 ${valorStatus.color}`} />
+                                <p className={`text-lg font-bold ${valorStatus.color}`}>
+                                  {control.valor_medido} {control.unidad}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-xs text-gray-500 mb-1">Mínimo</p>
+                              <p className="text-lg font-medium">{control.valor_minimo} {control.unidad}</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-xs text-gray-500 mb-1">Máximo</p>
+                              <p className="text-lg font-medium">{control.valor_maximo} {control.unidad}</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-xs text-gray-500 mb-1">Estado</p>
+                              <Badge className={valorStatus.color.replace('text-', 'bg-').replace('-600', '-100')}>
+                                {valorStatus.status}
+                              </Badge>
+                            </div>
+                          </div>
+
+                          {control.observaciones && (
+                            <div className="bg-gray-50 p-3 rounded text-sm">
+                              <p className="text-gray-600">{control.observaciones}</p>
+                            </div>
+                          )}
+
+                          <div className="flex gap-2 mt-4">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedControlId(control.id)
+                                setIsFormOpen(true)
+                              }}
+                              disabled={isBusy}
+                            >
+                              <Edit className="w-4 h-4 mr-1" />
+                              Editar
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  )
+                })}
+              </div>
+            )}
+          </DataState>
+
+          {isError && (
+            <div className="mt-6 flex justify-center">
               <Button onClick={fetchControles} disabled={isBusy}>
                 Reintentar
               </Button>
-            </div>
-          ) : dataState === 'empty' ? (
-            <div className="text-center py-12 space-y-3">
-              <Shield className="w-12 h-12 text-gray-400 mx-auto" />
-              <p className="text-gray-600">Sin registros disponibles</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredControles.map((control, index) => {
-                const ConformeIcon = getConformeIcon(control.conforme)
-                const valorStatus = getValorStatus(control.valor_medido, control.valor_minimo, control.valor_maximo)
-                const StatusIcon = valorStatus.icon
-
-                return (
-                  <motion.div
-                    key={control.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.05 * index }}
-                  >
-                    <Card className={`hover:shadow-xl transition-shadow duration-300 ${
-                      control.conforme ? 'border-green-200' : 'border-red-200'
-                    }`}>
-                      <CardContent className="p-6">
-                        <div className="flex justify-between items-start mb-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h3 className="text-lg font-bold">{control.tipo_control}</h3>
-                              <Badge className={getConformeColor(control.conforme)}>
-                                <ConformeIcon className="w-3 h-3 mr-1" />
-                                {control.conforme ? 'CONFORME' : 'NO CONFORME'}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-gray-600 mb-2">
-                              Lote: {control.lote_codigo} | Etapa: {control.lote_etapa_codigo}
-                            </p>
-                          </div>
-                          <div className="text-right text-sm text-gray-500">
-                            <p>{new Date(control.fecha_control).toLocaleString()}</p>
-                            <p>Por: {control.controlado_por_nombre}</p>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                          <div className="text-center">
-                            <p className="text-xs text-gray-500 mb-1">Valor Medido</p>
-                            <div className="flex items-center justify-center gap-1">
-                              <StatusIcon className={`w-4 h-4 ${valorStatus.color}`} />
-                              <p className={`text-lg font-bold ${valorStatus.color}`}>
-                                {control.valor_medido} {control.unidad}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-xs text-gray-500 mb-1">Mínimo</p>
-                            <p className="text-lg font-medium">{control.valor_minimo} {control.unidad}</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-xs text-gray-500 mb-1">Máximo</p>
-                            <p className="text-lg font-medium">{control.valor_maximo} {control.unidad}</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-xs text-gray-500 mb-1">Estado</p>
-                            <Badge className={valorStatus.color.replace('text-', 'bg-').replace('-600', '-100')}>
-                              {valorStatus.status}
-                            </Badge>
-                          </div>
-                        </div>
-
-                        {control.observaciones && (
-                          <div className="bg-gray-50 p-3 rounded text-sm">
-                            <p className="text-gray-600">{control.observaciones}</p>
-                          </div>
-                        )}
-
-                        <div className="flex gap-2 mt-4">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedControlId(control.id)
-                              setIsFormOpen(true)
-                            }}
-                          >
-                            <Edit className="w-4 h-4 mr-1" />
-                            Editar
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                )
-              })}
             </div>
           )}
 

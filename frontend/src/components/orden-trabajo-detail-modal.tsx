@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { OrdenTrabajo, LogAuditoria } from '@/types/models'
 import { api } from '@/lib/api'
 import { Badge } from '@/components/ui/badge'
+import { showError, showSuccess } from '@/components/common/toast-utils'
 
 interface OrdenTrabajoDetailModalProps {
   isOpen: boolean
@@ -40,8 +41,9 @@ export default function OrdenTrabajoDetailModal({ isOpen, onClose, ordenId, onRe
       const logsData = await api.getLogsAuditoria({ modelo: 'ordentrabajo', objeto_id: ordenId.toString() })
       setLogs(Array.isArray(logsData?.logs) ? logsData.logs : [])
     } catch (err: any) {
-      console.error('Error loading orden data:', err)
-      setError(err.response?.data?.detail || 'Error al cargar los datos de la orden')
+      const message = err?.response?.data?.detail || 'Error al cargar los datos de la orden'
+      setError(message)
+      showError(message)
     } finally {
       setLoading(false)
     }
@@ -74,10 +76,21 @@ export default function OrdenTrabajoDetailModal({ isOpen, onClose, ordenId, onRe
       if (result) {
         setOrden(result)
         if (onRefresh) onRefresh()
+        const successMessages: Record<typeof action, string | null> = {
+          asignar: null,
+          iniciar: 'Orden de trabajo iniciada correctamente',
+          pausar: 'Orden de trabajo pausada correctamente',
+          completar: 'Orden de trabajo completada correctamente',
+          cerrar: 'Orden de trabajo cerrada correctamente',
+        }
+        const successMessage = successMessages[action]
+        if (successMessage) {
+          showSuccess(successMessage)
+        }
       }
     } catch (err: any) {
-      console.error(`Error en acción ${action}:`, err)
-      alert(err.response?.data?.detail || `Error al ${action} la orden`)
+      const message = err?.response?.data?.detail || `Error al ${action} la orden`
+      showError(message)
     } finally {
       setActionLoading(false)
     }

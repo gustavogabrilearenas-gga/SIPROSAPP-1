@@ -3,21 +3,22 @@
 import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Wrench, Plus, Search, Filter, Home, Loader2, Clock, AlertTriangle, CheckCircle, User, Calendar } from 'lucide-react'
+import { Wrench, Plus, Search, Filter, Home, Clock, AlertTriangle, CheckCircle, User, Calendar } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ProtectedRoute } from '@/components/protected-route'
 import OrdenTrabajoDetailModal from '@/components/orden-trabajo-detail-modal'
 import OrdenTrabajoFormModal from '@/components/orden-trabajo-form-modal'
+import DataState from '@/components/common/data-state'
+import { showError, showSuccess } from '@/components/common/toast-utils'
 import { useAuth } from '@/stores/auth-store'
 import { api, handleApiError } from '@/lib/api'
-import { toast } from '@/hooks/use-toast'
 import type { OrdenTrabajoListItem } from '@/types/models'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
-type DataState = 'loading' | 'error' | 'empty' | 'ready'
+type ViewState = 'loading' | 'error' | 'empty' | 'ready'
 
 const FALLBACK_ORDENES: OrdenTrabajoListItem[] = [
   {
@@ -54,11 +55,13 @@ const FALLBACK_ORDENES: OrdenTrabajoListItem[] = [
   },
 ]
 
+const ERROR_BANNER_TEXT = 'Error al cargar mantenimiento'
+
 function MantenimientoContent() {
   const router = useRouter()
   const { user } = useAuth()
   const [ordenes, setOrdenes] = useState<OrdenTrabajoListItem[]>([])
-  const [dataState, setDataState] = useState<DataState>('loading')
+  const [dataState, setDataState] = useState<ViewState>('loading')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [filtroEstado, setFiltroEstado] = useState<string>('todos')
   const [filtroPrioridad, setFiltroPrioridad] = useState<string>('todos')
@@ -89,10 +92,7 @@ function MantenimientoContent() {
         setPage(requestedPage)
         setDataState(results.length === 0 ? 'empty' : 'ready')
       })
-      toast({
-        title: 'Órdenes actualizadas',
-        description: 'Se actualizó el listado de órdenes de trabajo.',
-      })
+      showSuccess('Órdenes de trabajo actualizadas correctamente')
     } catch (err: unknown) {
       const { status, message } = handleApiError(err)
       if (status === 500) {
@@ -102,21 +102,13 @@ function MantenimientoContent() {
           setPage(1)
           setDataState(FALLBACK_ORDENES.length === 0 ? 'empty' : 'ready')
         })
-        toast({
-          title: 'Datos de demostración cargados',
-          description:
-            'No se pudo acceder al servicio, mostrando información de ejemplo para continuar con la demo.',
-        })
+        showSuccess('Datos de demostración cargados')
       } else {
         startTransition(() => {
           setDataState('error')
-          setErrorMessage(message || 'No se pudieron cargar las órdenes de trabajo')
+          setErrorMessage(ERROR_BANNER_TEXT)
         })
-        toast({
-          title: 'Error en órdenes de trabajo',
-          description: message || 'No se pudieron cargar las órdenes de trabajo',
-          variant: 'destructive',
-        })
+        showError(message || ERROR_BANNER_TEXT)
       }
     }
   }
@@ -201,6 +193,8 @@ function MantenimientoContent() {
 
   const totalPages = Math.ceil(count / 10)
   const isBusy = dataState === 'loading' || isPending
+  const isError = dataState === 'error'
+  const isEmpty = dataState === 'empty'
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
@@ -322,15 +316,67 @@ function MantenimientoContent() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {dataState === 'loading' ? (
-                <div className="text-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-                  <p className="text-gray-600">Cargando órdenes de trabajo...</p>
-                </div>
-              ) : dataState === 'error' ? (
-                <div className="text-center py-12">
-                  <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                  <p className="text-red-600 mb-4">{errorMessage}</p>
+              <DataState
+                loading={dataState === 'loading'}
+                error={isError ? errorMessage : null}
+                empty={isEmpty}
+                emptyMessage="Sin órdenes de trabajo registradas"
+              >
+                {!isError && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-gray-200">
+                          <th className="text-left py-3 px-4 font-semibold text-gray-700">Código</th>
+                          <th className="text-left py-3 px-4 font-semibold text-gray-700">Título</th>
+                          <th className="text-left py-3 px-4 font-semibold text-gray-700">Máquina</th>
+                          <th className="text-left py-3 px-4 font-semibold text-gray-700">Tipo</th>
+                          <th className="text-left py-3 px-4 font-semibold text-gray-700">Estado</th>
+                          <th className="text-left py-3 px-4 font-semibold text-gray-700">Prioridad</th>
+                          <th className="text-left py-3 px-4 font-semibold text-gray-700">Fecha Creación</th>
+                          <th className="text-left py-3 px-4 font-semibold text-gray-700">Asignada a</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {ordenes.map((orden) => (
+                          <tr
+                            key={orden.id}
+                            onClick={() => handleOrdenClick(orden.id)}
+                            className="border-b border-gray-100 hover:bg-blue-50 cursor-pointer transition-colors"
+                          >
+                            <td className="py-4 px-4">
+                              <span className="font-mono text-sm font-semibold text-blue-600">
+                                {orden.codigo}
+                              </span>
+                            </td>
+                            <td className="py-4 px-4">
+                              <div className="max-w-xs">
+                                <p className="font-medium text-gray-900 truncate">{orden.titulo}</p>
+                              </div>
+                            </td>
+                            <td className="py-4 px-4">
+                              <span className="text-sm text-gray-700">{orden.maquina_nombre}</span>
+                            </td>
+                            <td className="py-4 px-4">
+                              <span className="text-sm text-gray-700">{orden.tipo_nombre}</span>
+                            </td>
+                            <td className="py-4 px-4">{getEstadoBadge(orden.estado)}</td>
+                            <td className="py-4 px-4">{getPrioridadBadge(orden.prioridad)}</td>
+                            <td className="py-4 px-4">
+                              <span className="text-sm text-gray-600">{formatFecha(orden.fecha_creacion)}</span>
+                            </td>
+                            <td className="py-4 px-4">
+                              <span className="text-sm text-gray-600">{orden.asignada_a || '-'}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </DataState>
+              {isError && (
+                <div className="mt-6 flex justify-center">
                   <Button
                     onClick={() =>
                       startTransition(() => {
@@ -342,79 +388,13 @@ function MantenimientoContent() {
                     Reintentar
                   </Button>
                 </div>
-              ) : dataState === 'empty' ? (
-                <div className="text-center py-12">
-                  <Wrench className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 mb-4">Sin registros disponibles</p>
+              )}
+              {isEmpty && (
+                <div className="mt-6 text-center">
                   <Button onClick={handleCreateOrden} disabled={isBusy}>
                     <Plus className="h-4 w-4 mr-2" />
                     Crear Primera Orden
                   </Button>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-200">
-                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Código</th>
-                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Título</th>
-                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Máquina</th>
-                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Tipo</th>
-                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Estado</th>
-                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Prioridad</th>
-                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Fecha Creación</th>
-                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Asignada a</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {ordenes.map((orden) => (
-                        <tr
-                          key={orden.id}
-                          onClick={() => handleOrdenClick(orden.id)}
-                          className="border-b border-gray-100 hover:bg-blue-50 cursor-pointer transition-colors"
-                        >
-                          <td className="py-4 px-4">
-                            <span className="font-mono text-sm font-semibold text-blue-600">
-                              {orden.codigo}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4">
-                            <div className="max-w-xs">
-                              <p className="font-medium text-gray-900 truncate">
-                                {orden.titulo}
-                              </p>
-                            </div>
-                          </td>
-                          <td className="py-4 px-4">
-                            <span className="text-sm text-gray-700">
-                              {orden.maquina_nombre}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4">
-                            <span className="text-sm text-gray-700">
-                              {orden.tipo_nombre}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4">
-                            {getEstadoBadge(orden.estado)}
-                          </td>
-                          <td className="py-4 px-4">
-                            {getPrioridadBadge(orden.prioridad)}
-                          </td>
-                          <td className="py-4 px-4">
-                            <span className="text-sm text-gray-600">
-                              {formatFecha(orden.fecha_creacion)}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4">
-                            <span className="text-sm text-gray-600">
-                              {orden.asignada_a || '-'}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
                 </div>
               )}
             </CardContent>
