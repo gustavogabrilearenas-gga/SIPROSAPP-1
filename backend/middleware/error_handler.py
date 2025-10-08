@@ -1,15 +1,16 @@
 import logging
 import traceback
-from django.http import JsonResponse
+
 from django.conf import settings
+from django.http import JsonResponse
+from django.http import Http404
+
 
 logger = logging.getLogger(__name__)
 
+
 class GlobalErrorMiddleware:
-    """
-    Middleware para capturar excepciones globales,
-    registrar el error y devolver una respuesta JSON segura.
-    """
+    """Captura excepciones globales y entrega una respuesta JSON estandarizada."""
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -17,19 +18,25 @@ class GlobalErrorMiddleware:
     def __call__(self, request):
         try:
             return self.get_response(request)
-        except Exception as e:
-            logger.exception("Excepcion capturada: %s", e)
+        except Http404 as exc:
+            logger.warning("Recurso no encontrado: %s", exc)
+            return JsonResponse(
+                {
+                    "status": "error",
+                    "message": "Recurso no encontrado",
+                },
+                status=404,
+            )
+        except Exception as exc:  # pragma: no cover - safety net
+            logger.exception("Excepción no controlada en la solicitud")
+            response = {
+                "status": "error",
+                "message": str(exc) if settings.DEBUG else "Ocurrió un error interno. El incidente fue registrado.",
+            }
 
             if settings.DEBUG:
-                # En modo desarrollo mostramos mas informacion
-                return JsonResponse({
-                    "error": str(e),
-                    "type": e.__class__.__name__,
-                    "trace": traceback.format_exc().splitlines(),
-                }, status=500)
-            else:
-                # En modo produccion devolvemos un mensaje generico
-                return JsonResponse({
-                    "error": "Ocurrio un error interno. El incidente fue registrado.",
-                }, status=500)
+                formatted = traceback.format_exception(exc.__class__, exc, exc.__traceback__)
+                response["details"] = "".join(formatted[-5:])
+
+            return JsonResponse(response, status=500)
 

@@ -26,6 +26,7 @@ import {
   CheckCircle,
 } from 'lucide-react'
 import { api } from '@/lib/api'
+import { toast } from '@/hooks/use-toast'
 import FormulaFormModal from '@/components/formula-form-modal'
 
 interface Formula {
@@ -61,8 +62,12 @@ export default function FormulasPage() {
       setLoading(true)
       const response = await api.getFormulas()
       setFormulas(response.results || response)
-    } catch (error) {
-      console.error('Error fetching formulas:', error)
+    } catch (error: any) {
+      toast({
+        title: 'Error al cargar fórmulas',
+        description: error?.message || 'No se pudieron obtener las fórmulas',
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false)
     }

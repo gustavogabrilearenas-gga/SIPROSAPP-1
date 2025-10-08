@@ -25,6 +25,7 @@ import {
   ArrowLeft,
 } from 'lucide-react'
 import { api } from '@/lib/api'
+import { toast } from '@/hooks/use-toast'
 import ProductoFormModal from '@/components/producto-form-modal'
 
 interface Producto {
@@ -61,8 +62,12 @@ export default function ProductosPage() {
       setLoading(true)
       const response = await api.get('/productos/')
       setProductos(response.results || response)
-    } catch (error) {
-      console.error('Error fetching productos:', error)
+    } catch (error: any) {
+      toast({
+        title: 'Error al cargar productos',
+        description: error?.message || 'No se pudieron obtener los productos',
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false)
     }

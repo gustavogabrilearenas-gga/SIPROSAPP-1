@@ -5,6 +5,7 @@ import { X, User, Save, Eye, EyeOff } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { UsuarioDetalle } from '@/types/models'
 import { api } from '@/lib/api'
+import { toast } from '@/hooks/use-toast'
 
 interface UsuarioFormModalProps {
   isOpen: boolean
@@ -142,18 +143,29 @@ export default function UsuarioFormModal({ isOpen, onClose, onSuccess, usuario }
       }
 
       if (usuario) {
-        // Actualizar usuario existente
         await api.updateUsuario(usuario.id, dataToSend)
+        toast({
+          title: 'Usuario actualizado',
+          description: `Se guardaron los cambios de ${usuario.username}`,
+        })
       } else {
-        // Crear nuevo usuario
         await api.createUsuario(dataToSend)
+        toast({
+          title: 'Usuario creado',
+          description: `Se creó el usuario ${dataToSend.username}`,
+        })
       }
 
       onSuccess()
       onClose()
     } catch (err: any) {
-      console.error('Error saving usuario:', err)
-      setError(err.message || err.response?.data?.detail || 'Error al guardar el usuario')
+      const message = err?.message || 'Error al guardar el usuario'
+      toast({
+        title: 'No se pudo guardar',
+        description: message,
+        variant: 'destructive',
+      })
+      setError(message)
     } finally {
       setLoading(false)
     }

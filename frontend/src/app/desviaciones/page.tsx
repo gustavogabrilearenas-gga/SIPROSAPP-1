@@ -23,6 +23,7 @@ import {
   Clock,
 } from 'lucide-react'
 import { api } from '@/lib/api'
+import { toast } from '@/hooks/use-toast'
 
 interface Desviacion {
   id: number
@@ -59,8 +60,12 @@ export default function DesviacionesPage() {
       setLoading(true)
       const response = await api.get('/desviaciones/')
       setDesviaciones(response.results || response)
-    } catch (error) {
-      console.error('Error fetching desviaciones:', error)
+    } catch (error: any) {
+      toast({
+        title: 'Error al cargar desviaciones',
+        description: error?.message || 'No se pudo obtener la información de desviaciones',
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false)
     }
