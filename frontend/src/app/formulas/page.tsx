@@ -26,8 +26,9 @@ import {
   CheckCircle,
 } from 'lucide-react'
 import { api } from '@/lib/api'
-import { toast } from '@/hooks/use-toast'
 import FormulaFormModal from '@/components/formula-form-modal'
+import DataState from '@/components/common/data-state'
+import { showError } from '@/components/common/toast-utils'
 
 interface Formula {
   id: number
@@ -49,6 +50,7 @@ export default function FormulasPage() {
   const { user } = useAuth()
   const [formulas, setFormulas] = useState<Formula[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [selectedFormulaId, setSelectedFormulaId] = useState<number | null>(null)
@@ -60,14 +62,13 @@ export default function FormulasPage() {
   const fetchFormulas = async () => {
     try {
       setLoading(true)
+      setError(null)
       const response = await api.getFormulas()
       setFormulas(response.results || response)
     } catch (error: any) {
-      toast({
-        title: 'Error al cargar fórmulas',
-        description: error?.message || 'No se pudieron obtener las fórmulas',
-        variant: 'destructive',
-      })
+      const message = error?.message || 'No se pudieron obtener las fórmulas'
+      setError(message)
+      showError('Error al cargar fórmulas', message)
     } finally {
       setLoading(false)
     }
@@ -94,6 +95,10 @@ export default function FormulasPage() {
     if (!fechaHasta) return true
     return new Date(fechaHasta) > new Date()
   }
+
+  const hasError = Boolean(error)
+  const dataStateError = hasError ? `Error al cargar fórmulas${error ? `: ${error}` : ''}` : null
+  const isEmptyState = !loading && !hasError && filteredFormulas.length === 0
 
   return (
     <ProtectedRoute>
@@ -160,16 +165,17 @@ export default function FormulasPage() {
             </div>
           </motion.div>
 
-          {/* Formulas Grid */}
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                className="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full"
-              />
-            </div>
-          ) : (
+          <DataState
+            loading={loading}
+            error={dataStateError}
+            empty={isEmptyState}
+            emptyMessage={
+              <div className="text-center py-12">
+                <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500 text-lg">No se encontraron fórmulas</p>
+              </div>
+            }
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredFormulas.map((formula, index) => (
                 <motion.div
@@ -257,14 +263,7 @@ export default function FormulasPage() {
                 </motion.div>
               ))}
             </div>
-          )}
-
-          {!loading && filteredFormulas.length === 0 && (
-            <div className="text-center py-12">
-              <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">No se encontraron fórmulas</p>
-            </div>
-          )}
+          </DataState>
         </main>
 
         {/* Form Modal */}
