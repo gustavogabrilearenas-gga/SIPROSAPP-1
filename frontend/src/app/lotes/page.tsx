@@ -3,7 +3,19 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Package, Plus, Search, Filter, Home, Loader2, Eye, EyeOff } from 'lucide-react'
+import {
+  Package,
+  Plus,
+  Filter,
+  Home,
+  Loader2,
+  Eye,
+  EyeOff,
+  PlayCircle,
+  PauseCircle,
+  CheckCircle2,
+  Ban,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -11,11 +23,13 @@ import { ProtectedRoute } from '@/components/protected-route'
 import LoteDetailModal from '@/components/lote-detail-modal'
 import LoteFormModal from '@/components/lote-form-modal'
 import { useAuth } from '@/stores/auth-store'
-import { api } from '@/lib/api'
+import { api, handleApiError } from '@/lib/api'
 import { toast } from '@/hooks/use-toast'
 import type { LoteListItem } from '@/types/models'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+
+type LoteActionType = 'iniciar' | 'pausar' | 'completar' | 'cancelar'
 
 function LotesContent() {
   const router = useRouter()
@@ -31,6 +45,7 @@ function LotesContent() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isFormModalOpen, setIsFormModalOpen] = useState(false)
   const [selectedLoteForEdit, setSelectedLoteForEdit] = useState<LoteListItem | null>(null)
+  const [processingAction, setProcessingAction] = useState<{ id: number; action: LoteActionType } | null>(null)
 
   useEffect(() => {
     fetchLotes(1)
@@ -47,14 +62,14 @@ function LotesContent() {
       setLotes(response.results)
       setCount(response.count)
       setPage(requestedPage)
-    } catch (err: any) {
-      const message = err?.message || 'No se pudieron cargar los lotes'
+    } catch (err) {
+      const { message } = handleApiError(err)
       toast({
         title: 'Error al cargar lotes',
         description: message,
         variant: 'destructive',
       })
-      setError('Error al cargar los lotes')
+      setError(message ?? 'Error al cargar los lotes')
     } finally {
       setIsLoading(false)
     }
@@ -87,6 +102,78 @@ function LotesContent() {
 
   const handleFormSuccess = () => {
     fetchLotes(page) // Recargar la lista
+  }
+
+  const handleLoteAction = async (lote: LoteListItem, action: LoteActionType) => {
+    let motivo: string | null = null
+    if (action === 'cancelar' || action === 'pausar') {
+      motivo = window.prompt(
+        `Ingrese un motivo para ${action === 'cancelar' ? 'cancelar' : 'pausar'} el lote ${lote.codigo_lote}`,
+      )
+      if (!motivo || !motivo.trim()) {
+        toast({
+          title: 'Acción cancelada',
+          description: 'Debes proporcionar un motivo para continuar.',
+          variant: 'destructive',
+        })
+        return
+      }
+      motivo = motivo.trim()
+    }
+
+    setProcessingAction({ id: lote.id, action })
+
+    try {
+      let response: { message?: string } | null = null
+      switch (action) {
+        case 'iniciar':
+          response = await api.iniciarLote(lote.id)
+          break
+        case 'pausar':
+          response = await api.pausarLote(lote.id, { motivo: motivo ?? '' })
+          break
+        case 'completar':
+          response = await api.completarLote(lote.id)
+          break
+        case 'cancelar':
+          response = await api.cancelarLote(lote.id, { motivo: motivo ?? '' })
+          break
+        default:
+          response = null
+      }
+
+      const actionMessages: Record<LoteActionType, { title: string; fallback: string }> = {
+        iniciar: { title: 'Lote iniciado', fallback: 'El lote se inició correctamente.' },
+        pausar: { title: 'Lote pausado', fallback: 'El lote se pausó correctamente.' },
+        completar: { title: 'Lote completado', fallback: 'El lote se completó correctamente.' },
+        cancelar: { title: 'Lote cancelado', fallback: 'El lote se canceló correctamente.' },
+      }
+
+      const { title, fallback } = actionMessages[action]
+
+      toast({
+        title,
+        description: response?.message ?? fallback,
+      })
+
+      await fetchLotes(page)
+    } catch (err) {
+      const { message } = handleApiError(err)
+      const actionLabels: Record<LoteActionType, string> = {
+        iniciar: 'iniciar',
+        pausar: 'pausar',
+        completar: 'completar',
+        cancelar: 'cancelar',
+      }
+
+      toast({
+        title: `Error al ${actionLabels[action]} el lote`,
+        description: message ?? 'Ocurrió un error al ejecutar la acción.',
+        variant: 'destructive',
+      })
+    } finally {
+      setProcessingAction(null)
+    }
   }
 
   const getEstadoBadge = (estado: string) => {
@@ -314,14 +401,22 @@ function LotesContent() {
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                         Rendimiento
                       </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Acciones
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {lotes.map((lote) => (
-                      <tr
-                        key={lote.id}
-                        className="hover:bg-blue-50 transition-colors"
-                      >
+                    {lotes.map((lote) => {
+                      const isProcessing = !!processingAction
+                      const isActionInProgress = (action: LoteActionType) =>
+                        processingAction?.id === lote.id && processingAction.action === action
+
+                      return (
+                        <tr
+                          key={lote.id}
+                          className="hover:bg-blue-50 transition-colors"
+                        >
                         <td className="px-4 py-4">
                           <button
                             onClick={() => handleLoteClick(lote.id)}
@@ -375,8 +470,69 @@ function LotesContent() {
                             </span>
                           </div>
                         </td>
+                        <td className="px-4 py-4">
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleLoteAction(lote, 'iniciar')}
+                              disabled={isProcessing}
+                              className="flex items-center gap-1"
+                            >
+                              {isActionInProgress('iniciar') ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <PlayCircle className="h-4 w-4" />
+                              )}
+                              <span>Iniciar</span>
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleLoteAction(lote, 'pausar')}
+                              disabled={isProcessing}
+                              className="flex items-center gap-1"
+                            >
+                              {isActionInProgress('pausar') ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <PauseCircle className="h-4 w-4" />
+                              )}
+                              <span>Pausar</span>
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleLoteAction(lote, 'completar')}
+                              disabled={isProcessing}
+                              className="flex items-center gap-1"
+                            >
+                              {isActionInProgress('completar') ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <CheckCircle2 className="h-4 w-4" />
+                              )}
+                              <span>Completar</span>
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleLoteAction(lote, 'cancelar')}
+                              disabled={isProcessing}
+                              className="flex items-center gap-1 text-red-600 border-red-200 hover:bg-red-50"
+                            >
+                              {isActionInProgress('cancelar') ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Ban className="h-4 w-4" />
+                              )}
+                              <span>Cancelar</span>
+                            </Button>
+                          </div>
+                        </td>
                       </tr>
-                    ))}
+                    )
+                  })}
                   </tbody>
                 </table>
               </div>

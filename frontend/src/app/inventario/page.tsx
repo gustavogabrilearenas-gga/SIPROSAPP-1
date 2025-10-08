@@ -22,7 +22,7 @@ import {
   TrendingDown,
   Calendar,
 } from 'lucide-react'
-import { api } from '@/lib/api'
+import { api, handleApiError } from '@/lib/api'
 import { toast } from '@/hooks/use-toast'
 
 interface Insumo {
@@ -51,12 +51,73 @@ interface LoteInsumo {
   ubicacion_nombre: string
 }
 
+const monthsFromNow = (months: number) => {
+  const date = new Date()
+  date.setMonth(date.getMonth() + months)
+  return date.toISOString()
+}
+
+const FALLBACK_INSUMOS: Insumo[] = [
+  {
+    id: 1,
+    codigo: 'INS-001',
+    nombre: 'Etanol 96%',
+    categoria_nombre: 'Solventes',
+    unidad_medida: 'L',
+    stock_minimo: 50,
+    stock_maximo: 500,
+    punto_reorden: 100,
+    stock_actual: 320,
+    requiere_cadena_frio: false,
+    activo: true,
+  },
+  {
+    id: 2,
+    codigo: 'INS-002',
+    nombre: 'Ácido Cítrico',
+    categoria_nombre: 'Aditivos',
+    unidad_medida: 'Kg',
+    stock_minimo: 25,
+    stock_maximo: 250,
+    punto_reorden: 60,
+    stock_actual: 40,
+    requiere_cadena_frio: false,
+    activo: true,
+  },
+]
+
+const FALLBACK_LOTES_INSUMO: LoteInsumo[] = [
+  {
+    id: 1,
+    insumo_nombre: 'Etanol 96%',
+    codigo_lote_proveedor: 'ETH-2401',
+    cantidad_actual: 120,
+    unidad: 'L',
+    fecha_vencimiento: monthsFromNow(4),
+    estado: 'APROBADO',
+    proveedor: 'Quimex SA',
+    ubicacion_nombre: 'Depósito Central',
+  },
+  {
+    id: 2,
+    insumo_nombre: 'Ácido Cítrico',
+    codigo_lote_proveedor: 'CIT-2398',
+    cantidad_actual: 30,
+    unidad: 'Kg',
+    fecha_vencimiento: monthsFromNow(1),
+    estado: 'CUARENTENA',
+    proveedor: 'BioChem',
+    ubicacion_nombre: 'Almacén Químicos',
+  },
+]
+
 export default function InventarioPage() {
   const router = useRouter()
   const { user } = useAuth()
   const [insumos, setInsumos] = useState<Insumo[]>([])
   const [lotesInsumo, setLotesInsumo] = useState<LoteInsumo[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [activeTab, setActiveTab] = useState<'insumos' | 'lotes'>('insumos')
 
@@ -71,12 +132,18 @@ export default function InventarioPage() {
   const fetchInsumos = async () => {
     try {
       setLoading(true)
-      const response = await api.get('/insumos/')
+      setError(null)
+      const response = await api.getInsumos()
       setInsumos(response.results || response)
-    } catch (error: any) {
+    } catch (err) {
+      const { status, message } = handleApiError(err)
+      if (status === 500) {
+        setInsumos(FALLBACK_INSUMOS)
+      }
+      setError(message ?? 'No se pudieron obtener los insumos')
       toast({
         title: 'Error al cargar insumos',
-        description: error?.message || 'No se pudieron obtener los insumos',
+        description: message ?? 'No se pudieron obtener los insumos',
         variant: 'destructive',
       })
     } finally {
@@ -87,12 +154,18 @@ export default function InventarioPage() {
   const fetchLotesInsumo = async () => {
     try {
       setLoading(true)
-      const response = await api.get('/lotes-insumo/')
+      setError(null)
+      const response = await api.getLotesInsumo()
       setLotesInsumo(response.results || response)
-    } catch (error: any) {
+    } catch (err) {
+      const { status, message } = handleApiError(err)
+      if (status === 500) {
+        setLotesInsumo(FALLBACK_LOTES_INSUMO)
+      }
+      setError(message ?? 'No se pudieron obtener los lotes de insumo')
       toast({
         title: 'Error al cargar lotes de insumo',
-        description: error?.message || 'No se pudieron obtener los lotes de insumo',
+        description: message ?? 'No se pudieron obtener los lotes de insumo',
         variant: 'destructive',
       })
     } finally {
@@ -123,6 +196,29 @@ export default function InventarioPage() {
     const dias = Math.floor((new Date(fechaVencimiento).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
     return dias
   }
+
+  const filteredInsumos = insumos.filter((insumo) => {
+    if (!searchTerm) return true
+    const normalized = searchTerm.toLowerCase()
+    return (
+      insumo.codigo.toLowerCase().includes(normalized) ||
+      insumo.nombre.toLowerCase().includes(normalized) ||
+      insumo.categoria_nombre.toLowerCase().includes(normalized)
+    )
+  })
+
+  const filteredLotes = lotesInsumo.filter((lote) => {
+    if (!searchTerm) return true
+    const normalized = searchTerm.toLowerCase()
+    return (
+      lote.insumo_nombre.toLowerCase().includes(normalized) ||
+      lote.codigo_lote_proveedor.toLowerCase().includes(normalized) ||
+      lote.proveedor.toLowerCase().includes(normalized)
+    )
+  })
+
+  const isEmpty =
+    !loading && !error && ((activeTab === 'insumos' && filteredInsumos.length === 0) || (activeTab === 'lotes' && filteredLotes.length === 0))
 
   return (
     <ProtectedRoute>
@@ -221,9 +317,23 @@ export default function InventarioPage() {
                 className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full"
               />
             </div>
-          ) : activeTab === 'insumos' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {insumos.map((insumo, index) => {
+          ) : (
+            <>
+              {error && (
+                <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
+                  <p className="font-semibold">No se pudieron cargar los datos en vivo.</p>
+                  <p className="text-sm">{error}</p>
+                </div>
+              )}
+              {isEmpty ? (
+                <div className="flex flex-col items-center justify-center gap-2 py-12 text-gray-600">
+                  <Package className="h-12 w-12 text-gray-400" />
+                  <p className="text-lg font-medium">Sin registros disponibles</p>
+                  <p className="text-sm">Intenta ajustar los filtros o vuelve a intentarlo más tarde.</p>
+                </div>
+              ) : activeTab === 'insumos' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredInsumos.map((insumo, index) => {
                 const status = getStockStatus(insumo)
                 const StatusIcon = status.icon
                 const stockPorcentaje = (insumo.stock_actual / insumo.stock_maximo) * 100
@@ -307,7 +417,7 @@ export default function InventarioPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {lotesInsumo.map((lote, index) => {
+              {filteredLotes.map((lote, index) => {
                 const diasVencimiento = getDiasVencimiento(lote.fecha_vencimiento)
                 const esProximoVencer = diasVencimiento <= 90
 
