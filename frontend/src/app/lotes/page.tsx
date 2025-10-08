@@ -28,6 +28,7 @@ import { toast } from '@/hooks/use-toast'
 import type { LoteListItem } from '@/types/models'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import DataState from '@/components/common/data-state'
 
 type LoteActionType = 'iniciar' | 'pausar' | 'completar' | 'cancelar'
 
@@ -45,7 +46,8 @@ function LotesContent() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isFormModalOpen, setIsFormModalOpen] = useState(false)
   const [selectedLoteForEdit, setSelectedLoteForEdit] = useState<LoteListItem | null>(null)
-  const [processingAction, setProcessingAction] = useState<{ id: number; action: LoteActionType } | null>(null)
+  const [isTransitioning, setIsTransitioning] = useState(false)
+  const [transitioningLoteId, setTransitioningLoteId] = useState<number | null>(null)
 
   useEffect(() => {
     fetchLotes(1)
@@ -64,12 +66,10 @@ function LotesContent() {
       setPage(requestedPage)
     } catch (err) {
       const { message } = handleApiError(err)
-      toast({
-        title: 'Error al cargar lotes',
-        description: message,
-        variant: 'destructive',
+      toast.error('Error al cargar lotes', {
+        description: message ?? 'No se pudo obtener la información de los lotes.',
       })
-      setError(message ?? 'Error al cargar los lotes')
+      setError(message ?? 'No se pudo cargar la información de los lotes')
     } finally {
       setIsLoading(false)
     }
@@ -111,17 +111,16 @@ function LotesContent() {
         `Ingrese un motivo para ${action === 'cancelar' ? 'cancelar' : 'pausar'} el lote ${lote.codigo_lote}`,
       )
       if (!motivo || !motivo.trim()) {
-        toast({
-          title: 'Acción cancelada',
+        toast.error('Acción cancelada', {
           description: 'Debes proporcionar un motivo para continuar.',
-          variant: 'destructive',
         })
         return
       }
       motivo = motivo.trim()
     }
 
-    setProcessingAction({ id: lote.id, action })
+    setIsTransitioning(true)
+    setTransitioningLoteId(lote.id)
 
     try {
       let response: { message?: string } | null = null
@@ -142,37 +141,19 @@ function LotesContent() {
           response = null
       }
 
-      const actionMessages: Record<LoteActionType, { title: string; fallback: string }> = {
-        iniciar: { title: 'Lote iniciado', fallback: 'El lote se inició correctamente.' },
-        pausar: { title: 'Lote pausado', fallback: 'El lote se pausó correctamente.' },
-        completar: { title: 'Lote completado', fallback: 'El lote se completó correctamente.' },
-        cancelar: { title: 'Lote cancelado', fallback: 'El lote se canceló correctamente.' },
-      }
-
-      const { title, fallback } = actionMessages[action]
-
-      toast({
-        title,
-        description: response?.message ?? fallback,
+      toast.success('Lote actualizado correctamente', {
+        description: response?.message,
       })
 
       await fetchLotes(page)
     } catch (err) {
       const { message } = handleApiError(err)
-      const actionLabels: Record<LoteActionType, string> = {
-        iniciar: 'iniciar',
-        pausar: 'pausar',
-        completar: 'completar',
-        cancelar: 'cancelar',
-      }
-
-      toast({
-        title: `Error al ${actionLabels[action]} el lote`,
+      toast.error('Error al procesar el lote', {
         description: message ?? 'Ocurrió un error al ejecutar la acción.',
-        variant: 'destructive',
       })
     } finally {
-      setProcessingAction(null)
+      setIsTransitioning(false)
+      setTransitioningLoteId(null)
     }
   }
 
@@ -217,6 +198,10 @@ function LotesContent() {
       return fecha
     }
   }
+
+  const hasError = Boolean(error)
+  const dataStateError = hasError ? `Error al cargar lotes${error ? `: ${error}` : ''}` : null
+  const isEmptyState = !isLoading && !hasError && lotes.length === 0
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-6">
@@ -358,26 +343,28 @@ function LotesContent() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <div className="text-center py-12">
-                <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-                <p className="text-gray-600">Cargando lotes...</p>
-              </div>
-            ) : error ? (
-              <div className="text-center py-12">
-                <p className="text-red-600">{error}</p>
-                <Button onClick={fetchLotes} className="mt-4">
-                  Reintentar
-                </Button>
-              </div>
-            ) : lotes.length === 0 ? (
-              <div className="text-center py-12">
-                <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">No hay lotes para mostrar</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
+            <DataState
+              loading={isLoading}
+              error={dataStateError}
+              empty={isEmptyState}
+              emptyMessage={
+                <div className="flex flex-col items-center justify-center gap-2 py-12 text-gray-600">
+                  <Package className="h-12 w-12 text-gray-400" />
+                  <p className="text-lg font-medium">Sin registros disponibles</p>
+                  <p className="text-sm">Intenta ajustar los filtros o vuelve a intentarlo más tarde.</p>
+                </div>
+              }
+            >
+              {hasError && lotes.length === 0 ? (
+                <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+                  <p className="text-gray-600">No pudimos cargar los lotes en este momento.</p>
+                  <Button onClick={() => fetchLotes(page)} disabled={isLoading}>
+                    Reintentar
+                  </Button>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-200 bg-gray-50">
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
@@ -408,9 +395,7 @@ function LotesContent() {
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {lotes.map((lote) => {
-                      const isProcessing = !!processingAction
-                      const isActionInProgress = (action: LoteActionType) =>
-                        processingAction?.id === lote.id && processingAction.action === action
+                      const isLoteTransitioning = isTransitioning && transitioningLoteId === lote.id
 
                       return (
                         <tr
@@ -476,10 +461,10 @@ function LotesContent() {
                               variant="outline"
                               size="sm"
                               onClick={() => handleLoteAction(lote, 'iniciar')}
-                              disabled={isProcessing}
+                              disabled={isTransitioning}
                               className="flex items-center gap-1"
                             >
-                              {isActionInProgress('iniciar') ? (
+                              {isLoteTransitioning ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
                                 <PlayCircle className="h-4 w-4" />
@@ -490,10 +475,10 @@ function LotesContent() {
                               variant="outline"
                               size="sm"
                               onClick={() => handleLoteAction(lote, 'pausar')}
-                              disabled={isProcessing}
+                              disabled={isTransitioning}
                               className="flex items-center gap-1"
                             >
-                              {isActionInProgress('pausar') ? (
+                              {isLoteTransitioning ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
                                 <PauseCircle className="h-4 w-4" />
@@ -504,10 +489,10 @@ function LotesContent() {
                               variant="outline"
                               size="sm"
                               onClick={() => handleLoteAction(lote, 'completar')}
-                              disabled={isProcessing}
+                              disabled={isTransitioning}
                               className="flex items-center gap-1"
                             >
-                              {isActionInProgress('completar') ? (
+                              {isLoteTransitioning ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
                                 <CheckCircle2 className="h-4 w-4" />
@@ -518,10 +503,10 @@ function LotesContent() {
                               variant="outline"
                               size="sm"
                               onClick={() => handleLoteAction(lote, 'cancelar')}
-                              disabled={isProcessing}
+                              disabled={isTransitioning}
                               className="flex items-center gap-1 text-red-600 border-red-200 hover:bg-red-50"
                             >
-                              {isActionInProgress('cancelar') ? (
+                              {isLoteTransitioning ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
                                 <Ban className="h-4 w-4" />
@@ -535,8 +520,9 @@ function LotesContent() {
                   })}
                   </tbody>
                 </table>
-              </div>
-            )}
+                </div>
+              )}
+            </DataState>
           </CardContent>
         </Card>
       </motion.div>
