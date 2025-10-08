@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { TrendingUp, Home, AlertCircle, BarChart3, PieChart, Activity } from 'lucide-react'
+import { TrendingUp, Home, BarChart3, PieChart, Activity } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ProtectedRoute } from '@/components/protected-route'
@@ -23,6 +23,7 @@ import {
   Pie,
   Cell,
 } from 'recharts'
+import DataState from '@/components/common/data-state'
 
 function KPIsContent() {
   const router = useRouter()
@@ -69,7 +70,7 @@ function KPIsContent() {
       if (mainFailureReasons.length > 0) {
         const { message } = handleApiError(mainFailureReasons[0])
         toast({
-          title: 'Error al cargar KPIs',
+          title: 'Error al cargar métricas',
           description: message,
           variant: 'destructive'
         })
@@ -102,7 +103,7 @@ function KPIsContent() {
     } catch (err) {
       const { message } = handleApiError(err)
       toast({
-        title: 'Error inesperado al cargar KPIs',
+        title: 'Error al cargar métricas',
         description: message,
         variant: 'destructive'
       })
@@ -132,6 +133,9 @@ function KPIsContent() {
   const periodLabel = stats?.fecha
     ? new Date(stats.fecha).toLocaleString('es-AR', { month: 'short' })
     : 'Actual'
+
+  const hasKpiData = Boolean(stats || oeeMetrics)
+  const isEmptyState = !isLoading && !error && !hasKpiData && lotesPorEstado.length === 0
 
   const kpiTendencias = [
     { mes: 'May', oee: 75, disponibilidad: 92, eficiencia: 85 },
@@ -176,37 +180,32 @@ function KPIsContent() {
               </div>
             </div>
           </div>
-        </div>
+            </div>
       </motion.div>
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {error && (
-          <div className="mb-6">
-            <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700 shadow-sm">
-              <AlertCircle className="mt-1 h-5 w-5 flex-shrink-0" />
-              <div className="flex-1">
-                <p className="font-semibold">No se pudieron cargar los datos en vivo.</p>
-                <p className="text-sm">{error}</p>
+        <DataState loading={isLoading} error={error} empty={isEmptyState}>
+          <>
+            {error && (
+              <div className="mb-6 flex justify-end">
+                <Button variant="outline" size="sm" onClick={fetchData}>
+                  Reintentar
+                </Button>
               </div>
-              <Button variant="outline" size="sm" onClick={fetchData}>
-                Reintentar
-              </Button>
-            </div>
-          </div>
-        )}
+            )}
 
-        {/* KPIs Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {isLoading ? (
-            Array.from({ length: 4 }).map((_, index) => (
-              <div
-                key={index}
-                className="h-36 rounded-2xl border border-white/60 bg-white/70 shadow-inner animate-pulse"
-              />
-            ))
-          ) : (
-            <>
+            {/* KPIs Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              {isLoading ? (
+                Array.from({ length: 4 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="h-36 rounded-2xl border border-white/60 bg-white/70 shadow-inner animate-pulse"
+                  />
+                ))
+              ) : (
+                <>
               <motion.div
                 key="oee-card"
                 initial={{ opacity: 0, y: 20 }}
@@ -332,12 +331,12 @@ function KPIsContent() {
                   </CardContent>
                 </Card>
               </motion.div>
-            </>
-          )}
-        </div>
+                </>
+              )}
+            </div>
 
-        {/* Gráficos */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {/* Gráficos */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Gráfico de Tendencias */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -418,10 +417,10 @@ function KPIsContent() {
               </CardContent>
             </Card>
           </motion.div>
-        </div>
+            </div>
 
-        {/* Estadísticas Adicionales */}
-        <motion.div
+            {/* Estadísticas Adicionales */}
+            <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7 }}
@@ -459,10 +458,10 @@ function KPIsContent() {
               )}
             </CardContent>
           </Card>
-        </motion.div>
+            </motion.div>
 
-        {/* Nota */}
-        <motion.div
+            {/* Nota */}
+            <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.8 }}
@@ -476,7 +475,9 @@ function KPIsContent() {
               </p>
             </CardContent>
           </Card>
-        </motion.div>
+            </motion.div>
+          </>
+        </DataState>
       </div>
     </div>
   )

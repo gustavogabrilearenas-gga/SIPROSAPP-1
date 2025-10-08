@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { useAuth } from '@/stores/auth-store'
 import {
   Card,
@@ -56,6 +56,7 @@ import { toast } from '@/hooks/use-toast'
 import { DashboardStats } from '@/types/models'
 import NotificationCenter from '@/components/notification-center'
 import GlobalSearch from '@/components/global-search'
+import DataState from '@/components/common/data-state'
 
 type DashboardViewData = {
   fecha: string
@@ -145,7 +146,7 @@ export function Dashboard() {
       } catch (err) {
         const { message } = handleApiError(err)
         toast({
-          title: 'Error al cargar el dashboard',
+          title: 'Error al cargar métricas',
           description: message,
           variant: 'destructive'
         })
@@ -172,18 +173,6 @@ export function Dashboard() {
 
     return () => clearInterval(timeTimer)
   }, [])
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full"
-        />
-      </div>
-    )
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
@@ -225,9 +214,9 @@ export function Dashboard() {
             >
               {/* Sistema de Notificaciones */}
               <NotificationCenter />
-              
+
               {user && (
-                <button 
+                <button
                   onClick={() => router.push('/perfil')}
                   className="text-right border-r border-gray-300 pr-4 hover:opacity-70 transition-opacity"
                 >
@@ -278,126 +267,128 @@ export function Dashboard() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Welcome Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="mb-8"
-        >
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white">
-            <h2 className="text-3xl font-bold mb-2">
-              ¡Centro de Control Activo!
-            </h2>
-            <p className="text-blue-100 text-lg">
-              Monitoreo en tiempo real de todos los procesos de producción farmacéutica
-            </p>
-            <div className="flex items-center mt-4 space-x-6">
-              <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-                <span className="text-sm font-medium">Producción: Óptima</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 bg-blue-400 rounded-full animate-pulse"></div>
-                <span className="text-sm font-medium">Calidad: Estándar</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 bg-purple-400 rounded-full animate-pulse"></div>
-                <span className="text-sm font-medium">Eficiencia: 87.5%</span>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* KPI Cards Animados */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
-        >
-          {[
-            {
-              title: 'Producción Diaria',
-              value: realTimeData.totalProduccion ? realTimeData.totalProduccion.toLocaleString() : '0',
-              subtitle: 'Unidades producidas',
-              icon: Package,
-              color: 'from-emerald-500 to-teal-600',
-              bgColor: 'bg-emerald-50',
-              iconColor: 'text-emerald-600'
-            },
-            {
-              title: 'Lotes Activos',
-              value: realTimeData.lotesActivos,
-              subtitle: 'En proceso',
-              icon: Clock,
-              color: 'from-blue-500 to-indigo-600',
-              bgColor: 'bg-blue-50',
-              iconColor: 'text-blue-600'
-            },
-            {
-              title: 'Mantenimiento',
-              value: realTimeData.ordenesMantenimiento,
-              subtitle: 'Órdenes pendientes',
-              icon: Wrench,
-              color: 'from-amber-500 to-orange-600',
-              bgColor: 'bg-amber-50',
-              iconColor: 'text-amber-600'
-            },
-            {
-              title: 'Alertas',
-              value: realTimeData.alertasPendientes,
-              subtitle: 'Requieren atención',
-              icon: AlertTriangle,
-              color: 'from-red-500 to-rose-600',
-              bgColor: 'bg-red-50',
-              iconColor: 'text-red-600'
-            }
-          ].map((kpi, index) => (
+        <DataState loading={isLoading} error={error} empty={false}>
+          <>
+            {/* Welcome Section */}
             <motion.div
-              key={kpi.title}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 + index * 0.1 }}
-              whileHover={{ scale: 1.02 }}
-              className="group"
+              transition={{ delay: 0.4 }}
+              className="mb-8"
             >
-              <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-                <div className={`absolute inset-0 bg-gradient-to-br ${kpi.color} opacity-5 group-hover:opacity-10 transition-opacity`}></div>
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-medium text-gray-600">
-                      {kpi.title}
-                    </CardTitle>
-                    <div className={`p-2 rounded-lg ${kpi.bgColor}`}>
-                      <kpi.icon className={`h-5 w-5 ${kpi.iconColor}`} />
-                    </div>
+              <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white">
+                <h2 className="text-3xl font-bold mb-2">
+                  ¡Centro de Control Activo!
+                </h2>
+                <p className="text-blue-100 text-lg">
+                  Monitoreo en tiempo real de todos los procesos de producción farmacéutica
+                </p>
+                <div className="flex items-center mt-4 space-x-6">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                    <span className="text-sm font-medium">Producción: Óptima</span>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-gray-900 mb-1">
-                    {kpi.value}
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 bg-blue-400 rounded-full animate-pulse"></div>
+                    <span className="text-sm font-medium">Calidad: Estándar</span>
                   </div>
-                  <p className="text-sm text-gray-500">
-                    {kpi.subtitle}
-                  </p>
-                </CardContent>
-              </Card>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 bg-purple-400 rounded-full animate-pulse"></div>
+                    <span className="text-sm font-medium">Eficiencia: 87.5%</span>
+                  </div>
+                </div>
+              </div>
             </motion.div>
-          ))}
-        </motion.div>
 
-        {/* Gráficos y Análisis */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          {/* Gráfico de Producción */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.8 }}
-          >
-            <Card className="shadow-lg border-0">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
+            {/* KPI Cards Animados */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+            >
+              {[
+                {
+                  title: 'Producción Diaria',
+                  value: realTimeData.totalProduccion ? realTimeData.totalProduccion.toLocaleString() : '0',
+                  subtitle: 'Unidades producidas',
+                  icon: Package,
+                  color: 'from-emerald-500 to-teal-600',
+                  bgColor: 'bg-emerald-50',
+                  iconColor: 'text-emerald-600'
+                },
+                {
+                  title: 'Lotes Activos',
+                  value: realTimeData.lotesActivos,
+                  subtitle: 'En proceso',
+                  icon: Clock,
+                  color: 'from-blue-500 to-indigo-600',
+                  bgColor: 'bg-blue-50',
+                  iconColor: 'text-blue-600'
+                },
+                {
+                  title: 'Mantenimiento',
+                  value: realTimeData.ordenesMantenimiento,
+                  subtitle: 'Órdenes pendientes',
+                  icon: Wrench,
+                  color: 'from-amber-500 to-orange-600',
+                  bgColor: 'bg-amber-50',
+                  iconColor: 'text-amber-600'
+                },
+                {
+                  title: 'Alertas',
+                  value: realTimeData.alertasPendientes,
+                  subtitle: 'Requieren atención',
+                  icon: AlertTriangle,
+                  color: 'from-red-500 to-rose-600',
+                  bgColor: 'bg-red-50',
+                  iconColor: 'text-red-600'
+                }
+              ].map((kpi, index) => (
+                <motion.div
+                  key={kpi.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.6 + index * 0.1 }}
+                  whileHover={{ scale: 1.02 }}
+                  className="group"
+                >
+                  <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+                    <div className={`absolute inset-0 bg-gradient-to-br ${kpi.color} opacity-5 group-hover:opacity-10 transition-opacity`}></div>
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm font-medium text-gray-600">
+                          {kpi.title}
+                        </CardTitle>
+                        <div className={`p-2 rounded-lg ${kpi.bgColor}`}>
+                          <kpi.icon className={`h-5 w-5 ${kpi.iconColor}`} />
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-3xl font-bold text-gray-900 mb-1">
+                        {kpi.value}
+                      </div>
+                      <p className="text-sm text-gray-500">
+                        {kpi.subtitle}
+                      </p>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </motion.div>
+
+            {/* Gráficos y Análisis */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+              {/* Gráfico de Producción */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.8 }}
+              >
+                <Card className="shadow-lg border-0">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
                   <BarChart3 className="h-5 w-5 text-blue-600" />
                   <span>Producción Semanal</span>
                 </CardTitle>
@@ -766,6 +757,8 @@ export function Dashboard() {
             </Card>
           </motion.div>
         </div>
+          </>
+        </DataState>
       </main>
     </div>
   )

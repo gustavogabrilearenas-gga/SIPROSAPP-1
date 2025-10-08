@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Bell, X, Check, CheckCheck, AlertCircle, Info, AlertTriangle, CheckCircle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Notificacion } from '@/types/models'
 import { api, handleApiError } from '@/lib/api'
 import { toast } from '@/hooks/use-toast'
+import DataState from '@/components/common/data-state'
 
 const createFallbackNotifications = (): Notificacion[] => [
   {
@@ -23,55 +24,63 @@ export default function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false)
   const [notificaciones, setNotificaciones] = useState<Notificacion[]>([])
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [unreadCount, setUnreadCount] = useState(0)
 
-  // Cargar notificaciones cuando se abre
-  useEffect(() => {
-    if (isOpen) {
-      loadNotificaciones()
-    }
-  }, [isOpen])
-
-  // Cargar contador de no leídas al iniciar y cada 30 segundos
-  useEffect(() => {
-    loadUnreadCount()
-    const interval = setInterval(loadUnreadCount, 30000) // 30 segundos
-    return () => clearInterval(interval)
-  }, [])
-
-  const loadNotificaciones = async () => {
+  const loadNotificaciones = useCallback(async () => {
     setLoading(true)
     try {
       const response = await api.getNotificaciones()
       const items = Array.isArray(response) ? response : []
       setNotificaciones(items)
 
-      // Actualizar contador de no leídas
       const unread = items.filter((n: Notificacion) => !n.leida).length
       setUnreadCount(unread)
+      setError(null)
     } catch (err) {
       const { message } = handleApiError(err)
       toast({
-        title: 'No se pudieron cargar las notificaciones',
+        title: 'Error al cargar notificaciones',
         description: message,
         variant: 'destructive'
       })
       const fallback = createFallbackNotifications()
       setNotificaciones(fallback)
       setUnreadCount(fallback.filter((n) => !n.leida).length)
+      setError(message ?? 'No se pudieron cargar las notificaciones en tiempo real.')
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
 
-  const loadUnreadCount = async () => {
+  const loadUnreadCount = useCallback(async () => {
     try {
       const response = await api.getContadorNotificacionesNoLeidas()
       setUnreadCount(response.no_leidas)
     } catch (err) {
       console.error('Error loading unread count:', handleApiError(err))
     }
-  }
+  }, [])
+
+  // Cargar notificaciones cuando se abre
+  useEffect(() => {
+    if (!isOpen) {
+      return
+    }
+
+    loadNotificaciones()
+
+    const interval = setInterval(loadNotificaciones, 60000)
+
+    return () => clearInterval(interval)
+  }, [isOpen, loadNotificaciones])
+
+  // Cargar contador de no leídas al iniciar y cada 30 segundos
+  useEffect(() => {
+    loadUnreadCount()
+    const interval = setInterval(loadUnreadCount, 30000) // 30 segundos
+    return () => clearInterval(interval)
+  }, [loadUnreadCount])
 
   const handleMarkAsRead = async (id: number) => {
     try {
@@ -212,16 +221,17 @@ export default function NotificationCenter() {
 
               {/* Notifications List */}
               <div className="max-h-96 overflow-y-auto">
-                {loading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                  </div>
-                ) : notificaciones.length === 0 ? (
-                  <div className="p-8 text-center text-gray-500">
-                    <Bell className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>No hay notificaciones</p>
-                  </div>
-                ) : (
+                <DataState
+                  loading={loading}
+                  error={error}
+                  empty={!loading && notificaciones.length === 0}
+                  emptyMessage={(
+                    <>
+                      <Bell className="h-12 w-12 opacity-50" />
+                      <span>Sin notificaciones</span>
+                    </>
+                  )}
+                >
                   <div className="divide-y divide-gray-100">
                     {notificaciones.map((notif) => (
                       <motion.div
@@ -273,7 +283,7 @@ export default function NotificationCenter() {
                       </motion.div>
                     ))}
                   </div>
-                )}
+                </DataState>
               </div>
 
               {/* Footer */}
