@@ -11,6 +11,12 @@ export interface ApiError extends Error {
   response?: AxiosResponse
 }
 
+export interface ApiErrorPayload {
+  status: number
+  message: string
+  details?: unknown
+}
+
 const DEFAULT_API_BASE = 'http://localhost:8000'
 const DEFAULT_BROWSER_BASE = '/api'
 
@@ -75,6 +81,16 @@ const createApiError = (error: unknown): ApiError => {
   apiError.response = axiosError.response
 
   return apiError
+}
+
+export const handleApiError = (error: unknown): ApiErrorPayload => {
+  const apiError = createApiError(error)
+
+  return {
+    status: apiError.status ?? 500,
+    message: apiError.message,
+    details: apiError.details ?? apiError.response?.data,
+  }
 }
 
 const resolvePath = (path: string): string => {
@@ -236,6 +252,455 @@ const patch = async <T>(path: string, data?: unknown, config?: AxiosRequestConfi
 
 const del = async <T>(path: string, config?: AxiosRequestConfig): Promise<T> =>
   request<T>({ ...config, method: 'delete', url: path })
+
+const withHandledRequest = async <T>(factory: () => Promise<T>): Promise<T> => {
+  try {
+    return await factory()
+  } catch (error) {
+    throw handleApiError(error)
+  }
+}
+
+export interface PaginatedResponse<T> {
+  count: number
+  next: string | null
+  previous: string | null
+  results: T[]
+}
+
+export interface Insumo {
+  id: number
+  codigo: string
+  nombre: string
+  categoria: number
+  categoria_nombre?: string
+  unidad_medida: string
+  stock_minimo: number
+  stock_maximo: number
+  punto_reorden: number
+  stock_disponible?: number
+  activo: boolean
+}
+
+export type CreateInsumoPayload = Omit<
+  Insumo,
+  'id' | 'categoria_nombre' | 'stock_disponible'
+>
+
+export type UpdateInsumoPayload = Partial<CreateInsumoPayload>
+
+export interface InsumoListParams {
+  search?: string
+  categoria?: number
+  activo?: boolean
+  ordering?: string
+  page?: number
+}
+
+export interface LoteInsumo {
+  id: number
+  insumo: number
+  insumo_nombre?: string
+  codigo_lote_proveedor: string
+  fecha_recepcion: string
+  fecha_vencimiento: string
+  dias_vencimiento?: number | null
+  cantidad_inicial: number
+  cantidad_actual: number
+  unidad: string
+  ubicacion: number
+  ubicacion_nombre?: string
+  ubicacion_detalle?: string
+  estado: string
+  estado_display?: string
+  proveedor: string
+}
+
+export type CreateLoteInsumoPayload = Omit<
+  LoteInsumo,
+  'id' | 'insumo_nombre' | 'dias_vencimiento' | 'ubicacion_nombre' | 'estado_display'
+>
+
+export interface LoteInsumoListParams {
+  insumo?: number
+  estado?: string
+  ordering?: string
+  search?: string
+  page?: number
+}
+
+export interface MovimientoInventario {
+  id: number
+  tipo_item: string
+  tipo_item_display?: string
+  item_id: number
+  lote_item_id?: number | null
+  tipo_movimiento: string
+  tipo_movimiento_display?: string
+  motivo?: string | null
+  cantidad: number
+  unidad: string
+  ubicacion_origen?: number | null
+  ubicacion_destino?: number | null
+  referencia_documento?: string | null
+  fecha_movimiento: string
+  registrado_por: number
+  observaciones?: string | null
+}
+
+export type CreateMovimientoInventarioPayload = Pick<
+  MovimientoInventario,
+  'tipo_item' | 'item_id' | 'tipo_movimiento' | 'cantidad' | 'unidad'
+> &
+  Partial<
+    Pick<
+      MovimientoInventario,
+      'lote_item_id' | 'motivo' | 'ubicacion_origen' | 'ubicacion_destino' | 'referencia_documento' | 'observaciones'
+    >
+  >
+
+export interface MovimientoInventarioParams {
+  tipo_item?: string
+  item_id?: number
+  tipo_movimiento?: string
+  ordering?: string
+  page?: number
+}
+
+export interface LoteListItem {
+  id: number
+  codigo_lote: string
+  producto: number
+  producto_nombre: string
+  estado: string
+  estado_display: string
+  prioridad: string
+  prioridad_display: string
+  cantidad_planificada: number
+  cantidad_producida: number | null
+  cantidad_rechazada: number | null
+  unidad: string
+  rendimiento_porcentaje: number | null
+  fecha_planificada_inicio: string | null
+  fecha_real_inicio: string | null
+  fecha_planificada_fin: string | null
+  fecha_real_fin: string | null
+  fecha_creacion: string
+  supervisor: number | null
+  supervisor_nombre: string | null
+}
+
+export interface LoteListParams {
+  estado?: string
+  producto?: number
+  turno?: number
+  fecha_desde?: string
+  fecha_hasta?: string
+  en_proceso?: boolean
+  mostrar_ocultos?: boolean
+  ordering?: string
+  page?: number
+}
+
+export interface Lote extends LoteListItem {
+  formula: number
+  formula_version: string | null
+  turno: number | null
+  turno_nombre: string | null
+  observaciones: string | null
+  creado_por: number
+  creado_por_nombre: string | null
+  visible: boolean
+  cancelado_por: number | null
+  cancelado_por_nombre: string | null
+  fecha_cancelacion: string | null
+  motivo_cancelacion?: string | null
+}
+
+export type CreateLotePayload = Partial<Omit<Lote, 'id' | 'creado_por' | 'creado_por_nombre' | 'fecha_creacion' | 'rendimiento_porcentaje'>> & {
+  codigo_lote: string
+  producto: number
+  formula: number
+  cantidad_planificada: number
+  unidad: string
+  prioridad: string
+}
+
+export type UpdateLotePayload = Partial<CreateLotePayload>
+
+export interface CancelLotePayload {
+  motivo: string
+}
+
+export type IniciarLotePayload = Record<string, unknown>
+
+export type CompletarLotePayload = Record<string, unknown>
+
+export interface PausarLotePayload {
+  motivo: string
+}
+
+export interface LiberarLotePayload {
+  password: string
+  motivo: string
+  comentarios?: string
+}
+
+export interface RechazarLotePayload extends LiberarLotePayload {}
+
+export interface LoteActionResponse {
+  message?: string
+  lote: Lote
+  [key: string]: unknown
+}
+
+export interface OrdenTrabajoListItem {
+  id: number
+  codigo: string
+  maquina: number | null
+  maquina_nombre: string | null
+  tipo: number
+  tipo_nombre: string
+  prioridad: string
+  prioridad_display: string
+  estado: string
+  estado_display: string
+  titulo: string
+  fecha_creacion: string
+  fecha_planificada: string | null
+  asignada_a: number | null
+}
+
+export interface OrdenTrabajoListParams {
+  maquina?: number
+  tipo?: number
+  estado?: string
+  prioridad?: string
+  ordering?: string
+  page?: number
+}
+
+export interface OrdenTrabajo extends OrdenTrabajoListItem {
+  descripcion: string | null
+  fecha_inicio: string | null
+  fecha_fin: string | null
+  duracion_real_horas: number | null
+  creada_por: number
+  creada_por_nombre: string | null
+  completada_por: number | null
+  trabajo_realizado: string | null
+  observaciones: string | null
+  requiere_parada_produccion: boolean
+  costo_estimado: number | null
+  costo_real: number | null
+}
+
+export type CreateOrdenTrabajoPayload = {
+  tipo: number
+  maquina: number
+  prioridad: string
+  titulo: string
+  descripcion?: string
+  fecha_planificada?: string
+  requiere_parada_produccion?: boolean
+  costo_estimado?: number
+}
+
+export type UpdateOrdenTrabajoPayload = Partial<CreateOrdenTrabajoPayload> & {
+  estado?: string
+  asignada_a?: number | null
+  observaciones?: string | null
+  trabajo_realizado?: string | null
+  costo_real?: number | null
+}
+
+export interface OrdenTrabajoActionResponse {
+  message: string
+  orden_trabajo: OrdenTrabajo
+}
+
+export interface ControlCalidad {
+  id: number
+  lote_etapa: number
+  tipo_control: string
+  valor_medido: number
+  unidad: string
+  valor_minimo: number | null
+  valor_maximo: number | null
+  conforme?: boolean
+  fecha_control: string
+  controlado_por: number
+  observaciones?: string | null
+}
+
+export type CreateControlCalidadPayload = Omit<
+  ControlCalidad,
+  'id' | 'fecha_control' | 'conforme'
+>
+
+export type UpdateControlCalidadPayload = Partial<CreateControlCalidadPayload>
+
+export interface ControlCalidadListParams {
+  lote_etapa?: number
+  ordering?: string
+  search?: string
+  page?: number
+}
+
+export interface Desviacion {
+  id: number
+  codigo: string
+  lote: number | null
+  lote_codigo: string | null
+  lote_etapa: number | null
+  lote_etapa_descripcion?: string | null
+  titulo: string
+  descripcion: string
+  severidad: string
+  severidad_display?: string
+  estado: string
+  estado_display?: string
+  fecha_deteccion: string
+  detectado_por: number
+  detectado_por_nombre?: string
+  area_responsable?: string | null
+  impacto_calidad?: boolean
+  impacto_seguridad?: boolean
+  impacto_eficacia?: boolean
+  investigacion_realizada?: string | null
+  causa_raiz?: string | null
+  accion_inmediata?: string | null
+  requiere_capa?: boolean
+  fecha_cierre?: string | null
+  cerrado_por?: number | null
+  cerrado_por_nombre?: string | null
+}
+
+export interface DesviacionListParams {
+  severidad?: string
+  estado?: string
+  lote?: number
+  ordering?: string
+  search?: string
+  page?: number
+}
+
+export type CreateDesviacionPayload = {
+  titulo: string
+  descripcion: string
+  severidad: string
+  lote?: number | null
+  lote_etapa?: number | null
+  area_responsable?: string | null
+  impacto_calidad?: boolean
+  impacto_seguridad?: boolean
+  impacto_eficacia?: boolean
+  investigacion_realizada?: string | null
+  causa_raiz?: string | null
+  accion_inmediata?: string | null
+  requiere_capa?: boolean
+}
+
+export type UpdateDesviacionPayload = Partial<CreateDesviacionPayload> & {
+  estado?: string
+  fecha_cierre?: string
+  cerrado_por?: number | null
+}
+
+export interface AccionCorrectiva {
+  id: number
+  incidente: number
+  incidente_codigo?: string
+  incidente_titulo?: string
+  tipo: string
+  tipo_display?: string
+  descripcion: string
+  responsable: number
+  responsable_nombre?: string
+  fecha_planificada: string
+  fecha_implementacion?: string | null
+  estado: string
+  estado_display?: string
+  eficacia_verificada?: boolean
+  verificado_por?: number | null
+  verificado_por_nombre?: string | null
+  fecha_verificacion?: string | null
+  observaciones?: string | null
+}
+
+export type CreateAccionCorrectivaPayload = {
+  incidente: number
+  tipo: string
+  descripcion: string
+  responsable: number
+  fecha_planificada: string
+  fecha_implementacion?: string | null
+  estado?: string
+  eficacia_verificada?: boolean
+  verificado_por?: number | null
+  fecha_verificacion?: string | null
+  observaciones?: string | null
+}
+
+export interface DashboardStats {
+  fecha: string
+  lotes: {
+    activos: number
+    hoy: number
+    total: number
+  }
+  incidentes: {
+    abiertos: number
+    criticos: number
+    total: number
+  }
+  ordenes_trabajo: {
+    abiertas: number
+    urgentes: number
+    total: number
+  }
+  oee_7_dias: {
+    oee: number
+    disponibilidad: number
+    rendimiento: number
+    calidad: number
+  }
+}
+
+export interface OeeSeriesPoint {
+  fecha: string
+  lotes: number
+  cantidad_producida: number
+}
+
+export interface OeeMetrics {
+  desde: string
+  hasta: string
+  turno: string | null
+  total_lotes: number
+  oee: number
+  disponibilidad: number
+  rendimiento: number
+  calidad: number
+  message?: string
+  metricas?: {
+    tiempo_planificado_horas: number
+    tiempo_real_horas: number
+    tiempo_paradas_horas: number
+    tiempo_operativo_horas: number
+    cantidad_planificada: number
+    cantidad_producida: number
+    cantidad_rechazada: number
+    cantidad_buena: number
+  }
+  series?: OeeSeriesPoint[]
+}
+
+export interface OeeParams {
+  desde?: string
+  hasta?: string
+  turno?: string
+}
 
 const api = {
   client,
@@ -462,4 +927,200 @@ const api = {
   },
 }
 
-export { api, request, get, post, put, patch, del as delete, createApiError }
+export const getInsumos = async (
+  params?: InsumoListParams,
+): Promise<PaginatedResponse<Insumo>> =>
+  withHandledRequest(() => get<PaginatedResponse<Insumo>>('inventario/insumos/', { params }))
+
+export const createInsumo = async (payload: CreateInsumoPayload): Promise<Insumo> =>
+  withHandledRequest(() => post<Insumo>('inventario/insumos/', payload))
+
+export const updateInsumo = async (
+  id: number | string,
+  payload: UpdateInsumoPayload,
+): Promise<Insumo> =>
+  withHandledRequest(() => put<Insumo>(`inventario/insumos/${id}/`, payload))
+
+export const deleteInsumo = async (id: number | string): Promise<void> =>
+  withHandledRequest(() => del<void>(`inventario/insumos/${id}/`))
+
+export const getLotesInsumo = async (
+  params?: LoteInsumoListParams,
+): Promise<PaginatedResponse<LoteInsumo>> =>
+  withHandledRequest(() => get<PaginatedResponse<LoteInsumo>>('inventario/lotes-insumo/', { params }))
+
+export const createLoteInsumo = async (
+  payload: CreateLoteInsumoPayload,
+): Promise<LoteInsumo> =>
+  withHandledRequest(() => post<LoteInsumo>('inventario/lotes-insumo/', payload))
+
+export const getMovimientosInventario = async (
+  params?: MovimientoInventarioParams,
+): Promise<PaginatedResponse<MovimientoInventario>> =>
+  withHandledRequest(() => get<PaginatedResponse<MovimientoInventario>>('inventario/movimientos/', { params }))
+
+export const createMovimientoInventario = async (
+  payload: CreateMovimientoInventarioPayload,
+): Promise<MovimientoInventario> =>
+  withHandledRequest(() => post<MovimientoInventario>('inventario/movimientos/', payload))
+
+export const getLotes = async (
+  params?: LoteListParams,
+): Promise<PaginatedResponse<LoteListItem>> =>
+  withHandledRequest(() => get<PaginatedResponse<LoteListItem>>('produccion/lotes/', { params }))
+
+export const createLote = async (payload: CreateLotePayload): Promise<Lote> =>
+  withHandledRequest(() => post<Lote>('produccion/lotes/', payload))
+
+export const cancelarLote = async (
+  id: number | string,
+  payload: CancelLotePayload,
+): Promise<LoteActionResponse> =>
+  withHandledRequest(() => post<LoteActionResponse>(`produccion/lotes/${id}/cancelar/`, payload))
+
+export const iniciarLote = async (
+  id: number | string,
+  payload?: IniciarLotePayload,
+): Promise<LoteActionResponse> =>
+  withHandledRequest(() => post<LoteActionResponse>(`produccion/lotes/${id}/iniciar/`, payload))
+
+export const completarLote = async (
+  id: number | string,
+  payload?: CompletarLotePayload,
+): Promise<LoteActionResponse> =>
+  withHandledRequest(() => post<LoteActionResponse>(`produccion/lotes/${id}/completar/`, payload))
+
+export const pausarLote = async (
+  id: number | string,
+  payload: PausarLotePayload,
+): Promise<LoteActionResponse> =>
+  withHandledRequest(() => post<LoteActionResponse>(`produccion/lotes/${id}/pausar/`, payload))
+
+export const liberarLote = async (
+  id: number | string,
+  payload: LiberarLotePayload,
+): Promise<LoteActionResponse> =>
+  withHandledRequest(() => post<LoteActionResponse>(`produccion/lotes/${id}/liberar/`, payload))
+
+export const rechazarLote = async (
+  id: number | string,
+  payload: RechazarLotePayload,
+): Promise<LoteActionResponse> =>
+  withHandledRequest(() => post<LoteActionResponse>(`produccion/lotes/${id}/rechazar/`, payload))
+
+export const getOrdenesTrabajo = async (
+  params?: OrdenTrabajoListParams,
+): Promise<PaginatedResponse<OrdenTrabajoListItem>> =>
+  withHandledRequest(() => get<PaginatedResponse<OrdenTrabajoListItem>>('mantenimiento/ordenes-trabajo/', { params }))
+
+export const createOrdenTrabajo = async (
+  payload: CreateOrdenTrabajoPayload,
+): Promise<OrdenTrabajo> =>
+  withHandledRequest(() => post<OrdenTrabajo>('mantenimiento/ordenes-trabajo/', payload))
+
+export const updateOrdenTrabajo = async (
+  id: number | string,
+  payload: UpdateOrdenTrabajoPayload,
+): Promise<OrdenTrabajo> =>
+  withHandledRequest(() => put<OrdenTrabajo>(`mantenimiento/ordenes-trabajo/${id}/`, payload))
+
+export const iniciarOrdenTrabajo = async (
+  id: number | string,
+  payload?: Record<string, unknown>,
+): Promise<OrdenTrabajoActionResponse> =>
+  withHandledRequest(() => post<OrdenTrabajoActionResponse>(`mantenimiento/ordenes-trabajo/${id}/iniciar/`, payload))
+
+export const completarOrdenTrabajo = async (
+  id: number | string,
+  payload: UpdateOrdenTrabajoPayload,
+): Promise<OrdenTrabajoActionResponse> =>
+  withHandledRequest(() => post<OrdenTrabajoActionResponse>(`mantenimiento/ordenes-trabajo/${id}/completar/`, payload))
+
+export const cerrarOrdenTrabajo = async (
+  id: number | string,
+  payload?: UpdateOrdenTrabajoPayload,
+): Promise<OrdenTrabajoActionResponse> =>
+  withHandledRequest(() => post<OrdenTrabajoActionResponse>(`mantenimiento/ordenes-trabajo/${id}/cerrar/`, payload))
+
+export const getControlesCalidad = async (
+  params?: ControlCalidadListParams,
+): Promise<PaginatedResponse<ControlCalidad>> =>
+  withHandledRequest(() => get<PaginatedResponse<ControlCalidad>>('produccion/controles-calidad/', { params }))
+
+export const createControlCalidad = async (
+  payload: CreateControlCalidadPayload,
+): Promise<ControlCalidad> =>
+  withHandledRequest(() => post<ControlCalidad>('produccion/controles-calidad/', payload))
+
+export const updateControlCalidad = async (
+  id: number | string,
+  payload: UpdateControlCalidadPayload,
+): Promise<ControlCalidad> =>
+  withHandledRequest(() => put<ControlCalidad>(`produccion/controles-calidad/${id}/`, payload))
+
+export const getDesviaciones = async (
+  params?: DesviacionListParams,
+): Promise<PaginatedResponse<Desviacion>> =>
+  withHandledRequest(() => get<PaginatedResponse<Desviacion>>('calidad/desviaciones/', { params }))
+
+export const createDesviacion = async (
+  payload: CreateDesviacionPayload,
+): Promise<Desviacion> =>
+  withHandledRequest(() => post<Desviacion>('calidad/desviaciones/', payload))
+
+export const updateDesviacion = async (
+  id: number | string,
+  payload: UpdateDesviacionPayload,
+): Promise<Desviacion> =>
+  withHandledRequest(() => put<Desviacion>(`calidad/desviaciones/${id}/`, payload))
+
+export const createAccionCorrectiva = async (
+  payload: CreateAccionCorrectivaPayload,
+): Promise<AccionCorrectiva> =>
+  withHandledRequest(() => post<AccionCorrectiva>('calidad/acciones-correctivas/', payload))
+
+export const getDashboardStats = async (params?: Record<string, unknown>): Promise<DashboardStats> =>
+  withHandledRequest(() => get<DashboardStats>('kpis/resumen_dashboard/', { params }))
+
+export const getOEE = async (params?: OeeParams): Promise<OeeMetrics> =>
+  withHandledRequest(() => get<OeeMetrics>('kpis/oee/', { params }))
+
+export const exportCSV = async (params?: OeeParams): Promise<Blob> =>
+  withHandledRequest(() => get<Blob>('kpis/export.csv', { params, responseType: 'blob' }))
+
+Object.assign(api, {
+  getInsumos,
+  createInsumo,
+  updateInsumo,
+  deleteInsumo,
+  getLotesInsumo,
+  createLoteInsumo,
+  getMovimientosInventario,
+  createMovimientoInventario,
+  getLotes,
+  createLote,
+  cancelarLote,
+  iniciarLote,
+  completarLote,
+  pausarLote,
+  liberarLote,
+  rechazarLote,
+  getOrdenesTrabajo,
+  createOrdenTrabajo,
+  updateOrdenTrabajo,
+  iniciarOrdenTrabajo,
+  completarOrdenTrabajo,
+  cerrarOrdenTrabajo,
+  getControlesCalidad,
+  createControlCalidad,
+  updateControlCalidad,
+  getDesviaciones,
+  createDesviacion,
+  updateDesviacion,
+  createAccionCorrectiva,
+  getDashboardStats,
+  getOEE,
+  exportCSV,
+})
+
+export { api, request, get, post, put, patch, del as delete, createApiError, handleApiError }
