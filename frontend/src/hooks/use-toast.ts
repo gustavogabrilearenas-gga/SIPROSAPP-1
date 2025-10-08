@@ -139,6 +139,8 @@ function dispatch(action: Action) {
 
 type Toast = Omit<ToasterToast, "id">
 
+type ToastMethodOptions = Omit<Toast, "title" | "variant">
+
 function toast({ ...props }: Toast) {
   const id = genId()
 
@@ -168,6 +170,26 @@ function toast({ ...props }: Toast) {
   }
 }
 
+type ToastWithHelpers = typeof toast & {
+  success: (title: React.ReactNode, options?: ToastMethodOptions) => ReturnType<typeof toast>
+  error: (title: React.ReactNode, options?: ToastMethodOptions) => ReturnType<typeof toast>
+}
+
+const enhancedToast = toast as ToastWithHelpers
+
+enhancedToast.success = (title, options) =>
+  enhancedToast({
+    title,
+    ...options,
+  })
+
+enhancedToast.error = (title, options) =>
+  enhancedToast({
+    title,
+    variant: "destructive",
+    ...options,
+  })
+
 function useToast() {
   const [state, setState] = React.useState<State>(memoryState)
 
@@ -183,9 +205,9 @@ function useToast() {
 
   return {
     ...state,
-    toast,
+    toast: enhancedToast,
     dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
   }
 }
 
-export { useToast, toast }
+export { useToast, enhancedToast as toast }

@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import DataState from '@/components/common/data-state'
 import {
   Package,
   Plus,
@@ -141,10 +142,8 @@ export default function InventarioPage() {
         setInsumos(FALLBACK_INSUMOS)
       }
       setError(message ?? 'No se pudieron obtener los insumos')
-      toast({
-        title: 'Error al cargar insumos',
+      toast.error('Error al cargar inventario', {
         description: message ?? 'No se pudieron obtener los insumos',
-        variant: 'destructive',
       })
     } finally {
       setLoading(false)
@@ -163,10 +162,8 @@ export default function InventarioPage() {
         setLotesInsumo(FALLBACK_LOTES_INSUMO)
       }
       setError(message ?? 'No se pudieron obtener los lotes de insumo')
-      toast({
-        title: 'Error al cargar lotes de insumo',
+      toast.error('Error al cargar inventario', {
         description: message ?? 'No se pudieron obtener los lotes de insumo',
-        variant: 'destructive',
       })
     } finally {
       setLoading(false)
@@ -217,8 +214,12 @@ export default function InventarioPage() {
     )
   })
 
-  const isEmpty =
-    !loading && !error && ((activeTab === 'insumos' && filteredInsumos.length === 0) || (activeTab === 'lotes' && filteredLotes.length === 0))
+  const hasError = Boolean(error)
+  const dataStateError = hasError ? `Error al cargar inventario${error ? `: ${error}` : ''}` : null
+  const isEmptyState =
+    !loading && !hasError &&
+    ((activeTab === 'insumos' && filteredInsumos.length === 0) ||
+      (activeTab === 'lotes' && filteredLotes.length === 0))
 
   return (
     <ProtectedRoute>
@@ -309,29 +310,19 @@ export default function InventarioPage() {
           </motion.div>
 
           {/* Content */}
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full"
-              />
-            </div>
-          ) : (
-            <>
-              {error && (
-                <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
-                  <p className="font-semibold">No se pudieron cargar los datos en vivo.</p>
-                  <p className="text-sm">{error}</p>
-                </div>
-              )}
-              {isEmpty ? (
-                <div className="flex flex-col items-center justify-center gap-2 py-12 text-gray-600">
-                  <Package className="h-12 w-12 text-gray-400" />
-                  <p className="text-lg font-medium">Sin registros disponibles</p>
-                  <p className="text-sm">Intenta ajustar los filtros o vuelve a intentarlo más tarde.</p>
-                </div>
-              ) : activeTab === 'insumos' ? (
+          <DataState
+            loading={loading}
+            error={dataStateError}
+            empty={isEmptyState}
+            emptyMessage={
+              <div className="flex flex-col items-center justify-center gap-2 py-12 text-gray-600">
+                <Package className="h-12 w-12 text-gray-400" />
+                <p className="text-lg font-medium">Sin registros disponibles</p>
+                <p className="text-sm">Intenta ajustar los filtros o vuelve a intentarlo más tarde.</p>
+              </div>
+            }
+          >
+            {activeTab === 'insumos' ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {filteredInsumos.map((insumo, index) => {
                 const status = getStockStatus(insumo)
@@ -480,6 +471,7 @@ export default function InventarioPage() {
               })}
             </div>
           )}
+          </DataState>
         </main>
       </div>
     </ProtectedRoute>
