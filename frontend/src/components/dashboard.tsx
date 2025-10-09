@@ -42,6 +42,7 @@ import NotificationCenter from '@/components/notification-center'
 import GlobalSearch from '@/components/global-search'
 import DataState from '@/components/common/data-state'
 import { api, KpiDashboard, KpiHistorialPoint, KpiOEE } from '@/lib/api'
+import { featureFlags } from '@/lib/feature-flags'
 import { showError } from '@/components/common/toast-utils'
 
 const toPercent = (value: number | null | undefined): number => {
@@ -330,14 +331,16 @@ export function Dashboard() {
                   Usuarios
                 </Button>
               )}
-              <Button
-                variant="outline"
-                className="bg-white/50 backdrop-blur-sm"
-                onClick={() => router.push('/configuracion')}
-              >
-                <Settings className="h-4 w-4 mr-2" />
-                Configuración
-              </Button>
+              {featureFlags.configuracion && (
+                <Button
+                  variant="outline"
+                  className="bg-white/50 backdrop-blur-sm"
+                  onClick={() => router.push('/configuracion')}
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  Configuración
+                </Button>
+              )}
               <Button
                 variant="outline"
                 className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200"

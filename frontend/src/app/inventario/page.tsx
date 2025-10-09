@@ -24,6 +24,7 @@ import {
   Calendar,
 } from 'lucide-react'
 import { api, handleApiError } from '@/lib/api'
+import { featureFlags } from '@/lib/feature-flags'
 import { showError } from '@/components/common/toast-utils'
 
 interface Insumo {
@@ -248,9 +249,11 @@ export default function InventarioPage() {
                   <p className="text-gray-600">Control de insumos y materias primas</p>
                 </div>
               </div>
-              {(user?.is_superuser || user?.is_staff) && (
+              {(user?.is_superuser || user?.is_staff) && featureFlags.inventarioEdicion && (
                 <Button
-                  onClick={() => {/* TODO: Open create modal */}}
+                  onClick={() => {
+                    console.warn('Alta de inventario deshabilitada hasta implementar el flujo de creación')
+                  }}
                   className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
                   <Plus className="w-4 h-4 mr-2" />

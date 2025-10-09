@@ -24,6 +24,7 @@ import {
 import { api, handleApiError } from '@/lib/api'
 import DataState from '@/components/common/data-state'
 import { showError, showSuccess } from '@/components/common/toast-utils'
+import { featureFlags } from '@/lib/feature-flags'
 
 interface Desviacion {
   id: number
@@ -216,10 +217,10 @@ export default function DesviacionesPage() {
                   <p className="text-gray-600">Sistema de Acciones Correctivas y Preventivas</p>
                 </div>
               </div>
-              {(user?.is_superuser || user?.is_staff) && (
+              {(user?.is_superuser || user?.is_staff) && featureFlags.desviacionesGestion && (
                 <Button
                   onClick={() => {
-                    /* TODO: Abrir modal de creación */
+                    console.warn('Registro de desviaciones deshabilitado hasta contar con backend activo')
                   }}
                   className="bg-orange-600 hover:bg-orange-700 text-white"
                   disabled={isBusy}
@@ -295,10 +296,12 @@ export default function DesviacionesPage() {
                     transition={{ delay: 0.05 * index }}
                   >
                     <Card
-                      className="hover:shadow-xl transition-shadow duration-300 cursor-pointer"
-                      onClick={() => {
-                        /* TODO: Open detail modal */
-                      }}
+                      className={`hover:shadow-xl transition-shadow duration-300 ${featureFlags.desviacionesGestion ? 'cursor-pointer' : 'cursor-default'}`}
+                      onClick={featureFlags.desviacionesGestion
+                        ? () => {
+                            console.warn('Detalle de desviaciones pendiente de implementación backend')
+                          }
+                        : undefined}
                     >
                       <CardHeader>
                         <div className="flex justify-between items-start">
