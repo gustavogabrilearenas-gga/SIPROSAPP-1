@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { useAuth } from '@/stores/auth-store'
@@ -19,8 +19,10 @@ import {
   BarChart3,
   Clock,
   LineChart as LineChartIcon,
+  Loader2,
   Package,
   PieChart,
+  RefreshCcw,
   Settings,
   Target,
   TrendingUp,
@@ -66,9 +68,11 @@ export function Dashboard() {
   const [oee, setOee] = useState<KpiOEE | null>(null)
   const [historial, setHistorial] = useState<KpiHistorialPoint[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [currentTime, setCurrentTime] = useState(new Date())
+  const isMountedRef = useRef(true)
 
   const handleLogout = async () => {
     await logout()
@@ -84,12 +88,21 @@ export function Dashboard() {
   }, [])
 
   useEffect(() => {
-    let isMounted = true
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
 
-    const fetchMetrics = async (background = false) => {
-      if (!background) {
+  const fetchMetrics = useCallback(
+    async ({ background = false, manual = false }: { background?: boolean; manual?: boolean } = {}) => {
+      if (!background && !manual) {
         setLoading(true)
       }
+      if (manual) {
+        setRefreshing(true)
+      }
+
       try {
         const [resumen, oeeData, historialData] = await Promise.all([
           api.getDashboardResumen(),
@@ -97,7 +110,7 @@ export function Dashboard() {
           api.getHistorialProduccion()
         ])
 
-        if (!isMounted) {
+        if (!isMountedRef.current) {
           return
         }
 
@@ -107,7 +120,7 @@ export function Dashboard() {
         setError(null)
         setLastUpdated(new Date())
       } catch (err) {
-        if (!isMounted) {
+        if (!isMountedRef.current) {
           return
         }
 
@@ -118,20 +131,30 @@ export function Dashboard() {
         setHistorial([])
         showError('Error al cargar métricas', message)
       } finally {
-        if (isMounted && !background) {
+        if (!isMountedRef.current) {
+          return
+        }
+
+        if (manual) {
+          setRefreshing(false)
+        }
+
+        if (!background && !manual) {
           setLoading(false)
         }
       }
-    }
+    },
+    []
+  )
 
-    fetchMetrics(false)
-    const interval = setInterval(() => fetchMetrics(true), 30000)
+  useEffect(() => {
+    fetchMetrics()
+    const interval = setInterval(() => fetchMetrics({ background: true }), 30000)
 
     return () => {
-      isMounted = false
       clearInterval(interval)
     }
-  }, [])
+  }, [fetchMetrics])
 
   const productionChartData = useMemo(() => {
     return historial.map((item) => {
@@ -284,6 +307,19 @@ export function Dashboard() {
                 <Activity className="w-3 h-3 mr-1" />
                 {error ? 'Sin datos' : loading ? 'Sincronizando' : 'Datos en línea'}
               </Badge>
+              <Button
+                variant="outline"
+                className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+                onClick={() => fetchMetrics({ manual: true })}
+                disabled={refreshing}
+              >
+                {refreshing ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCcw className="mr-2 h-4 w-4" />
+                )}
+                Actualizar métricas
+              </Button>
               {(user?.is_superuser || user?.is_staff) && (
                 <Button
                   variant="outline"

@@ -1,8 +1,18 @@
 """Vistas API para exponer KPIs y métricas operativas."""
 
+from datetime import datetime, time, timedelta
+from decimal import Decimal
+
+from django.db.models import Q
+from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from backend.calidad.models import Desviacion
+from backend.inventario.models import LoteInsumo
+from backend.mantenimiento.models import OrdenTrabajo
+from backend.produccion.models import Parada
 
 from .serializers import (
     AlertasSerializer,
@@ -54,3 +64,151 @@ class AlertasView(APIView):
         data = AlertasSerializer.get_data()
         serializer = AlertasSerializer(data)
         return Response({"status": 200, "data": serializer.data, "message": "ok"})
+
+
+class LiveAlertsView(APIView):
+    """Entrega eventos recientes con nivel de severidad para el monitoreo en vivo."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        now = timezone.now()
+        since = now - timedelta(hours=24)
+
+        def to_datetime(value):
+            if value is None:
+                return since
+            if isinstance(value, datetime):
+                if timezone.is_naive(value):
+                    return timezone.make_aware(value) if timezone.is_aware(now) else value
+                return value
+            combined = datetime.combine(value, time.min)
+            if timezone.is_naive(now):
+                return combined
+            return timezone.make_aware(combined)
+
+        live_alerts = []
+
+        inventario_qs = (
+            LoteInsumo.objects.filter(
+                Q(consumos__fecha_consumo__gte=since)
+                | Q(fecha_aprobacion__gte=since.date())
+                | Q(fecha_recepcion__gte=since.date())
+            )
+            .select_related("insumo")
+            .distinct()
+        )
+
+        zero = Decimal("0")
+
+        for lote in inventario_qs:
+            cantidad_actual = lote.cantidad_actual or zero
+            if cantidad_actual <= zero or cantidad_actual <= lote.insumo.stock_minimo:
+                nivel = "critical"
+                estado_stock = "sin stock" if cantidad_actual <= zero else "crítico"
+            elif cantidad_actual <= lote.insumo.punto_reorden:
+                nivel = "warning"
+                estado_stock = "bajo"
+            else:
+                continue
+
+            consumo_reciente = (
+                lote.consumos.filter(fecha_consumo__gte=since)
+                .order_by("-fecha_consumo")
+                .values_list("fecha_consumo", flat=True)
+                .first()
+            )
+            referencia_tiempo = consumo_reciente or lote.fecha_aprobacion or lote.fecha_recepcion
+
+            live_alerts.append(
+                {
+                    "id": lote.id,
+                    "tipo": "inventario",
+                    "nivel": nivel,
+                    "mensaje": (
+                        f"Insumo {lote.insumo.nombre} con stock {estado_stock} "
+                        f"({cantidad_actual} {lote.unidad})"
+                    ),
+                    "timestamp": to_datetime(referencia_tiempo),
+                }
+            )
+
+        ordenes_qs = OrdenTrabajo.objects.filter(fecha_creacion__gte=since).select_related("maquina")
+        for orden in ordenes_qs:
+            if orden.prioridad == "URGENTE" or orden.requiere_parada_produccion:
+                nivel = "critical"
+            elif orden.prioridad == "ALTA" or orden.estado in {"EN_PROCESO", "PAUSADA"}:
+                nivel = "warning"
+            else:
+                nivel = "info"
+
+            maquina = getattr(orden.maquina, "nombre", None)
+            maquina_texto = f" en {maquina}" if maquina else ""
+
+            live_alerts.append(
+                {
+                    "id": orden.id,
+                    "tipo": "mantenimiento",
+                    "nivel": nivel,
+                    "mensaje": f"Orden {orden.codigo}{maquina_texto}: {orden.titulo}",
+                    "timestamp": to_datetime(orden.fecha_creacion),
+                }
+            )
+
+        paradas_qs = (
+            Parada.objects.filter(fecha_inicio__gte=since)
+            .select_related("lote_etapa__lote")
+            .order_by("-fecha_inicio")
+        )
+        for parada in paradas_qs:
+            duracion = parada.duracion_minutos or 0
+            if parada.tipo == "NO_PLANIFICADA" and (
+                parada.categoria == "FALLA_EQUIPO" or duracion >= 30
+            ):
+                nivel = "critical"
+            elif parada.tipo == "NO_PLANIFICADA":
+                nivel = "warning"
+            else:
+                nivel = "info"
+
+            lote_codigo = parada.lote_etapa.lote.codigo_lote if parada.lote_etapa and parada.lote_etapa.lote else ""
+            duracion_texto = f" ({duracion} min)" if duracion else ""
+
+            live_alerts.append(
+                {
+                    "id": parada.id,
+                    "tipo": "produccion",
+                    "nivel": nivel,
+                    "mensaje": (
+                        f"Parada {parada.get_categoria_display()} {lote_codigo}{duracion_texto}"
+                    ),
+                    "timestamp": to_datetime(parada.fecha_inicio),
+                }
+            )
+
+        desviaciones_qs = Desviacion.objects.filter(fecha_deteccion__gte=since)
+        for desviacion in desviaciones_qs:
+            if desviacion.severidad == "CRITICA":
+                nivel = "critical"
+            elif desviacion.severidad == "MAYOR":
+                nivel = "warning"
+            else:
+                nivel = "info"
+
+            live_alerts.append(
+                {
+                    "id": desviacion.id,
+                    "tipo": "calidad",
+                    "nivel": nivel,
+                    "mensaje": (
+                        f"Desviación {desviacion.codigo} {desviacion.get_severidad_display()}"
+                    ),
+                    "timestamp": to_datetime(desviacion.fecha_deteccion),
+                }
+            )
+
+        live_alerts.sort(key=lambda item: item["timestamp"], reverse=True)
+        for item in live_alerts:
+            item.pop("timestamp", None)
+
+        return Response({"status": 200, "data": live_alerts, "message": "ok"})

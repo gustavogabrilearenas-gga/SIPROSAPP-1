@@ -712,6 +712,16 @@ export interface KpiAlertas {
   desviaciones_criticas_abiertas: number
 }
 
+export type LiveAlertLevel = 'info' | 'warning' | 'critical'
+export type LiveAlertType = 'inventario' | 'produccion' | 'mantenimiento' | 'calidad'
+
+export interface LiveAlert {
+  id: number
+  tipo: LiveAlertType
+  nivel: LiveAlertLevel
+  mensaje: string
+}
+
 export interface OeeSeriesPoint {
   fecha: string
   lotes: number
@@ -985,6 +995,15 @@ const api = {
   async getAlertas(): Promise<KpiAlertas> {
     try {
       const response = await get<ApiEnvelope<KpiAlertas>>('/kpis/alertas/')
+      return response.data
+    } catch (error) {
+      throw handleApiError(error)
+    }
+  },
+
+  async getLiveAlerts(): Promise<LiveAlert[]> {
+    try {
+      const response = await get<ApiEnvelope<LiveAlert[]>>('/kpis/live_alerts/')
       return response.data
     } catch (error) {
       throw handleApiError(error)
