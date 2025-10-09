@@ -1,189 +1,136 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { Bell, X, Check, CheckCheck, AlertCircle, Info, AlertTriangle, CheckCircle } from 'lucide-react'
+import { type ComponentType, useState, useEffect, useCallback, useMemo } from 'react'
+import { Bell, X, AlertTriangle, Package, Activity, AlertCircle, RefreshCcw, Clock } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Notificacion } from '@/types/models'
-import { api, handleApiError } from '@/lib/api'
-import { toast } from '@/hooks/use-toast'
 import DataState from '@/components/common/data-state'
+import { api, KpiAlertas } from '@/lib/api'
+import { showError } from '@/components/common/toast-utils'
 
-const createFallbackNotifications = (): Notificacion[] => [
+const alertDefinitions: Array<{
+  key: keyof KpiAlertas
+  title: string
+  description: string
+  icon: ComponentType<{ className?: string }>
+  accent: string
+}> = [
   {
-    id: 0,
-    usuario: 0,
-    tipo: 'INFO',
-    titulo: 'Notificaciones no disponibles',
-    mensaje: 'No se pudieron cargar las notificaciones en tiempo real. Mostrando datos de ejemplo.',
-    fecha_creacion: new Date().toISOString(),
-    leida: false
+    key: 'insumos_por_vencer',
+    title: 'Insumos por vencer',
+    description: 'Lotes de insumo próximos a vencer',
+    icon: Clock,
+    accent: 'text-amber-600'
+  },
+  {
+    key: 'insumos_stock_critico',
+    title: 'Stock crítico',
+    description: 'Insumos por debajo del stock mínimo',
+    icon: Package,
+    accent: 'text-red-600'
+  },
+  {
+    key: 'maquinas_fuera_servicio',
+    title: 'Máquinas fuera de servicio',
+    description: 'Requieren parada de producción',
+    icon: AlertTriangle,
+    accent: 'text-orange-600'
+  },
+  {
+    key: 'ordenes_atrasadas',
+    title: 'Órdenes atrasadas',
+    description: 'Órdenes de mantenimiento vencidas',
+    icon: Activity,
+    accent: 'text-blue-600'
+  },
+  {
+    key: 'desviaciones_criticas_abiertas',
+    title: 'Desviaciones críticas',
+    description: 'Investigaciones de calidad sin cerrar',
+    icon: AlertCircle,
+    accent: 'text-rose-600'
   }
 ]
 
 export default function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false)
-  const [notificaciones, setNotificaciones] = useState<Notificacion[]>([])
+  const [alertas, setAlertas] = useState<KpiAlertas | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [unreadCount, setUnreadCount] = useState(0)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
-  const loadNotificaciones = useCallback(async () => {
-    setLoading(true)
-    try {
-      const response = await api.getNotificaciones()
-      const items = Array.isArray(response) ? response : []
-      setNotificaciones(items)
-
-      const unread = items.filter((n: Notificacion) => !n.leida).length
-      setUnreadCount(unread)
-      setError(null)
-    } catch (err) {
-      const { message } = handleApiError(err)
-      toast({
-        title: 'Error al cargar notificaciones',
-        description: message,
-        variant: 'destructive'
-      })
-      const fallback = createFallbackNotifications()
-      setNotificaciones(fallback)
-      setUnreadCount(fallback.filter((n) => !n.leida).length)
-      setError(message ?? 'No se pudieron cargar las notificaciones en tiempo real.')
-    } finally {
-      setLoading(false)
+  const loadAlertas = useCallback(async (background = false) => {
+    if (!background) {
+      setLoading(true)
     }
-  }, [toast])
 
-  const loadUnreadCount = useCallback(async () => {
     try {
-      const response = await api.getContadorNotificacionesNoLeidas()
-      setUnreadCount(response.no_leidas)
+      const data = await api.getAlertas()
+      setAlertas(data)
+      setError(null)
+      setLastUpdated(new Date())
     } catch (err) {
-      console.error('Error loading unread count:', handleApiError(err))
+      const message = (err as { message?: string })?.message ?? 'No se pudieron cargar las alertas'
+      setError(message)
+      setAlertas(null)
+      showError('Error al cargar alertas', message)
+    } finally {
+      if (!background) {
+        setLoading(false)
+      }
     }
   }, [])
 
-  // Cargar notificaciones cuando se abre
   useEffect(() => {
     if (!isOpen) {
       return
     }
 
-    loadNotificaciones()
-
-    const interval = setInterval(loadNotificaciones, 60000)
+    loadAlertas(false)
+    const interval = setInterval(() => loadAlertas(true), 60000)
 
     return () => clearInterval(interval)
-  }, [isOpen, loadNotificaciones])
+  }, [isOpen, loadAlertas])
 
-  // Cargar contador de no leídas al iniciar y cada 30 segundos
   useEffect(() => {
-    loadUnreadCount()
-    const interval = setInterval(loadUnreadCount, 30000) // 30 segundos
-    return () => clearInterval(interval)
-  }, [loadUnreadCount])
+    loadAlertas(false)
+  }, [loadAlertas])
 
-  const handleMarkAsRead = async (id: number) => {
-    try {
-      await api.marcarNotificacionLeida(id)
-      setNotificaciones(notificaciones.map(n => 
-        n.id === id ? { ...n, leida: true, fecha_leida: new Date().toISOString() } : n
-      ))
-      setUnreadCount(Math.max(0, unreadCount - 1))
-    } catch (err) {
-      console.error('Error marking notification as read:', err)
+  const totalAlertas = useMemo(() => {
+    if (!alertas) {
+      return 0
     }
-  }
 
-  const handleMarkAllAsRead = async () => {
-    try {
-      await api.marcarTodasNotificacionesLeidas()
-      setNotificaciones(notificaciones.map(n => ({ ...n, leida: true, fecha_leida: new Date().toISOString() })))
-      setUnreadCount(0)
-    } catch (err) {
-      console.error('Error marking all notifications as read:', err)
-    }
-  }
+    return Object.values(alertas).reduce((acc, value) => acc + value, 0)
+  }, [alertas])
 
-  const getTipoIcon = (tipo: string) => {
-    switch (tipo) {
-      case 'INFO':
-        return <Info className="w-5 h-5 text-blue-600" />
-      case 'ADVERTENCIA':
-        return <AlertTriangle className="w-5 h-5 text-yellow-600" />
-      case 'CRITICO':
-        return <AlertCircle className="w-5 h-5 text-red-600" />
-      case 'EXITO':
-        return <CheckCircle className="w-5 h-5 text-green-600" />
-      default:
-        return <Bell className="w-5 h-5 text-gray-600" />
-    }
-  }
-
-  const getTipoColor = (tipo: string) => {
-    switch (tipo) {
-      case 'INFO':
-        return 'bg-blue-50 border-blue-200'
-      case 'ADVERTENCIA':
-        return 'bg-yellow-50 border-yellow-200'
-      case 'CRITICO':
-        return 'bg-red-50 border-red-200'
-      case 'EXITO':
-        return 'bg-green-50 border-green-200'
-      default:
-        return 'bg-gray-50 border-gray-200'
-    }
-  }
-
-  const formatFecha = (fecha: string) => {
-    try {
-      const date = new Date(fecha)
-      const now = new Date()
-      const diffMs = now.getTime() - date.getTime()
-      const diffMins = Math.floor(diffMs / 60000)
-      const diffHours = Math.floor(diffMs / 3600000)
-      const diffDays = Math.floor(diffMs / 86400000)
-
-      if (diffMins < 1) return 'Ahora'
-      if (diffMins < 60) return `Hace ${diffMins} min`
-      if (diffHours < 24) return `Hace ${diffHours} h`
-      if (diffDays < 7) return `Hace ${diffDays} días`
-      
-      return date.toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })
-    } catch {
-      return ''
-    }
-  }
+  const lastUpdatedLabel = lastUpdated
+    ? lastUpdated.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    : 'Sincronizando'
 
   return (
     <div className="relative">
-      {/* Bell Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors"
+        aria-label="Centro de alertas"
       >
         <Bell className="w-6 h-6 text-gray-700" />
-        {unreadCount > 0 && (
+        {totalAlertas > 0 && (
           <motion.span
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
+            className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[1.5rem] h-6 px-1 flex items-center justify-center"
           >
-            {unreadCount > 9 ? '9+' : unreadCount}
+            {totalAlertas > 99 ? '99+' : totalAlertas}
           </motion.span>
         )}
       </button>
 
-      {/* Dropdown Panel */}
       <AnimatePresence>
         {isOpen && (
           <>
-            {/* Backdrop */}
-            <div
-              className="fixed inset-0 z-40"
-              onClick={() => setIsOpen(false)}
-            />
+            <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
 
-            {/* Panel */}
             <motion.div
               initial={{ opacity: 0, y: -10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -192,114 +139,66 @@ export default function NotificationCenter() {
               className="absolute right-0 top-full mt-2 w-96 bg-white rounded-lg shadow-2xl border border-gray-200 z-50 overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Header */}
-              <div className="p-4 border-b bg-gradient-to-r from-blue-50 to-purple-50">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-lg font-bold text-gray-900">Notificaciones</h3>
-                  <button
-                    onClick={() => setIsOpen(false)}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+              <div className="p-4 border-b bg-gradient-to-r from-blue-50 to-purple-50 flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Alertas operativas</h3>
+                  <p className="text-xs text-gray-500">Actualización automática cada 60 s</p>
                 </div>
-                {unreadCount > 0 && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">
-                      {unreadCount} {unreadCount === 1 ? 'nueva' : 'nuevas'}
-                    </span>
-                    <button
-                      onClick={handleMarkAllAsRead}
-                      className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
-                    >
-                      <CheckCheck className="w-4 h-4" />
-                      Marcar todas leídas
-                    </button>
-                  </div>
-                )}
+                <button
+                  onClick={() => setIsOpen(false)}
+                  className="p-1 rounded-md hover:bg-white/60 text-gray-600"
+                  aria-label="Cerrar"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
 
-              {/* Notifications List */}
-              <div className="max-h-96 overflow-y-auto">
+              <div className="p-4">
                 <DataState
                   loading={loading}
                   error={error}
-                  empty={!loading && notificaciones.length === 0}
-                  emptyMessage={(
-                    <>
-                      <Bell className="h-12 w-12 opacity-50" />
-                      <span>Sin notificaciones</span>
-                    </>
-                  )}
+                  empty={!alertas || totalAlertas === 0}
+                  emptyMessage="Sin alertas activas"
                 >
-                  <div className="divide-y divide-gray-100">
-                    {notificaciones.map((notif) => (
-                      <motion.div
-                        key={notif.id}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className={`p-4 hover:bg-gray-50 transition-colors ${
-                          !notif.leida ? 'bg-blue-50' : ''
-                        }`}
-                      >
-                        <div className="flex gap-3">
-                          <div className="flex-shrink-0 mt-0.5">
-                            {getTipoIcon(notif.tipo)}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2 mb-1">
-                              <h4 className="font-semibold text-sm text-gray-900">
-                                {notif.titulo}
-                              </h4>
-                              {!notif.leida && (
-                                <button
-                                  onClick={() => handleMarkAsRead(notif.id)}
-                                  className="flex-shrink-0 text-blue-600 hover:text-blue-800"
-                                  title="Marcar como leída"
-                                >
-                                  <Check className="w-4 h-4" />
-                                </button>
-                              )}
+                  <div className="space-y-4">
+                    {alertDefinitions.map((definition) => {
+                      const value = alertas?.[definition.key] ?? 0
+                      const Icon = definition.icon
+
+                      return (
+                        <div
+                          key={definition.key}
+                          className="flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50 px-3 py-3"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`rounded-lg border bg-white p-2 shadow-sm ${definition.accent.replace('text-', 'border-')}`}
+                            >
+                              <Icon className={`h-5 w-5 ${definition.accent}`} />
                             </div>
-                            <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-                              {notif.mensaje}
-                            </p>
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-gray-400">
-                                {formatFecha(notif.fecha_creacion)}
-                              </span>
-                              {notif.referencia_url && (
-                                <a
-                                  href={notif.referencia_url}
-                                  className="text-xs text-blue-600 hover:text-blue-800 font-medium"
-                                  onClick={() => setIsOpen(false)}
-                                >
-                                  Ver detalles →
-                                </a>
-                              )}
+                            <div>
+                              <p className="font-medium text-gray-800">{definition.title}</p>
+                              <p className="text-xs text-gray-500">{definition.description}</p>
                             </div>
                           </div>
+                          <span className="text-lg font-semibold text-gray-900">{value}</span>
                         </div>
-                      </motion.div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </DataState>
               </div>
 
-              {/* Footer */}
-              {notificaciones.length > 0 && (
-                <div className="p-3 border-t bg-gray-50 text-center">
-                  <button
-                    onClick={() => {
-                      setIsOpen(false)
-                      // Aquí podrías navegar a una página completa de notificaciones si existiera
-                    }}
-                    className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-                  >
-                    Ver todas las notificaciones
-                  </button>
-                </div>
-              )}
+              <div className="border-t bg-gray-50 px-4 py-3 text-xs text-gray-500 flex items-center justify-between">
+                <span>Última actualización: {lastUpdatedLabel}</span>
+                <button
+                  onClick={() => loadAlertas(false)}
+                  className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1 text-gray-600 hover:bg-white"
+                >
+                  <RefreshCcw className="h-3 w-3" />
+                  Refrescar
+                </button>
+              </div>
             </motion.div>
           </>
         )}

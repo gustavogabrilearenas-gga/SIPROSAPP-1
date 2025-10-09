@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { useAuth } from '@/stores/auth-store'
@@ -15,168 +15,219 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Activity,
-  Package,
-  Wrench,
   AlertTriangle,
-  TrendingUp,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  Pause,
-  Zap,
-  Target,
   BarChart3,
+  Clock,
+  LineChart as LineChartIcon,
+  Package,
   PieChart,
-  LineChart,
-  Activity as ActivityIcon,
   Settings,
+  Target,
+  TrendingUp,
   Users,
-  FileText,
-  Shield,
-  MapPin
+  Wrench
 } from 'lucide-react'
 import {
-  LineChart as RechartsLineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
   ResponsiveContainer,
   BarChart,
   Bar,
-  PieChart as RechartsPieChart,
-  Pie,
-  Cell,
-  Area,
-  AreaChart
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip
 } from 'recharts'
-import { api, handleApiError } from '@/lib/api'
-import { toast } from '@/hooks/use-toast'
-import { DashboardStats } from '@/types/models'
 import NotificationCenter from '@/components/notification-center'
 import GlobalSearch from '@/components/global-search'
 import DataState from '@/components/common/data-state'
+import { api, KpiDashboard, KpiHistorialPoint, KpiOEE } from '@/lib/api'
+import { showError } from '@/components/common/toast-utils'
 
-type DashboardViewData = {
-  fecha: string
-  totalProduccion: number
-  lotesActivos: number
-  ordenesMantenimiento: number
-  alertasPendientes: number
-  eficienciaPromedio: number
-  tiempoMedioReparacion: number
-  oee: number
-  disponibilidad: number
+const toPercent = (value: number | null | undefined): number => {
+  if (value === null || value === undefined || Number.isNaN(value)) {
+    return 0
+  }
+
+  const ratio = value > 1 ? value : value * 100
+  return Number(ratio.toFixed(1))
 }
 
-const FALLBACK_DASHBOARD_DATA: DashboardViewData = {
-  fecha: new Date().toISOString(),
-  totalProduccion: 8450,
-  lotesActivos: 12,
-  ordenesMantenimiento: 3,
-  alertasPendientes: 2,
-  eficienciaPromedio: 87.5,
-  tiempoMedioReparacion: 2.3,
-  oee: 78.5,
-  disponibilidad: 94.2
+const formatNumber = (value: number | null | undefined): string => {
+  if (value === null || value === undefined || Number.isNaN(value)) {
+    return '0'
+  }
+
+  return value.toLocaleString('es-AR')
 }
-
-const toDashboardViewData = (stats?: DashboardStats | null): DashboardViewData => ({
-  fecha: stats?.fecha ?? new Date().toISOString(),
-  totalProduccion: stats?.lotes?.total ?? FALLBACK_DASHBOARD_DATA.totalProduccion,
-  lotesActivos: stats?.lotes?.activos ?? FALLBACK_DASHBOARD_DATA.lotesActivos,
-  ordenesMantenimiento:
-    stats?.ordenes_trabajo?.abiertas ?? FALLBACK_DASHBOARD_DATA.ordenesMantenimiento,
-  alertasPendientes: stats?.incidentes?.criticos ?? stats?.incidentes?.abiertos ?? FALLBACK_DASHBOARD_DATA.alertasPendientes,
-  eficienciaPromedio:
-    stats?.oee_7_dias?.rendimiento ?? FALLBACK_DASHBOARD_DATA.eficienciaPromedio,
-  tiempoMedioReparacion: FALLBACK_DASHBOARD_DATA.tiempoMedioReparacion,
-  oee: stats?.oee_7_dias?.oee ?? FALLBACK_DASHBOARD_DATA.oee,
-  disponibilidad: stats?.oee_7_dias?.disponibilidad ?? FALLBACK_DASHBOARD_DATA.disponibilidad
-})
-
-// Datos mock para gráficos dinámicos
-const productionData = [
-  { name: 'Lun', produccion: 1200, eficiencia: 85 },
-  { name: 'Mar', produccion: 1350, eficiencia: 88 },
-  { name: 'Mié', produccion: 1100, eficiencia: 82 },
-  { name: 'Jue', produccion: 1450, eficiencia: 92 },
-  { name: 'Vie', produccion: 1300, eficiencia: 87 },
-  { name: 'Sáb', produccion: 800, eficiencia: 78 },
-  { name: 'Dom', produccion: 0, eficiencia: 0 }
-]
-
-const machineStatusData = [
-  { name: 'Operativas', value: 85, color: '#22c55e' },
-  { name: 'Mantenimiento', value: 10, color: '#f59e0b' },
-  { name: 'Fuera de Servicio', value: 5, color: '#ef4444' }
-]
-
-const efficiencyTrend = [
-  { time: '00:00', eficiencia: 75 },
-  { time: '04:00', eficiencia: 82 },
-  { time: '08:00', eficiencia: 88 },
-  { time: '12:00', eficiencia: 92 },
-  { time: '16:00', eficiencia: 87 },
-  { time: '20:00', eficiencia: 80 }
-]
 
 export function Dashboard() {
   const router = useRouter()
   const { user, logout } = useAuth()
-  const [isLoading, setIsLoading] = useState(true)
-  const [currentTime, setCurrentTime] = useState(new Date())
-  const [realTimeData, setRealTimeData] = useState(FALLBACK_DASHBOARD_DATA)
+  const [data, setData] = useState<KpiDashboard | null>(null)
+  const [oee, setOee] = useState<KpiOEE | null>(null)
+  const [historial, setHistorial] = useState<KpiHistorialPoint[]>([])
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [currentTime, setCurrentTime] = useState(new Date())
 
   const handleLogout = async () => {
     await logout()
     router.push('/login')
   }
 
-  // Fetch real data from backend
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true)
-        const stats = await api.getDashboardStats()
-        setRealTimeData(toDashboardViewData(stats))
-        setError(null)
-      } catch (err) {
-        const { message } = handleApiError(err)
-        toast({
-          title: 'Error al cargar métricas',
-          description: message,
-          variant: 'destructive'
-        })
-        setError(message ?? 'No se pudo conectar con el backend. Mostrando datos de ejemplo.')
-        setRealTimeData(FALLBACK_DASHBOARD_DATA)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchData()
-
-    // Refresh data every 30 seconds
-    const interval = setInterval(fetchData, 30000)
-
-    return () => clearInterval(interval)
-  }, [])
-
-  // Update current time
-  useEffect(() => {
-    const timeTimer = setInterval(() => {
+    const timer = setInterval(() => {
       setCurrentTime(new Date())
     }, 1000)
 
-    return () => clearInterval(timeTimer)
+    return () => clearInterval(timer)
   }, [])
+
+  useEffect(() => {
+    let isMounted = true
+
+    const fetchMetrics = async (background = false) => {
+      if (!background) {
+        setLoading(true)
+      }
+      try {
+        const [resumen, oeeData, historialData] = await Promise.all([
+          api.getDashboardResumen(),
+          api.getOEE(),
+          api.getHistorialProduccion()
+        ])
+
+        if (!isMounted) {
+          return
+        }
+
+        setData(resumen)
+        setOee(oeeData)
+        setHistorial(historialData.historial)
+        setError(null)
+        setLastUpdated(new Date())
+      } catch (err) {
+        if (!isMounted) {
+          return
+        }
+
+        const message = (err as { message?: string })?.message ?? 'No se pudieron cargar las métricas'
+        setError(message)
+        setData(null)
+        setOee(null)
+        setHistorial([])
+        showError('Error al cargar métricas', message)
+      } finally {
+        if (isMounted && !background) {
+          setLoading(false)
+        }
+      }
+    }
+
+    fetchMetrics(false)
+    const interval = setInterval(() => fetchMetrics(true), 30000)
+
+    return () => {
+      isMounted = false
+      clearInterval(interval)
+    }
+  }, [])
+
+  const productionChartData = useMemo(() => {
+    return historial.map((item) => {
+      const date = new Date(item.fecha)
+      const label = date.toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit' })
+      return {
+        label,
+        produccion: item.unidades_producidas,
+        rechazos: item.unidades_rechazadas
+      }
+    })
+  }, [historial])
+
+  const resumenCards = useMemo(() => {
+    if (!data) {
+      return []
+    }
+
+    return [
+      {
+        title: 'Producción diaria',
+        subtitle: 'Lotes finalizados hoy',
+        value: data.produccion_diaria,
+        icon: Package,
+        gradient: 'from-blue-500 to-indigo-600'
+      },
+      {
+        title: 'Producción semanal',
+        subtitle: 'Acumulado últimos 7 días',
+        value: data.produccion_semanal,
+        icon: Clock,
+        gradient: 'from-sky-500 to-cyan-600'
+      },
+      {
+        title: 'Rendimiento promedio',
+        subtitle: 'Sobre el plan semanal',
+        value: `${toPercent(data.rendimiento_promedio)}%`,
+        icon: TrendingUp,
+        gradient: 'from-emerald-500 to-teal-600'
+      },
+      {
+        title: 'Alertas de calidad',
+        subtitle: 'Desviaciones críticas y controles no conformes',
+        value: formatNumber(
+          data.calidad_desviaciones_abiertas + data.calidad_controles_no_conformes
+        ),
+        icon: AlertTriangle,
+        gradient: 'from-rose-500 to-pink-600'
+      }
+    ]
+  }, [data])
+
+  const soporteCards = useMemo(() => {
+    if (!data) {
+      return []
+    }
+
+    return [
+      {
+        title: 'Insumos por vencer',
+        value: data.inventario_por_vencer,
+        description: 'Lotes de insumos a vencer en 30 días',
+        icon: PieChart,
+        accent: 'text-purple-600'
+      },
+      {
+        title: 'Stock crítico',
+        value: data.inventario_stock_bajo,
+        description: 'Insumos por debajo del punto de reposición',
+        icon: Package,
+        accent: 'text-amber-600'
+      },
+      {
+        title: 'Órdenes en seguimiento',
+        value: data.mantenimiento_abiertas + data.mantenimiento_en_pausa,
+        description: 'Mantenimiento abierto o en pausa',
+        icon: Wrench,
+        accent: 'text-blue-600'
+      },
+      {
+        title: 'Órdenes completadas',
+        value: data.mantenimiento_completadas_semana,
+        description: 'Completadas en la última semana',
+        icon: Target,
+        accent: 'text-emerald-600'
+      }
+    ]
+  }, [data])
+
+  const emptyState = !data && productionChartData.length === 0 && !oee
+  const updatedAtLabel = lastUpdated
+    ? lastUpdated.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    : '--'
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      {/* Header Animado */}
       <motion.header
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -184,20 +235,13 @@ export function Dashboard() {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 }}
-            >
+            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
               <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 SIPROSA MES
               </h1>
-              <p className="text-gray-600 font-medium">
-                Centro de Control de Manufactura Farmacéutica
-              </p>
+              <p className="text-gray-600 font-medium">Centro de Control de Manufactura Farmacéutica</p>
             </motion.div>
 
-            {/* Búsqueda Global */}
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -212,7 +256,6 @@ export function Dashboard() {
               transition={{ delay: 0.3 }}
               className="flex items-center space-x-4"
             >
-              {/* Sistema de Notificaciones */}
               <NotificationCenter />
 
               {user && (
@@ -227,13 +270,19 @@ export function Dashboard() {
               )}
               <div className="text-right">
                 <p className="text-sm text-gray-500">Última actualización</p>
-                <p className="font-mono text-sm font-semibold text-blue-600">
-                  {currentTime.toLocaleTimeString()}
-                </p>
+                <p className="font-mono text-sm font-semibold text-blue-600">{updatedAtLabel}</p>
               </div>
-              <Badge className={error ? "bg-yellow-100 text-yellow-800 border-yellow-200" : "bg-green-100 text-green-800 border-green-200 animate-pulse"}>
+              <Badge
+                className={
+                  error
+                    ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
+                    : loading
+                      ? 'bg-blue-100 text-blue-800 border-blue-200 animate-pulse'
+                      : 'bg-green-100 text-green-800 border-green-200'
+                }
+              >
                 <Activity className="w-3 h-3 mr-1" />
-                {error ? "Datos de ejemplo" : "Sistema Conectado"}
+                {error ? 'Sin datos' : loading ? 'Sincronizando' : 'Datos en línea'}
               </Badge>
               {(user?.is_superuser || user?.is_staff) && (
                 <Button
@@ -245,16 +294,16 @@ export function Dashboard() {
                   Usuarios
                 </Button>
               )}
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="bg-white/50 backdrop-blur-sm"
                 onClick={() => router.push('/configuracion')}
               >
                 <Settings className="h-4 w-4 mr-2" />
                 Configuración
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
                 onClick={handleLogout}
               >
@@ -265,501 +314,209 @@ export function Dashboard() {
         </div>
       </motion.header>
 
-      {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <DataState loading={isLoading} error={error} empty={false}>
-          <>
-            {/* Welcome Section */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="mb-8"
-            >
-              <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white">
-                <h2 className="text-3xl font-bold mb-2">
-                  ¡Centro de Control Activo!
-                </h2>
-                <p className="text-blue-100 text-lg">
-                  Monitoreo en tiempo real de todos los procesos de producción farmacéutica
-                </p>
-                <div className="flex items-center mt-4 space-x-6">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-                    <span className="text-sm font-medium">Producción: Óptima</span>
+        <DataState loading={loading} error={error} empty={emptyState}>
+          <div className="space-y-8">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+              <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white shadow-xl">
+                <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <p className="uppercase text-xs tracking-wide text-blue-100">Panel ejecutivo</p>
+                    <h2 className="text-3xl font-bold mb-2">Visión general de la operación</h2>
+                    <p className="text-blue-100 text-lg max-w-xl">
+                      Datos consolidados de producción, mantenimiento e indicadores de calidad para la última semana de trabajo.
+                    </p>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 bg-blue-400 rounded-full animate-pulse"></div>
-                    <span className="text-sm font-medium">Calidad: Estándar</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 bg-purple-400 rounded-full animate-pulse"></div>
-                    <span className="text-sm font-medium">Eficiencia: 87.5%</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="rounded-xl bg-white/10 p-4">
+                      <p className="text-sm text-blue-100">Tiempo real</p>
+                      <p className="text-2xl font-semibold">{currentTime.toLocaleTimeString('es-AR')}</p>
+                    </div>
+                    <div className="rounded-xl bg-white/10 p-4">
+                      <p className="text-sm text-blue-100">Lotes hoy</p>
+                      <p className="text-2xl font-semibold">{formatNumber(data?.produccion_diaria)}</p>
+                    </div>
+                    <div className="rounded-xl bg-white/10 p-4">
+                      <p className="text-sm text-blue-100">OEE actual</p>
+                      <p className="text-2xl font-semibold">{oee ? `${toPercent(oee.oee)}%` : '--'}</p>
+                    </div>
                   </div>
                 </div>
               </div>
             </motion.div>
 
-            {/* KPI Cards Animados */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
-            >
-              {[
-                {
-                  title: 'Producción Diaria',
-                  value: realTimeData.totalProduccion ? realTimeData.totalProduccion.toLocaleString() : '0',
-                  subtitle: 'Unidades producidas',
-                  icon: Package,
-                  color: 'from-emerald-500 to-teal-600',
-                  bgColor: 'bg-emerald-50',
-                  iconColor: 'text-emerald-600'
-                },
-                {
-                  title: 'Lotes Activos',
-                  value: realTimeData.lotesActivos,
-                  subtitle: 'En proceso',
-                  icon: Clock,
-                  color: 'from-blue-500 to-indigo-600',
-                  bgColor: 'bg-blue-50',
-                  iconColor: 'text-blue-600'
-                },
-                {
-                  title: 'Mantenimiento',
-                  value: realTimeData.ordenesMantenimiento,
-                  subtitle: 'Órdenes pendientes',
-                  icon: Wrench,
-                  color: 'from-amber-500 to-orange-600',
-                  bgColor: 'bg-amber-50',
-                  iconColor: 'text-amber-600'
-                },
-                {
-                  title: 'Alertas',
-                  value: realTimeData.alertasPendientes,
-                  subtitle: 'Requieren atención',
-                  icon: AlertTriangle,
-                  color: 'from-red-500 to-rose-600',
-                  bgColor: 'bg-red-50',
-                  iconColor: 'text-red-600'
-                }
-              ].map((kpi, index) => (
-                <motion.div
-                  key={kpi.title}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.6 + index * 0.1 }}
-                  whileHover={{ scale: 1.02 }}
-                  className="group"
-                >
-                  <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-                    <div className={`absolute inset-0 bg-gradient-to-br ${kpi.color} opacity-5 group-hover:opacity-10 transition-opacity`}></div>
-                    <CardHeader className="pb-2">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm font-medium text-gray-600">
-                          {kpi.title}
-                        </CardTitle>
-                        <div className={`p-2 rounded-lg ${kpi.bgColor}`}>
-                          <kpi.icon className={`h-5 w-5 ${kpi.iconColor}`} />
-                        </div>
-                      </div>
+            {resumenCards.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+              >
+                {resumenCards.map((kpi) => (
+                  <Card key={kpi.title} className="relative overflow-hidden border-0 shadow-lg">
+                    <div className={`absolute inset-0 bg-gradient-to-br ${kpi.gradient} opacity-10`} />
+                    <CardHeader className="relative z-10 pb-1">
+                      <CardTitle className="text-sm font-medium text-gray-600 flex items-center justify-between">
+                        <span>{kpi.title}</span>
+                        <kpi.icon className="h-5 w-5 text-gray-500" />
+                      </CardTitle>
+                      <CardDescription>{kpi.subtitle}</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                      <div className="text-3xl font-bold text-gray-900 mb-1">
-                        {kpi.value}
-                      </div>
-                      <p className="text-sm text-gray-500">
-                        {kpi.subtitle}
-                      </p>
+                    <CardContent className="relative z-10">
+                      <p className="text-3xl font-bold text-gray-900">{typeof kpi.value === 'number' ? formatNumber(kpi.value) : kpi.value}</p>
                     </CardContent>
                   </Card>
-                </motion.div>
-              ))}
-            </motion.div>
+                ))}
+              </motion.div>
+            )}
 
-            {/* Gráficos y Análisis */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-              {/* Gráfico de Producción */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.8 }}
+                transition={{ delay: 0.6 }}
+                className="lg:col-span-2"
               >
                 <Card className="shadow-lg border-0">
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
-                  <BarChart3 className="h-5 w-5 text-blue-600" />
-                  <span>Producción Semanal</span>
-                </CardTitle>
-                <CardDescription>
-                  Unidades producidas por día de la semana
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={productionData}>
-                    <defs>
-                      <linearGradient id="productionGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                    <XAxis dataKey="name" stroke="#64748b" />
-                    <YAxis stroke="#64748b" />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'white',
-                        border: 'none',
-                        borderRadius: '8px',
-                        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)'
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="produccion"
-                      stroke="#3b82f6"
-                      strokeWidth={3}
-                      fill="url(#productionGradient)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Estado de Máquinas */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.9 }}
-          >
-            <Card className="shadow-lg border-0">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <PieChart className="h-5 w-5 text-purple-600" />
-                  <span>Estado de Máquinas</span>
-                </CardTitle>
-                <CardDescription>
-                  Distribución actual del estado de los equipos
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <RechartsPieChart>
-                    <Pie
-                      data={machineStatusData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {machineStatusData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </RechartsPieChart>
-                </ResponsiveContainer>
-                <div className="flex justify-center space-x-6 mt-4">
-                  {machineStatusData.map((item, index) => (
-                    <div key={index} className="flex items-center space-x-2">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: item.color }}
-                      ></div>
-                      <span className="text-sm text-gray-600">
-                        {item.name}: {item.value}%
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </div>
-
-        {/* Eficiencia en Tiempo Real */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.0 }}
-          className="mb-8"
-        >
-          <Card className="shadow-lg border-0">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <LineChart className="h-5 w-5 text-green-600" />
-                <span>Eficiencia en Tiempo Real</span>
-              </CardTitle>
-              <CardDescription>
-                Seguimiento continuo de la eficiencia operacional
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <RechartsLineChart data={efficiencyTrend}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="time" stroke="#64748b" />
-                  <YAxis domain={[70, 100]} stroke="#64748b" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)'
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="eficiencia"
-                    stroke="#22c55e"
-                    strokeWidth={3}
-                    dot={{ fill: '#22c55e', strokeWidth: 2, r: 4 }}
-                    activeDot={{ r: 6, stroke: '#22c55e', strokeWidth: 2 }}
-                  />
-                </RechartsLineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Módulos del Sistema */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.0 }}
-          className="mb-8"
-        >
-          <h2 className="text-2xl font-bold mb-6 text-gray-900">Módulos del Sistema</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {[
-              { icon: Package, text: 'Productos', color: 'from-blue-500 to-blue-600', route: '/productos' },
-              { icon: FileText, text: 'Fórmulas', color: 'from-purple-500 to-purple-600', route: '/formulas' },
-              { icon: Settings, text: 'Máquinas', color: 'from-gray-500 to-gray-600', route: '/maquinas' },
-              { icon: Package, text: 'Lotes', color: 'from-green-500 to-green-600', route: '/lotes' },
-              { icon: Activity, text: 'Inventario', color: 'from-indigo-500 to-indigo-600', route: '/inventario' },
-              { icon: Wrench, text: 'Mantenimiento', color: 'from-amber-500 to-amber-600', route: '/mantenimiento' },
-              { icon: AlertTriangle, text: 'Incidentes', color: 'from-red-500 to-red-600', route: '/incidentes' },
-              { icon: AlertCircle, text: 'Desviaciones', color: 'from-orange-500 to-orange-600', route: '/desviaciones' },
-              { icon: Shield, text: 'Control Calidad', color: 'from-emerald-500 to-emerald-600', route: '/control-calidad' },
-              { icon: BarChart3, text: 'KPIs', color: 'from-teal-500 to-teal-600', route: '/kpis' },
-              { icon: MapPin, text: 'Ubicaciones', color: 'from-cyan-500 to-cyan-600', route: '/ubicaciones' },
-              { icon: Clock, text: 'Turnos', color: 'from-violet-500 to-violet-600', route: '/turnos' },
-              { icon: Activity, text: 'Etapas', color: 'from-pink-500 to-pink-600', route: '/etapas-produccion' },
-              { icon: Clock, text: 'Paradas', color: 'from-rose-500 to-rose-600', route: '/paradas' },
-              { icon: FileText, text: 'Documentos', color: 'from-slate-500 to-slate-600', route: '/configuracion' },
-            ].map((module, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 1.1 + index * 0.05 }}
-                whileHover={{ scale: 1.05, y: -5 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <button
-                  onClick={() => router.push(module.route)}
-                  className={`w-full h-32 rounded-xl bg-gradient-to-br ${module.color} text-white shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col items-center justify-center gap-3 group`}
-                >
-                  <div className="p-3 bg-white/20 rounded-lg group-hover:bg-white/30 transition-colors">
-                    <module.icon className="w-8 h-8" />
-                  </div>
-                  <span className="font-semibold text-sm">{module.text}</span>
-                </button>
+                      <BarChart3 className="h-5 w-5 text-blue-600" />
+                      <span>Historial de producción (7 días)</span>
+                    </CardTitle>
+                    <CardDescription>Unidades producidas y rechazos diarios</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={320}>
+                      <BarChart data={productionChartData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="label" stroke="#64748b" />
+                        <YAxis stroke="#64748b" />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'white',
+                            borderRadius: '8px',
+                            border: '1px solid #e2e8f0',
+                            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)'
+                          }}
+                        />
+                        <Bar dataKey="produccion" fill="#2563eb" name="Unidades producidas" radius={[6, 6, 0, 0]} />
+                        <Bar dataKey="rechazos" fill="#ef4444" name="Unidades rechazadas" radius={[6, 6, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
               </motion.div>
-            ))}
-          </div>
-        </motion.div>
 
-        {/* Acciones Rápidas y Estado del Sistema */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Acciones Rápidas */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 1.6 }}
-          >
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-blue-50 to-indigo-50">
-              <CardHeader>
-                <CardTitle className="text-blue-900">Acciones Rápidas</CardTitle>
-                <CardDescription className="text-blue-700">
-                  Operaciones críticas del flujo de trabajo
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {[
-                  { icon: Package, text: 'Nuevo Lote', color: 'bg-blue-500', route: '/lotes' },
-                  { icon: Wrench, text: 'Mantenimiento', color: 'bg-amber-500', route: '/mantenimiento' },
-                  { icon: AlertTriangle, text: 'Reportar Incidente', color: 'bg-red-500', route: '/incidentes' },
-                  { icon: TrendingUp, text: 'Ver KPIs', color: 'bg-green-500', route: '/kpis' }
-                ].map((action, index) => (
-                  <motion.div
-                    key={index}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Button 
-                      onClick={() => router.push(action.route)}
-                      className="w-full justify-start bg-white/80 hover:bg-white text-gray-700 border border-blue-200"
-                    >
-                      <div className={`p-2 rounded-lg ${action.color} mr-3`}>
-                        <action.icon className="h-4 w-4 text-white" />
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.6 }}
+              >
+                <Card className="shadow-lg border-0 h-full">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <LineChartIcon className="h-5 w-5 text-emerald-600" />
+                      <span>Indicadores OEE</span>
+                    </CardTitle>
+                    <CardDescription>Disponibilidad, rendimiento y calidad actuales</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {oee ? (
+                      [
+                        { label: 'OEE', value: toPercent(oee.oee), accent: 'bg-emerald-500' },
+                        { label: 'Disponibilidad', value: toPercent(oee.disponibilidad), accent: 'bg-blue-500' },
+                        { label: 'Rendimiento', value: toPercent(oee.rendimiento), accent: 'bg-purple-500' },
+                        { label: 'Calidad', value: toPercent(oee.calidad), accent: 'bg-amber-500' }
+                      ].map((metric) => (
+                        <div key={metric.label}>
+                          <div className="flex items-center justify-between text-sm font-medium text-gray-600">
+                            <span>{metric.label}</span>
+                            <span>{metric.value}%</span>
+                          </div>
+                          <div className="mt-2 h-2 w-full rounded-full bg-gray-200">
+                            <div
+                              className={`h-2 rounded-full ${metric.accent}`}
+                              style={{ width: `${Math.min(100, metric.value)}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="flex min-h-[160px] items-center justify-center text-sm text-gray-500">
+                        No hay métricas de OEE disponibles
                       </div>
-                      {action.text}
-                    </Button>
-                  </motion.div>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </div>
+
+            {soporteCards.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.7 }}
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+              >
+                {soporteCards.map((item) => (
+                  <Card key={item.title} className="border border-gray-100 shadow-sm">
+                    <CardHeader>
+                      <CardTitle className="flex items-center justify-between text-base text-gray-700">
+                        {item.title}
+                        <item.icon className={`h-5 w-5 ${item.accent}`} />
+                      </CardTitle>
+                      <CardDescription>{item.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-2xl font-semibold text-gray-900">{formatNumber(item.value)}</p>
+                    </CardContent>
+                  </Card>
                 ))}
-              </CardContent>
-            </Card>
-          </motion.div>
+              </motion.div>
+            )}
 
-          {/* Estado del Sistema */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.2 }}
-          >
-            <Card className="shadow-lg border-0">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Zap className="h-5 w-5 text-yellow-500" />
-                  <span>Métricas de Rendimiento</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">OEE Global</span>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-24 bg-gray-200 rounded-full h-2">
-                        <motion.div
-                          className="bg-green-500 h-2 rounded-full"
-                          initial={{ width: 0 }}
-                          animate={{ width: `${realTimeData.oee}%` }}
-                          transition={{ duration: 1, delay: 1.5 }}
-                        ></motion.div>
-                      </div>
-                      <span className="text-sm font-semibold text-green-600">
-                        {realTimeData.oee}%
-                      </span>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8 }}
+            >
+              <Card className="shadow-lg border-0 bg-gradient-to-br from-green-50 to-emerald-50">
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2 text-green-900">
+                    <Activity className="h-5 w-5" />
+                    <span>Resumen operativo</span>
+                  </CardTitle>
+                  <CardDescription className="text-green-700">
+                    Indicadores clave provenientes del backend operacional
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-700">
+                    <div className="rounded-lg border border-green-200 bg-white/60 p-4">
+                      <p className="font-semibold text-green-800">Producción semanal</p>
+                      <p className="text-2xl font-bold text-green-900">{formatNumber(data?.produccion_semanal)}</p>
+                    </div>
+                    <div className="rounded-lg border border-green-200 bg-white/60 p-4">
+                      <p className="font-semibold text-green-800">Órdenes abiertas</p>
+                      <p className="text-2xl font-bold text-green-900">{formatNumber(data?.mantenimiento_abiertas)}</p>
+                    </div>
+                    <div className="rounded-lg border border-green-200 bg-white/60 p-4">
+                      <p className="font-semibold text-green-800">Órdenes en pausa</p>
+                      <p className="text-2xl font-bold text-green-900">{formatNumber(data?.mantenimiento_en_pausa)}</p>
+                    </div>
+                    <div className="rounded-lg border border-green-200 bg-white/60 p-4">
+                      <p className="font-semibold text-green-800">Controles no conformes</p>
+                      <p className="text-2xl font-bold text-green-900">{formatNumber(data?.calidad_controles_no_conformes)}</p>
                     </div>
                   </div>
-
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Disponibilidad</span>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-24 bg-gray-200 rounded-full h-2">
-                        <motion.div
-                          className="bg-blue-500 h-2 rounded-full"
-                          initial={{ width: 0 }}
-                          animate={{ width: `${realTimeData.disponibilidad}%` }}
-                          transition={{ duration: 1, delay: 1.7 }}
-                        ></motion.div>
-                      </div>
-                      <span className="text-sm font-semibold text-blue-600">
-                        {realTimeData.disponibilidad}%
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Eficiencia</span>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-24 bg-gray-200 rounded-full h-2">
-                        <motion.div
-                          className="bg-purple-500 h-2 rounded-full"
-                          initial={{ width: 0 }}
-                          animate={{ width: `${realTimeData.eficienciaPromedio}%` }}
-                          transition={{ duration: 1, delay: 1.9 }}
-                        ></motion.div>
-                      </div>
-                      <span className="text-sm font-semibold text-purple-600">
-                        {realTimeData.eficienciaPromedio}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Actividad Reciente */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 1.3 }}
-          >
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-green-50 to-emerald-50">
-              <CardHeader>
-                <CardTitle className="text-green-900 flex items-center space-x-2">
-                  <ActivityIcon className="h-5 w-5" />
-                  <span>Actividad en Tiempo Real</span>
-                </CardTitle>
-                <CardDescription className="text-green-700">
-                  Eventos recientes del sistema
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {[
-                    {
-                      icon: CheckCircle,
-                      color: 'bg-green-500',
-                      title: 'Lote PROD-2025-001 completado',
-                      time: 'Hace 2 minutos',
-                      badge: 'Completado',
-                      badgeColor: 'bg-green-100 text-green-800'
-                    },
-                    {
-                      icon: Clock,
-                      color: 'bg-yellow-500',
-                      title: 'Mantenimiento programado iniciado',
-                      time: 'Hace 15 minutos',
-                      badge: 'En Proceso',
-                      badgeColor: 'bg-yellow-100 text-yellow-800'
-                    },
-                    {
-                      icon: AlertCircle,
-                      color: 'bg-orange-500',
-                      title: 'Alerta de calidad detectada',
-                      time: 'Hace 1 hora',
-                      badge: 'Atención',
-                      badgeColor: 'bg-orange-100 text-orange-800'
-                    }
-                  ].map((activity, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 1.4 + index * 0.1 }}
-                      className="flex items-start space-x-3"
-                    >
-                      <div className={`p-2 rounded-full ${activity.color}`}>
-                        <activity.icon className="h-4 w-4 text-white" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {activity.title}
-                        </p>
-                        <p className="text-xs text-gray-500">{activity.time}</p>
-                      </div>
-                      <Badge className={activity.badgeColor}>
-                        {activity.badge}
-                      </Badge>
-                    </motion.div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </div>
-          </>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </div>
         </DataState>
       </main>
     </div>
   )
 }
+
+export default Dashboard
