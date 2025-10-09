@@ -1,0 +1,42 @@
+F4.2 – Integración de Dashboard con backend de KPIs
+===================================================
+
+Endpoints consumidos
+--------------------
+- `GET /api/kpis/resumen_dashboard/`
+- `GET /api/kpis/oee/`
+- `GET /api/kpis/historial_produccion/`
+- `GET /api/kpis/alertas/`
+
+Ejemplo de respuesta
+--------------------
+```
+{
+  "status": 200,
+  "message": "ok",
+  "data": {
+    "produccion_diaria": 6,
+    "produccion_semanal": 32,
+    "rendimiento_promedio": 0.87,
+    "inventario_stock_bajo": 4,
+    "inventario_por_vencer": 2,
+    "mantenimiento_abiertas": 3,
+    "mantenimiento_en_pausa": 1,
+    "mantenimiento_completadas_semana": 5,
+    "calidad_desviaciones_abiertas": 2,
+    "calidad_controles_no_conformes": 1
+  }
+}
+```
+
+Pantallas modificadas
+---------------------
+- Dashboard principal (`frontend/src/components/dashboard.tsx`).
+- Página de KPIs (`frontend/src/app/kpis/page.tsx`).
+- Centro de notificaciones (`frontend/src/components/notification-center.tsx`).
+
+Pendientes y feedback de UI
+---------------------------
+- Evaluar la incorporación de filtros (turno, rango de fechas) para refinar las métricas sin recargar manualmente.
+- Considerar un historial más extenso (30 días) cuando el backend exponga parámetros para el endpoint de producción.
+- Agregar indicadores de tendencia (↑ ↓) cuando haya datos históricos suficientes para comparaciones interdiarias.
