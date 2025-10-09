@@ -5,6 +5,7 @@ import { X, History, Filter, Download, Calendar, User, FileText } from 'lucide-r
 import { motion, AnimatePresence } from 'framer-motion'
 import { LogAuditoria, AuditoriaResponse } from '@/types/models'
 import { api } from '@/lib/api'
+import { featureFlags } from '@/lib/feature-flags'
 
 interface AuditDrawerProps {
   isOpen: boolean
@@ -73,8 +74,11 @@ export default function AuditDrawer({ isOpen, onClose }: AuditDrawerProps) {
 
   const handleExport = async () => {
     try {
-      // Aquí podrías implementar la exportación a CSV
-      alert('Exportación en desarrollo')
+      if (!featureFlags.auditoriaExport) {
+        console.warn('La exportación de auditoría está deshabilitada hasta contar con soporte backend.')
+        return
+      }
+      // Aquí podrías implementar la exportación a CSV cuando esté habilitada
     } catch (err) {
       console.error('Error exporting logs:', err)
     }
@@ -168,13 +172,15 @@ export default function AuditDrawer({ isOpen, onClose }: AuditDrawerProps) {
               >
                 Actualizar
               </button>
-              <button
-                onClick={handleExport}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-              >
-                <Download className="w-4 h-4" />
-                Exportar
-              </button>
+              {featureFlags.auditoriaExport && (
+                <button
+                  onClick={handleExport}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  Exportar
+                </button>
+              )}
             </div>
           </div>
 

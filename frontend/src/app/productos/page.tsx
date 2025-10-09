@@ -25,6 +25,7 @@ import {
   ArrowLeft,
 } from 'lucide-react'
 import { api } from '@/lib/api'
+import { featureFlags } from '@/lib/feature-flags'
 import ProductoFormModal from '@/components/producto-form-modal'
 import DataState from '@/components/common/data-state'
 import { showError } from '@/components/common/toast-utils'
@@ -229,15 +230,19 @@ export default function ProductosPage() {
                           </div>
                         )}
                         <div className="flex gap-2 pt-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
-                            onClick={() => {/* TODO: View formulas */}}
-                          >
-                            <FileText className="w-4 h-4 mr-1" />
-                            Fórmulas
-                          </Button>
+                          {featureFlags.productosAsociaciones && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1"
+                              onClick={() => {
+                                console.warn('Asociación de fórmulas a productos deshabilitada sin soporte backend')
+                              }}
+                            >
+                              <FileText className="w-4 h-4 mr-1" />
+                              Fórmulas
+                            </Button>
+                          )}
                           {(user?.is_superuser || user?.is_staff) && (
                             <Button
                               variant="outline"

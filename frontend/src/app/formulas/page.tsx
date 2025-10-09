@@ -26,6 +26,7 @@ import {
   CheckCircle,
 } from 'lucide-react'
 import { api } from '@/lib/api'
+import { featureFlags } from '@/lib/feature-flags'
 import FormulaFormModal from '@/components/formula-form-modal'
 import DataState from '@/components/common/data-state'
 import { showError } from '@/components/common/toast-utils'
@@ -235,15 +236,19 @@ export default function FormulasPage() {
                           )}
                         </div>
                         <div className="flex gap-2 pt-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
-                            onClick={() => {/* TODO: View ingredients */}}
-                          >
-                            <Package className="w-4 h-4 mr-1" />
-                            Insumos
-                          </Button>
+                          {featureFlags.formulasIngredientes && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1"
+                              onClick={() => {
+                                console.warn('Detalle de insumos por fórmula pendiente de implementación backend')
+                              }}
+                            >
+                              <Package className="w-4 h-4 mr-1" />
+                              Insumos
+                            </Button>
+                          )}
                           {(user?.is_superuser || user?.is_staff) && (
                             <Button
                               variant="outline"
