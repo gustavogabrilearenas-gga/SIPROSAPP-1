@@ -4,7 +4,7 @@ import { type ComponentType, useState, useEffect, useCallback, useMemo } from 'r
 import { Bell, X, AlertTriangle, Package, Activity, AlertCircle, RefreshCcw, Clock } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import DataState from '@/components/common/data-state'
-import { api, KpiAlertas } from '@/lib/api'
+import { api, KpiAlertas, LiveAlert, LiveAlertType } from '@/lib/api'
 import { showError } from '@/components/common/toast-utils'
 
 const alertDefinitions: Array<{
@@ -51,9 +51,29 @@ const alertDefinitions: Array<{
   }
 ]
 
+const liveAlertTypeIcons: Record<LiveAlertType, string> = {
+  inventario: '📦',
+  produccion: '⚠️',
+  mantenimiento: '🔧',
+  calidad: '🧪'
+}
+
+const liveAlertSeverityStyles: Record<LiveAlert['nivel'], string> = {
+  info: 'bg-blue-50 text-blue-700 border-blue-200',
+  warning: 'bg-amber-50 text-amber-700 border-amber-200',
+  critical: 'bg-red-50 text-red-700 border-red-200'
+}
+
+const liveAlertSeverityLabels: Record<LiveAlert['nivel'], string> = {
+  info: 'Info',
+  warning: 'Alerta',
+  critical: 'Crítica'
+}
+
 export default function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false)
   const [alertas, setAlertas] = useState<KpiAlertas | null>(null)
+  const [liveAlerts, setLiveAlerts] = useState<LiveAlert[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
@@ -64,15 +84,17 @@ export default function NotificationCenter() {
     }
 
     try {
-      const data = await api.getAlertas()
+      const [data, live] = await Promise.all([api.getAlertas(), api.getLiveAlerts()])
       setAlertas(data)
+      setLiveAlerts(live)
       setError(null)
       setLastUpdated(new Date())
     } catch (err) {
       const message = (err as { message?: string })?.message ?? 'No se pudieron cargar las alertas'
       setError(message)
       setAlertas(null)
-      showError('Error al cargar alertas', message)
+      setLiveAlerts([])
+      showError('Error al actualizar alertas')
     } finally {
       if (!background) {
         setLoading(false)
@@ -102,6 +124,8 @@ export default function NotificationCenter() {
 
     return Object.values(alertas).reduce((acc, value) => acc + value, 0)
   }, [alertas])
+
+  const isEmpty = (!alertas || totalAlertas === 0) && liveAlerts.length === 0
 
   const lastUpdatedLabel = lastUpdated
     ? lastUpdated.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -157,7 +181,7 @@ export default function NotificationCenter() {
                 <DataState
                   loading={loading}
                   error={error}
-                  empty={!alertas || totalAlertas === 0}
+                  empty={isEmpty}
                   emptyMessage="Sin alertas activas"
                 >
                   <div className="space-y-4">
@@ -185,6 +209,33 @@ export default function NotificationCenter() {
                         </div>
                       )
                     })}
+                    <div className="space-y-2 rounded-lg border border-gray-100 bg-white p-3 shadow-sm">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        Alertas en vivo (24h)
+                      </p>
+                      <div className="max-h-48 space-y-2 overflow-y-auto pr-1">
+                        {liveAlerts.length > 0 ? (
+                          liveAlerts.map((live) => (
+                            <div
+                              key={`${live.tipo}-${live.id}-${live.mensaje}`}
+                              className="flex items-start gap-3 rounded-md border border-gray-100 bg-gray-50 px-3 py-2"
+                            >
+                              <span className="text-lg leading-none">{liveAlertTypeIcons[live.tipo]}</span>
+                              <div className="flex-1 space-y-1">
+                                <p className="text-sm text-gray-800">{live.mensaje}</p>
+                                <span
+                                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${liveAlertSeverityStyles[live.nivel]}`}
+                                >
+                                  {liveAlertSeverityLabels[live.nivel]}
+                                </span>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-sm text-gray-500">Sin eventos en las últimas 24 horas.</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </DataState>
               </div>

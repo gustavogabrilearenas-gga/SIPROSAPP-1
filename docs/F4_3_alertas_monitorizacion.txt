@@ -1,0 +1,58 @@
+F4.3 – Sistema de Alertas y Monitoreo
+=====================================
+
+Esquema de alertas
+------------------
+- Endpoint REST `GET /api/kpis/live_alerts/`.
+- Ventana temporal: últimos 24 horas.
+- Fuentes de datos:
+  - Inventario: `LoteInsumo` (consumos recientes, recepción/aprobación).
+  - Producción: `Parada` (planificadas y no planificadas).
+  - Mantenimiento: `OrdenTrabajo` (prioridad, requerimiento de parada).
+  - Calidad: `Desviacion` (severidad declarada).
+- Niveles de severidad expuestos: `info`, `warning`, `critical`.
+- Tipos funcionales: `inventario`, `produccion`, `mantenimiento`, `calidad`.
+
+Ejemplo de payload en backend
+-----------------------------
+```
+{
+  "status": 200,
+  "data": [
+    {
+      "id": 42,
+      "tipo": "produccion",
+      "nivel": "critical",
+      "mensaje": "Parada Falla de Equipo LOTE-2024A (45 min)"
+    },
+    {
+      "id": 12,
+      "tipo": "mantenimiento",
+      "nivel": "warning",
+      "mensaje": "Orden MT-120 en Mezcladora 3: Lubricación preventiva"
+    },
+    {
+      "id": 98,
+      "tipo": "inventario",
+      "nivel": "warning",
+      "mensaje": "Insumo Alcohol Etílico con stock bajo (55.0 L)"
+    }
+  ],
+  "message": "ok"
+}
+```
+
+Flujo de actualización automática en frontend
+---------------------------------------------
+1. `NotificationCenter` obtiene en paralelo `/kpis/alertas/` y `/kpis/live_alerts/`.
+2. Al abrir el panel se dispara `loadAlertas()` y se programa un intervalo de 60 segundos.
+3. Cada ejecución refresca totales históricos y alertas vivas, mostrando iconos por tipo y chips por severidad.
+4. Errores de red o del backend se notifican con `showError("Error al actualizar alertas")` y la UI cae al estado vacío.
+5. El Dashboard principal se actualiza automáticamente cada 30 segundos y permite un refresco manual con el botón "Actualizar métricas" sin recargar la página.
+
+Consideraciones futuras (WebSockets / SSE)
+-----------------------------------------
+- Sustituir el `setInterval` del centro de notificaciones por WebSockets o Server-Sent Events para empujar eventos en tiempo real.
+- Emitir eventos diferenciales (creación/actualización) para minimizar payloads.
+- Persistir el timestamp del último evento entregado para soportar reconexiones confiables.
+- Incluir métricas predictivas en el stream (p. ej. forecasts de stock crítico) generadas desde servicios de analítica.
