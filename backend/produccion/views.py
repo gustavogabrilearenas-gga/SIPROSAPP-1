@@ -736,21 +736,33 @@ class LoteEtapaViewSet(viewsets.ModelViewSet):
 class ParadaViewSet(viewsets.ModelViewSet):
     """ViewSet para gestionar Paradas"""
     queryset = Parada.objects.select_related(
-        'lote_etapa', 'registrado_por'
+        'lote_etapa', 'lote_etapa__lote', 'lote_etapa__etapa', 'registrado_por'
     ).all().order_by('-fecha_inicio')
     serializer_class = ParadaSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['descripcion', 'lote_etapa__lote__codigo_lote']
-    ordering_fields = ['fecha_inicio', 'duracion_minutos']
-    
+    search_fields = [
+        'descripcion', 'lote_etapa__lote__codigo_lote', 'lote_etapa__etapa__nombre'
+    ]
+    ordering_fields = ['fecha_inicio', 'fecha_fin', 'duracion_minutos']
+
     def get_queryset(self):
         queryset = super().get_queryset()
-        
+
+        # Filtro por lote
+        lote_id = self.request.query_params.get('lote')
+        if lote_id:
+            queryset = queryset.filter(lote_etapa__lote_id=lote_id)
+
+        # Filtro por lote_etapa
+        lote_etapa_id = self.request.query_params.get('lote_etapa')
+        if lote_etapa_id:
+            queryset = queryset.filter(lote_etapa_id=lote_etapa_id)
+
         # Filtro por tipo
         tipo = self.request.query_params.get('tipo', None)
         if tipo:
             queryset = queryset.filter(tipo=tipo.upper())
-        
+
         # Filtro por categor�a
         categoria = self.request.query_params.get('categoria', None)
         if categoria:
