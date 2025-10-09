@@ -45,7 +45,10 @@ from backend.produccion.serializers import LoteListSerializer
 
 class UbicacionViewSet(viewsets.ModelViewSet):
     """ViewSet para gestionar Ubicaciones"""
-    queryset = Ubicacion.objects.all().order_by('codigo')
+    queryset = Ubicacion.objects.annotate(
+        maquinas_count=Count('maquinas', distinct=True),
+        lotes_insumo_count=Count('lotes_insumo', distinct=True),
+    ).order_by('codigo')
     serializer_class = UbicacionSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['codigo', 'nombre']
@@ -183,7 +186,9 @@ class EtapaProduccionViewSet(viewsets.ModelViewSet):
 
 class TurnoViewSet(viewsets.ModelViewSet):
     """ViewSet para gestionar Turnos"""
-    queryset = Turno.objects.all().order_by('codigo')
+    queryset = Turno.objects.annotate(
+        lotes_count=Count('lotes', filter=Q(lotes__visible=True), distinct=True)
+    ).order_by('codigo')
     serializer_class = TurnoSerializer
     
     def get_permissions(self):

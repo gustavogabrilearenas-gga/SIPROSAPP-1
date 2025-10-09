@@ -18,24 +18,9 @@ import { api } from '@/lib/api'
 import ParadaFormModal from '@/components/paradas/ParadaFormModal'
 import DataState from '@/components/common/data-state'
 import { showError, showSuccess } from '@/components/common/toast-utils'
+import type { Parada as ParadaModel } from '@/types/models'
 
-interface Parada {
-  id: number
-  lote_etapa: number
-  lote_etapa_codigo?: string
-  lote_codigo?: string
-  tipo: string
-  tipo_display?: string
-  categoria: string
-  categoria_display?: string
-  fecha_inicio: string
-  fecha_fin: string | null
-  duracion_minutos: number | null
-  descripcion: string
-  solucion: string
-  registrado_por: number
-  registrado_por_nombre?: string
-}
+type Parada = ParadaModel
 
 export default function ParadasPage() {
   const router = useRouter()
@@ -67,14 +52,23 @@ export default function ParadasPage() {
     }
   }
 
+  const search = searchTerm.trim().toLowerCase()
+
   const filteredParadas = paradas.filter(p => {
     const loteCodigo = p.lote_codigo ?? `LOTE-${p.lote_etapa}`
-    const categoria = p.categoria ?? ''
+    const categoria = p.categoria_display ?? p.categoria ?? ''
     const descripcion = p.descripcion ?? ''
-    const matchesSearch =
-      loteCodigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      categoria.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      descripcion.toLowerCase().includes(searchTerm.toLowerCase())
+    const etapa = p.etapa_nombre ?? p.lote_etapa_descripcion ?? ''
+    const registradoPor = p.registrado_por_nombre ?? ''
+    const matchesSearch = !search || [
+      loteCodigo,
+      categoria,
+      descripcion,
+      etapa,
+      registradoPor,
+    ]
+      .filter(Boolean)
+      .some(value => value.toLowerCase().includes(search))
     const matchesFilter = filterTipo === 'TODAS' || p.tipo === filterTipo
     return matchesSearch && matchesFilter
   })
@@ -107,12 +101,16 @@ export default function ParadasPage() {
     return fechaFin ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
   }
 
-  const formatDuration = (minutos: number | null) => {
-    if (!minutos) return 'En curso'
+  const formatDuration = (parada: Parada) => {
+    if (parada.duracion_legible) return parada.duracion_legible
+
+    const minutos = parada.duracion_actual_minutos ?? parada.duracion_minutos
+    if (minutos == null) return 'En curso'
+    if (minutos <= 0) return 'En curso (<1 min)'
     if (minutos < 60) return `${minutos} min`
     const horas = Math.floor(minutos / 60)
     const mins = minutos % 60
-    return `${horas}h ${mins}min`
+    return mins === 0 ? `${horas} h` : `${horas} h ${mins} min`
   }
 
   const handleFinalizarParada = async (parada: Parada) => {
@@ -233,7 +231,7 @@ export default function ParadasPage() {
                 const EstadoIcon = getEstadoIcon(parada.fecha_fin)
                 const isEnCurso = !parada.fecha_fin
                 const loteCodigo = parada.lote_codigo ?? `Lote #${parada.lote_etapa}`
-                const etapaCodigo = parada.lote_etapa_codigo ?? `Etapa #${parada.lote_etapa}`
+                const etapaNombre = parada.etapa_nombre ?? parada.etapa_codigo ?? `Etapa #${parada.lote_etapa}`
                 const registradoPor =
                   parada.registrado_por_nombre ?? `Usuario #${parada.registrado_por}`
 
@@ -255,7 +253,7 @@ export default function ParadasPage() {
                             <div className="flex items-center gap-2 mb-2">
                               <h3 className="text-lg font-bold">{loteCodigo}</h3>
                               <Badge className={getTipoColor(parada.tipo)}>
-                                {parada.tipo_display ?? parada.tipo}
+                                {(parada.tipo_display ?? parada.tipo).replace('_', ' ')}
                               </Badge>
                               <Badge className={getCategoriaColor(parada.categoria)}>
                                 {(parada.categoria_display ?? parada.categoria).replace('_', ' ')}
@@ -266,7 +264,7 @@ export default function ParadasPage() {
                               </Badge>
                             </div>
                             <p className="text-sm text-gray-600 mb-2">
-                              Etapa: {etapaCodigo}
+                              Etapa: {etapaNombre}
                             </p>
                             <p className="text-gray-800">{parada.descripcion}</p>
                           </div>
@@ -289,7 +287,7 @@ export default function ParadasPage() {
                           </div>
                           <div>
                             <p className="text-xs text-gray-500 mb-1">Duración</p>
-                            <p className="font-bold text-orange-600">{formatDuration(parada.duracion_minutos)}</p>
+                            <p className="font-bold text-orange-600">{formatDuration(parada)}</p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-500 mb-1">Estado</p>

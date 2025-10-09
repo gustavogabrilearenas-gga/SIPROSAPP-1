@@ -19,10 +19,15 @@ from .models import (
 class UbicacionSerializer(serializers.ModelSerializer):
     """Serializer de ubicaciones"""
     tipo_display = serializers.CharField(source='get_tipo_display', read_only=True)
-    
+    maquinas_count = serializers.IntegerField(read_only=True)
+    lotes_insumo_count = serializers.IntegerField(read_only=True)
+
     class Meta:
         model = Ubicacion
-        fields = ['id', 'codigo', 'nombre', 'tipo', 'tipo_display', 'descripcion', 'activa']
+        fields = [
+            'id', 'codigo', 'nombre', 'tipo', 'tipo_display', 'descripcion', 'activa',
+            'maquinas_count', 'lotes_insumo_count'
+        ]
         read_only_fields = ['id']
 
 
@@ -83,10 +88,14 @@ class EtapaProduccionSerializer(serializers.ModelSerializer):
 class TurnoSerializer(serializers.ModelSerializer):
     """Serializer de turnos"""
     nombre_display = serializers.CharField(source='nombre', read_only=True)
-    
+    lotes_count = serializers.IntegerField(read_only=True)
+
     class Meta:
         model = Turno
-        fields = ['id', 'codigo', 'nombre', 'nombre_display', 'hora_inicio', 'hora_fin', 'activo']
+        fields = [
+            'id', 'codigo', 'nombre', 'nombre_display', 'hora_inicio', 'hora_fin',
+            'activo', 'lotes_count'
+        ]
         read_only_fields = ['id']
 
 
