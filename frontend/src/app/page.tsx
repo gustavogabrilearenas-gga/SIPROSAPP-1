@@ -1,12 +1,5 @@
-'use client'
+import { redirect } from 'next/navigation'
 
-import { Dashboard } from '@/components/dashboard'
-import { ProtectedRoute } from '@/components/protected-route'
-
-export default function Home() {
-  return (
-    <ProtectedRoute>
-      <Dashboard />
-    </ProtectedRoute>
-  )
+export default function RootPage() {
+  redirect('/dashboard')
 }
