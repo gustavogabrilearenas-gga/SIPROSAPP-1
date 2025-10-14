@@ -2,13 +2,72 @@
 
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Settings, ArrowLeft } from 'lucide-react'
+import {
+  Settings,
+  ArrowLeft,
+  Briefcase,
+  Beaker,
+  Archive,
+  Layers,
+  Clock,
+  PowerOff,
+  MapPin,
+} from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ProtectedRoute } from '@/components/protected-route'
 
+const modules = [
+  {
+    name: 'Productos',
+    href: '/configuraciones-maestras/productos',
+    icon: Briefcase,
+    description: 'Gestiona los productos y sus detalles.',
+  },
+  {
+    name: 'Fórmulas',
+    href: '/configuraciones-maestras/formulas',
+    icon: Beaker,
+    description: 'Define las fórmulas de los productos.',
+  },
+  {
+    name: 'Inventario',
+    href: '/configuraciones-maestras/inventario',
+    icon: Archive,
+    description: 'Controla el inventario de materiales.',
+  },
+  {
+    name: 'Etapas de Producción',
+    href: '/configuraciones-maestras/etapas-produccion',
+    icon: Layers,
+    description: 'Configura las etapas del proceso productivo.',
+  },
+  {
+    name: 'Paradas',
+    href: '/configuraciones-maestras/paradas',
+    icon: PowerOff,
+    description: 'Gestiona los tipos de paradas de producción.',
+  },
+  {
+    name: 'Turnos',
+    href: '/configuraciones-maestras/turnos',
+    icon: Clock,
+    description: 'Define los turnos de trabajo.',
+  },
+  {
+    name: 'Ubicaciones',
+    href: '/configuraciones-maestras/ubicaciones',
+    icon: MapPin,
+    description: 'Administra las ubicaciones de la planta.',
+  },
+]
+
 export default function ConfiguracionPage() {
   const router = useRouter()
+
+  const handleCardClick = (href: string) => {
+    router.push(href)
+  }
 
   return (
     <ProtectedRoute>
@@ -19,57 +78,47 @@ export default function ConfiguracionPage() {
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
             >
-            <Button
-              variant="ghost"
-              onClick={() => router.push('/')}
-              className="mb-4"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Volver al Dashboard
-            </Button>
+              <Button
+                variant="ghost"
+                onClick={() => router.push('/')}
+                className="mb-4"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Volver al Dashboard
+              </Button>
 
-            <h1 className="text-4xl font-bold text-gray-900 flex items-center space-x-3">
-              <Settings className="h-10 w-10 text-gray-700" />
-              <span>Configuración del Sistema</span>
-            </h1>
-            <p className="text-gray-600 mt-2">
-              Personaliza y configura tu experiencia en SIPROSA MES
-            </p>
+              <h1 className="text-4xl font-bold text-gray-900 flex items-center space-x-3">
+                <Settings className="h-10 w-10 text-gray-700" />
+                <span>Configuraciones Maestras</span>
+              </h1>
+              <p className="text-gray-600 mt-2">
+                Administra las configuraciones base del sistema.
+              </p>
             </motion.div>
           </div>
 
-          <div>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-            >
-            <Card>
-              <CardHeader>
-                <CardTitle>Información del Sistema</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <p className="text-gray-600">Versión</p>
-                    <p className="font-semibold">1.0.0</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-600">Entorno</p>
-                    <p className="font-semibold">Desarrollo</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-600">Base de Datos</p>
-                    <p className="font-semibold">PostgreSQL 15.14</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-600">Estado</p>
-                    <p className="font-semibold text-green-600">Operativo</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            </motion.div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {modules.map((mod, index) => (
+              <motion.div
+                key={mod.href}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 * index }}
+              >
+                <Card
+                  className="hover:shadow-lg transition-shadow cursor-pointer h-full flex flex-col"
+                  onClick={() => handleCardClick(mod.href)}
+                >
+                  <CardHeader className="flex flex-row items-center space-x-4">
+                    <mod.icon className="h-8 w-8 text-gray-700" />
+                    <CardTitle className="text-xl">{mod.name}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex-grow">
+                    <p className="text-gray-600">{mod.description}</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
           </div>
         </div>
       </div>
