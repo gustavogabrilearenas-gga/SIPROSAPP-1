@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { X, AlertTriangle, Calendar, User, MapPin, Package, History, FileText } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Button } from '@/components/ui/button'
 import { Incidente, LogAuditoria } from '@/types/models'
 import { api } from '@/lib/api'
 import { Badge } from '@/components/ui/badge'
@@ -11,9 +12,10 @@ interface IncidenteDetailModalProps {
   isOpen: boolean
   onClose: () => void
   incidenteId: number
+  onEdit?: (incidente: any) => void
 }
 
-export default function IncidenteDetailModal({ isOpen, onClose, incidenteId }: IncidenteDetailModalProps) {
+export default function IncidenteDetailModal({ isOpen, onClose, incidenteId, onEdit }: IncidenteDetailModalProps) {
   const [incidente, setIncidente] = useState<Incidente | null>(null)
   const [logs, setLogs] = useState<LogAuditoria[]>([])
   const [loading, setLoading] = useState(true)
@@ -34,8 +36,8 @@ export default function IncidenteDetailModal({ isOpen, onClose, incidenteId }: I
       const incidenteData = await api.getIncidente(incidenteId)
       setIncidente(incidenteData)
 
-      // Cargar logs de auditoría
-      const logsData = await api.getLogsAuditoria({ modelo: 'incidente', objeto_id: incidenteId.toString() })
+  // Cargar logs de auditoría (usar nombre de modelo del backend)
+  const logsData = await api.getLogsAuditoria({ modelo: 'Incidente', objeto_id: incidenteId.toString() })
       setLogs(Array.isArray(logsData?.logs) ? logsData.logs : [])
     } catch (err: any) {
       console.error('Error loading incidente data:', err)
@@ -294,7 +296,7 @@ export default function IncidenteDetailModal({ isOpen, onClose, incidenteId }: I
         >
           {/* Header */}
           <div className="bg-gradient-to-r from-red-600 to-orange-600 text-white p-6">
-            <div className="flex justify-between items-start">
+              <div className="flex justify-between items-start">
               <div>
                 <h2 className="text-2xl font-bold mb-2">Detalle de Incidente</h2>
                 {incidente && (
@@ -314,12 +316,30 @@ export default function IncidenteDetailModal({ isOpen, onClose, incidenteId }: I
                   </div>
                 )}
               </div>
-              <button
-                onClick={onClose}
-                className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
+              <div className="flex items-center gap-2">
+                {incidente && onEdit && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      try {
+                        onEdit(incidente)
+                      } finally {
+                        onClose()
+                      }
+                    }}
+                    className="bg-white/10 text-white"
+                  >
+                    Editar
+                  </Button>
+                )}
+                <button
+                  onClick={onClose}
+                  className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
             </div>
           </div>
 

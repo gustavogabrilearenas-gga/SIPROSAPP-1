@@ -72,12 +72,12 @@ INSTALLED_APPS = [
     'corsheaders',
     'backend.usuarios',
     'backend.produccion',
-    'backend.calidad',
-    'backend.inventario',
+    #'backend.calidad',        # No MVP - Módulo de calidad
+    #'backend.inventario',     # No MVP - Módulo de inventario
     'backend.mantenimiento',
     'backend.incidencias',
-    'backend.auditoria',
-    'backend.kpis',
+    #'backend.auditoria',      # No MVP - Módulo de auditoría
+    #'backend.kpis',           # No MVP - Módulo de KPIs
     'core',
 ]
 

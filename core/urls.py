@@ -8,12 +8,8 @@ from .views import (
     # Catálogos
     UbicacionViewSet, MaquinaViewSet, ProductoViewSet, FormulaViewSet,
     EtapaProduccionViewSet, TurnoViewSet,
-    # Notificaciones
-    NotificacionViewSet,
     # KPIs
     KpiOEEView, KpiDashboardView, KpiExportCSVView,
-    # Búsqueda
-    BusquedaGlobalView,
     # Health check
     health_check,
 )
@@ -30,9 +26,6 @@ router.register(r'productos', ProductoViewSet)
 router.register(r'formulas', FormulaViewSet)
 router.register(r'etapas-produccion', EtapaProduccionViewSet)
 router.register(r'turnos', TurnoViewSet)
-
-# Notificaciones
-router.register(r'notificaciones', NotificacionViewSet, basename='notificacion')
 
 urlpatterns = [
     # Health check
@@ -52,6 +45,4 @@ urlpatterns = [
     path("kpis/resumen_dashboard/", KpiDashboardView.as_view(), name="kpi_dashboard"),
     path("kpis/export.csv", KpiExportCSVView.as_view(), name="kpi_export_csv"),
     
-    # Búsqueda
-    path("buscar/", BusquedaGlobalView.as_view(), name="busqueda_global"),
 ] + router.urls

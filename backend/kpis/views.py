@@ -30,7 +30,7 @@ class ResumenDashboardView(APIView):
     def get(self, request):
         data = ResumenDashboardSerializer.get_data()
         serializer = ResumenDashboardSerializer(data)
-        return Response({"status": 200, "data": serializer.data, "message": "ok"})
+        return Response(serializer.data)
 
 
 class OeeView(APIView):
@@ -41,7 +41,7 @@ class OeeView(APIView):
     def get(self, request):
         data = OeeSerializer.get_data()
         serializer = OeeSerializer(data)
-        return Response({"status": 200, "data": serializer.data, "message": "ok"})
+        return Response(serializer.data)
 
 
 class HistorialProduccionView(APIView):
@@ -52,7 +52,7 @@ class HistorialProduccionView(APIView):
     def get(self, request):
         data = HistorialProduccionSerializer.get_data()
         serializer = HistorialProduccionSerializer(data)
-        return Response({"status": 200, "data": serializer.data, "message": "ok"})
+        return Response(serializer.data)
 
 
 class AlertasView(APIView):
@@ -63,7 +63,7 @@ class AlertasView(APIView):
     def get(self, request):
         data = AlertasSerializer.get_data()
         serializer = AlertasSerializer(data)
-        return Response({"status": 200, "data": serializer.data, "message": "ok"})
+        return Response(serializer.data)
 
 
 class LiveAlertsView(APIView):
@@ -211,4 +211,4 @@ class LiveAlertsView(APIView):
         for item in live_alerts:
             item.pop("timestamp", None)
 
-        return Response({"status": 200, "data": live_alerts, "message": "ok"})
+        return Response(live_alerts)

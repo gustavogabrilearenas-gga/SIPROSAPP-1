@@ -124,7 +124,7 @@ class LoteViewSet(viewsets.ModelViewSet):
         instance._ip_address = self.get_client_ip(self.request)
         instance._user_agent = self.request.META.get('HTTP_USER_AGENT', '')
         serializer.save()
-        # El save() se ejecuta dentro del serializer, las senales detectar�n los cambios
+        # El save() se ejecuta dentro del serializer, las senales detectarán los cambios
     
     def get_client_ip(self, request):
         """Obtiene la IP del cliente"""
@@ -134,7 +134,7 @@ class LoteViewSet(viewsets.ModelViewSet):
         else:
             ip = request.META.get('REMOTE_ADDR')
         return ip
-    
+
     @action(detail=True, methods=['post'], permission_classes=[IsAdminOrOperario])
     def iniciar(self, request, pk=None):
         """
@@ -143,11 +143,11 @@ class LoteViewSet(viewsets.ModelViewSet):
         """
         lote = self.get_object()
 
-        # Validar que solo se puedan iniciar lotes PLANIFICADOS o PAUSADOS
-        if lote.estado not in ['PLANIFICADO', 'PAUSADO']:
+        # Validar que solo se puedan iniciar lotes PLANIFICADOS
+        if lote.estado != 'PLANIFICADO':
             return Response(
                 {
-                    'error': 'Solo se pueden iniciar lotes en estado PLANIFICADO o PAUSADO',
+                    'error': 'Solo se pueden iniciar lotes en estado PLANIFICADO',
                     'estado_actual': lote.estado
                 },
                 status=status.HTTP_400_BAD_REQUEST
@@ -180,25 +180,12 @@ class LoteViewSet(viewsets.ModelViewSet):
 
         # Validar que solo se puedan completar lotes EN_PROCESO
         if lote.estado != 'EN_PROCESO':
-            mensaje_error = ''
-            if lote.estado == 'PAUSADO':
-                mensaje_error = 'Para completar un lote pausado, primero debe reanudarlo usando el botón "Iniciar"'
-            elif lote.estado == 'PLANIFICADO':
-                mensaje_error = 'El lote aún no ha sido iniciado. Use el botón "Iniciar" para comenzar la producción'
-            elif lote.estado == 'FINALIZADO':
-                mensaje_error = 'Este lote ya fue completado'
-            elif lote.estado == 'CANCELADO':
-                mensaje_error = 'No se puede completar un lote cancelado'
-            else:
-                mensaje_error = 'Solo se pueden completar lotes en estado EN_PROCESO'
-            
             return Response(
                 {
-                    'error': mensaje_error,
-                    'estado_actual': lote.estado,
-                    'accion_sugerida': 'iniciar' if lote.estado == 'PAUSADO' else None
+                    'error': 'Solo se pueden completar lotes en estado EN_PROCESO',
+                    'estado_actual': lote.estado
                 },
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY
+                status=status.HTTP_400_BAD_REQUEST
             )
 
         # Completar el lote
@@ -265,42 +252,25 @@ class LoteViewSet(viewsets.ModelViewSet):
     def cancelar(self, request, pk=None):
         """
         Endpoint: /api/lotes/{id}/cancelar/
-        Cancela un lote (solo si est� en estado PLANIFICADO)
+        Cancela un lote (solo si está en estado PLANIFICADO)
         """
         lote = self.get_object()
         
         # Validar que solo se puedan cancelar lotes PLANIFICADOS
         if lote.estado != 'PLANIFICADO':
-            mensaje_error = ''
-            if lote.estado == 'EN_PROCESO':
-                mensaje_error = 'No se puede cancelar un lote en proceso. Debe pausarlo primero si necesita detener la producción'
-            elif lote.estado == 'PAUSADO':
-                mensaje_error = 'No se puede cancelar un lote pausado. Si necesita detenerlo definitivamente, consulte con un supervisor'
-            elif lote.estado == 'FINALIZADO':
-                mensaje_error = 'No se puede cancelar un lote finalizado'
-            elif lote.estado == 'LIBERADO':
-                mensaje_error = 'No se puede cancelar un lote liberado. Si hay problemas de calidad, registre una desviación'
-            elif lote.estado == 'RECHAZADO':
-                mensaje_error = 'Este lote ya fue rechazado'
-            elif lote.estado == 'CANCELADO':
-                mensaje_error = 'Este lote ya fue cancelado'
-            else:
-                mensaje_error = 'Solo se pueden cancelar lotes en estado PLANIFICADO'
-            
             return Response(
                 {
-                    'error': mensaje_error,
-                    'estado_actual': lote.estado,
-                    'accion_sugerida': 'pausar' if lote.estado == 'EN_PROCESO' else None
+                    'error': 'Solo se pueden cancelar lotes en estado PLANIFICADO',
+                    'estado_actual': lote.estado
                 },
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY
+                status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Obtener motivo de cancelaci�n
+        # Obtener motivo de cancelación
         motivo = request.data.get('motivo', '')
         if not motivo:
             return Response(
-                {'error': 'Debe proporcionar un motivo de cancelaci�n'},
+                {'error': 'Debe proporcionar un motivo de cancelación'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -310,7 +280,7 @@ class LoteViewSet(viewsets.ModelViewSet):
         lote.fecha_cancelacion = timezone.now()
         lote.motivo_cancelacion = motivo
         
-        # Adjuntar informaci�n para auditoria
+        # Adjuntar información para auditoria
         lote._usuario_actual = request.user
         lote._ip_address = self.get_client_ip(request)
         lote._user_agent = request.META.get('HTTP_USER_AGENT', '')
@@ -327,7 +297,7 @@ class LoteViewSet(viewsets.ModelViewSet):
     def logs_auditoria(self, request, pk=None):
         """
         Endpoint: /api/lotes/{id}/logs_auditoria/
-        Obtiene todos los logs de auditoria de un lote espec�fico
+        Obtiene todos los logs de auditoria de un lote específico
         """
         lote = self.get_object()
         
@@ -358,7 +328,7 @@ class LoteViewSet(viewsets.ModelViewSet):
         """
         lote = self.get_object()
         
-        # Obtener motivo de ocultaci�n
+        # Obtener motivo de ocultación
         motivo = request.data.get('motivo', '')
         if not motivo.strip():
             return Response(
@@ -664,314 +634,3 @@ class LoteViewSet(viewsets.ModelViewSet):
             'lote': serializer.data,
             'firma': ElectronicSignatureSerializer(firma).data
         })
-
-
-class LoteEtapaViewSet(viewsets.ModelViewSet):
-    """ViewSet para gestionar Etapas de Lotes"""
-    queryset = LoteEtapa.objects.select_related(
-        'lote', 'etapa', 'maquina', 'operario'
-    ).all().order_by('-fecha_inicio')
-    serializer_class = LoteEtapaSerializer
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['lote__codigo_lote', 'etapa__nombre']
-    ordering_fields = ['fecha_inicio', 'orden']
-    
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        
-        # Filtro por lote
-        lote_id = self.request.query_params.get('lote', None)
-        if lote_id:
-            queryset = queryset.filter(lote_id=lote_id)
-        
-        # Filtro por estado
-        estado = self.request.query_params.get('estado', None)
-        if estado:
-            queryset = queryset.filter(estado=estado.upper())
-        
-        return queryset
-    
-    def get_permissions(self):
-        if self.request.method in permissions.SAFE_METHODS:
-            perm_classes = [IsAdminOrSupervisor]
-        elif self.request.method == 'POST':
-            perm_classes = [IsAdminOrOperario]  # Registrar etapa: Admin u Operario
-        else:
-            perm_classes = [IsAdmin]
-        return [p() for p in perm_classes]
-
-    @action(detail=True, methods=['post'], permission_classes=[IsAdminOrOperario])
-    def iniciar(self, request, pk=None):
-        """
-        Endpoint: /api/lotes-etapas/{id}/iniciar/
-        Inicia una etapa de lote (cambia estado a EN_PROCESO)
-        """
-        lote_etapa = self.get_object()
-
-        # Validar que solo se puedan iniciar etapas PENDIENTES
-        if lote_etapa.estado != 'PENDIENTE':
-            return Response(
-                {
-                    'error': 'Solo se pueden iniciar etapas en estado PENDIENTE',
-                    'estado_actual': lote_etapa.estado
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Iniciar la etapa
-        lote_etapa.estado = 'EN_PROCESO'
-        lote_etapa.fecha_inicio = timezone.now()
-        lote_etapa.operario = request.user
-
-        # Adjuntar informaci�n para auditoria
-        lote_etapa._usuario_actual = request.user
-        lote_etapa._ip_address = self.get_client_ip(request)
-        lote_etapa._user_agent = request.META.get('HTTP_USER_AGENT', '')
-
-        lote_etapa.save()
-
-        serializer = self.get_serializer(lote_etapa)
-        return Response({
-            'message': 'Etapa iniciada exitosamente',
-            'lote_etapa': serializer.data
-        })
-
-    @action(detail=True, methods=['post'], permission_classes=[IsAdminOrOperario])
-    def completar(self, request, pk=None):
-        """
-        Endpoint: /api/lotes-etapas/{id}/completar/
-        Completa una etapa de lote (cambia estado a COMPLETADO)
-        """
-        lote_etapa = self.get_object()
-
-        # Validar que solo se puedan completar etapas EN_PROCESO
-        if lote_etapa.estado != 'EN_PROCESO':
-            return Response(
-                {
-                    'error': 'Solo se pueden completar etapas en estado EN_PROCESO',
-                    'estado_actual': lote_etapa.estado
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # VALIDACIÓN QC: Verificar controles de calidad pendientes
-        controles_requeridos = lote_etapa.etapa.parametros_esperados if lote_etapa.etapa.requiere_registro_parametros else []
-        if controles_requeridos:
-            # Verificar si hay controles de calidad registrados
-            controles_registrados = ControlCalidad.objects.filter(
-                lote_etapa=lote_etapa
-            ).count()
-            
-            # Si se requieren controles y no hay ninguno registrado, bloquear
-            if controles_registrados == 0:
-                return Response(
-                    {
-                        'error': 'No se puede completar la etapa sin registrar controles de calidad',
-                        'codigo': 'QC_PENDIENTE',
-                        'controles_requeridos': len(controles_requeridos),
-                        'controles_registrados': 0,
-                        'message': f'Esta etapa requiere {len(controles_requeridos)} control(es) de calidad antes de completarse'
-                    },
-                    status=status.HTTP_409_CONFLICT
-                )
-            
-            # Verificar si hay controles NO conformes
-            controles_no_conformes = ControlCalidad.objects.filter(
-                lote_etapa=lote_etapa,
-                conforme=False
-            )
-            
-            if controles_no_conformes.exists():
-                return Response(
-                    {
-                        'error': 'No se puede completar la etapa con controles de calidad no conformes',
-                        'codigo': 'QC_NO_CONFORME',
-                        'controles_no_conformes': controles_no_conformes.count(),
-                        'detalles': [
-                            {
-                                'tipo_control': c.tipo_control,
-                                'valor_medido': float(c.valor_medido),
-                                'rango': f"{c.valor_minimo} - {c.valor_maximo}"
-                            }
-                            for c in controles_no_conformes
-                        ],
-                        'message': 'Hay controles de calidad que no cumplen especificaciones'
-                    },
-                    status=status.HTTP_409_CONFLICT
-                )
-
-        # Obtener datos adicionales
-        cantidad_salida = request.data.get('cantidad_salida')
-        cantidad_merma = request.data.get('cantidad_merma', 0)
-        observaciones = request.data.get('observaciones', '')
-        requiere_aprobacion_calidad = request.data.get('requiere_aprobacion_calidad', False)
-
-        # Completar la etapa
-        lote_etapa.estado = 'COMPLETADO'
-        lote_etapa.fecha_fin = timezone.now()
-
-        if cantidad_salida is not None:
-            lote_etapa.cantidad_salida = cantidad_salida
-        if cantidad_merma is not None:
-            lote_etapa.cantidad_merma = cantidad_merma
-        if observaciones:
-            lote_etapa.observaciones = observaciones
-        if requiere_aprobacion_calidad is not None:
-            lote_etapa.requiere_aprobacion_calidad = requiere_aprobacion_calidad
-
-        # Adjuntar informaci�n para auditoria
-        lote_etapa._usuario_actual = request.user
-        lote_etapa._ip_address = self.get_client_ip(request)
-        lote_etapa._user_agent = request.META.get('HTTP_USER_AGENT', '')
-
-        lote_etapa.save()
-
-        serializer = self.get_serializer(lote_etapa)
-        return Response({
-            'message': 'Etapa completada exitosamente',
-            'lote_etapa': serializer.data
-        })
-
-    @action(detail=True, methods=['post'], permission_classes=[IsAdminOrOperario])
-    def pausar(self, request, pk=None):
-        """
-        Endpoint: /api/lotes-etapas/{id}/pausar/
-        Pausa una etapa de lote (cambia estado a PAUSADO)
-        """
-        lote_etapa = self.get_object()
-
-        # Validar que solo se puedan pausar etapas EN_PROCESO
-        if lote_etapa.estado != 'EN_PROCESO':
-            return Response(
-                {
-                    'error': 'Solo se pueden pausar etapas en estado EN_PROCESO',
-                    'estado_actual': lote_etapa.estado
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Obtener motivo de pausa
-        motivo = request.data.get('motivo', '')
-        if not motivo.strip():
-            return Response(
-                {'error': 'Debe proporcionar un motivo para pausar la etapa'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Pausar la etapa
-        lote_etapa.estado = 'PAUSADO'
-        lote_etapa.observaciones = f"{lote_etapa.observaciones}\n\nPAUSADO: {motivo}".strip()
-
-        # Adjuntar informaci�n para auditoria
-        lote_etapa._usuario_actual = request.user
-        lote_etapa._ip_address = self.get_client_ip(request)
-        lote_etapa._user_agent = request.META.get('HTTP_USER_AGENT', '')
-
-        lote_etapa.save()
-
-        serializer = self.get_serializer(lote_etapa)
-        return Response({
-            'message': 'Etapa pausada exitosamente',
-            'lote_etapa': serializer.data
-        })
-
-
-class ParadaViewSet(viewsets.ModelViewSet):
-    """ViewSet para gestionar Paradas"""
-    queryset = Parada.objects.select_related(
-        'lote_etapa', 'lote_etapa__lote', 'lote_etapa__etapa', 'registrado_por'
-    ).all().order_by('-fecha_inicio')
-    serializer_class = ParadaSerializer
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = [
-        'descripcion', 'lote_etapa__lote__codigo_lote', 'lote_etapa__etapa__nombre'
-    ]
-    ordering_fields = ['fecha_inicio', 'fecha_fin', 'duracion_minutos']
-
-    def get_queryset(self):
-        queryset = super().get_queryset()
-
-        # Filtro por lote
-        lote_id = self.request.query_params.get('lote')
-        if lote_id:
-            queryset = queryset.filter(lote_etapa__lote_id=lote_id)
-
-        # Filtro por lote_etapa
-        lote_etapa_id = self.request.query_params.get('lote_etapa')
-        if lote_etapa_id:
-            queryset = queryset.filter(lote_etapa_id=lote_etapa_id)
-
-        # Filtro por tipo
-        tipo = self.request.query_params.get('tipo', None)
-        if tipo:
-            queryset = queryset.filter(tipo=tipo.upper())
-
-        # Filtro por categor�a
-        categoria = self.request.query_params.get('categoria', None)
-        if categoria:
-            queryset = queryset.filter(categoria=categoria.upper())
-        
-        return queryset
-    
-    def get_permissions(self):
-        if self.request.method in permissions.SAFE_METHODS:
-            perm_classes = [IsAdminOrSupervisor]
-        else:
-            perm_classes = [IsAdminOrOperario]
-        return [p() for p in perm_classes]
-
-    @action(detail=True, methods=['post'], permission_classes=[IsAdminOrOperario])
-    def finalizar(self, request, pk=None):
-        """
-        Endpoint: /api/paradas/{id}/finalizar/
-        Finaliza una parada (establece fecha_fin)
-        """
-        parada = self.get_object()
-
-        # Validar que la parada no est� ya finalizada
-        if parada.fecha_fin:
-            return Response(
-                {
-                    'error': 'Esta parada ya est� finalizada',
-                    'fecha_fin': parada.fecha_fin
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Obtener soluci�n
-        solucion = request.data.get('solucion', '')
-        if not solucion.strip():
-            return Response(
-                {'error': 'Debe proporcionar una soluci�n para finalizar la parada'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Finalizar la parada
-        parada.fecha_fin = timezone.now()
-        parada.solucion = solucion
-
-        parada.save()
-
-        serializer = self.get_serializer(parada)
-        return Response({
-            'message': 'Parada finalizada exitosamente',
-            'parada': serializer.data
-        })
-
-
-class ControlCalidadViewSet(viewsets.ModelViewSet):
-    """ViewSet para gestionar Controles de Calidad"""
-    queryset = ControlCalidad.objects.select_related(
-        'lote_etapa', 'controlado_por'
-    ).all().order_by('-fecha_control')
-    serializer_class = ControlCalidadSerializer
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['tipo_control', 'lote_etapa__lote__codigo_lote']
-    ordering_fields = ['fecha_control', 'conforme']
-    
-    def get_permissions(self):
-        if self.request.method in permissions.SAFE_METHODS:
-            perm_classes = [IsAdminOrSupervisor]
-        else:
-            perm_classes = [IsAdmin]  # Solo Calidad/Admin puede registrar controles
-        return [p() for p in perm_classes]

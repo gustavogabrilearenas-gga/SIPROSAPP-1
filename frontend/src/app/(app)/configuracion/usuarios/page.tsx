@@ -33,6 +33,18 @@ function UsuariosPageContent() {
   const { user: currentUser } = useAuth()
   const [usuarios, setUsuarios] = useState<UsuarioDetalle[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Redirigir si el usuario no es admin
+  useEffect(() => {
+    if (currentUser && !currentUser.is_staff && !currentUser.is_superuser) {
+      router.push('/dashboard')
+      toast({
+        title: 'Acceso denegado',
+        description: 'No tienes permisos para acceder a esta página',
+        variant: 'destructive',
+      })
+    }
+  }, [currentUser, router])
   const [searchTerm, setSearchTerm] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [selectedUsuario, setSelectedUsuario] = useState<UsuarioDetalle | null>(null)

@@ -8,6 +8,8 @@ type DataStateProps = {
   loading?: boolean
   error?: string | null
   empty?: boolean
+  loadingMessage?: ReactNode
+  errorMessage?: ReactNode
   emptyMessage?: ReactNode
   children: ReactNode
   className?: string
@@ -17,14 +19,19 @@ export function DataState({
   loading,
   error,
   empty,
+  loadingMessage,
+  errorMessage,
   emptyMessage,
   children,
   className
 }: DataStateProps) {
   if (loading) {
     return (
-      <div className={cn('flex min-h-[200px] w-full items-center justify-center', className)}>
+      <div className={cn('flex min-h-[200px] w-full items-center justify-center flex-col gap-4', className)}>
         <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
+        {loadingMessage && (
+          <p className="text-sm text-gray-600">{loadingMessage}</p>
+        )}
       </div>
     )
   }
@@ -36,7 +43,7 @@ export function DataState({
           <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0" />
           <div>
             <p className="font-semibold">Ocurrió un problema</p>
-            <p>{error}</p>
+            <p>{errorMessage || error}</p>
           </div>
         </div>
       )}

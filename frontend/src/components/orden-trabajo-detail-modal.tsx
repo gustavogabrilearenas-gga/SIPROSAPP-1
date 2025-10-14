@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { X, Wrench, Calendar, User, AlertTriangle, Clock, CheckCircle, History, DollarSign } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Button } from '@/components/ui/button'
 import { OrdenTrabajo, LogAuditoria } from '@/types/models'
 import { api } from '@/lib/api'
 import { Badge } from '@/components/ui/badge'
@@ -13,9 +14,10 @@ interface OrdenTrabajoDetailModalProps {
   onClose: () => void
   ordenId: number
   onRefresh?: () => void
+  onEdit?: (orden: any) => void
 }
 
-export default function OrdenTrabajoDetailModal({ isOpen, onClose, ordenId, onRefresh }: OrdenTrabajoDetailModalProps) {
+export default function OrdenTrabajoDetailModal({ isOpen, onClose, ordenId, onRefresh, onEdit }: OrdenTrabajoDetailModalProps) {
   const [orden, setOrden] = useState<OrdenTrabajo | null>(null)
   const [logs, setLogs] = useState<LogAuditoria[]>([])
   const [loading, setLoading] = useState(true)
@@ -37,8 +39,8 @@ export default function OrdenTrabajoDetailModal({ isOpen, onClose, ordenId, onRe
       const ordenData = await api.getOrdenTrabajo(ordenId)
       setOrden(ordenData)
 
-      // Cargar logs de auditoría
-      const logsData = await api.getLogsAuditoria({ modelo: 'ordentrabajo', objeto_id: ordenId.toString() })
+  // Cargar logs de auditoría (usar nombre de modelo del backend)
+  const logsData = await api.getLogsAuditoria({ modelo: 'OrdenTrabajo', objeto_id: ordenId.toString() })
       setLogs(Array.isArray(logsData?.logs) ? logsData.logs : [])
     } catch (err: any) {
       const message = err?.response?.data?.detail || 'Error al cargar los datos de la orden'
@@ -248,7 +250,7 @@ export default function OrdenTrabajoDetailModal({ isOpen, onClose, ordenId, onRe
             <span className="text-sm font-medium text-gray-600">Duración Real</span>
           </div>
           <p className="text-2xl font-bold text-purple-600">
-            {orden?.duracion_real_horas ? `${orden.duracion_real_horas.toFixed(1)} h` : 'N/A'}
+            {orden?.duracion_real_horas ? `${Number(orden.duracion_real_horas).toFixed(1)} h` : 'N/A'}
           </p>
         </div>
 
@@ -258,7 +260,7 @@ export default function OrdenTrabajoDetailModal({ isOpen, onClose, ordenId, onRe
             <span className="text-sm font-medium text-gray-600">Costo Estimado</span>
           </div>
           <p className="text-2xl font-bold text-green-600">
-            {orden?.costo_estimado ? `$${orden.costo_estimado.toFixed(2)}` : 'N/A'}
+            {orden?.costo_estimado ? `$${Number(orden.costo_estimado).toFixed(2)}` : 'N/A'}
           </p>
         </div>
 
@@ -268,7 +270,7 @@ export default function OrdenTrabajoDetailModal({ isOpen, onClose, ordenId, onRe
             <span className="text-sm font-medium text-gray-600">Costo Real</span>
           </div>
           <p className="text-2xl font-bold text-orange-600">
-            {orden?.costo_real ? `$${orden.costo_real.toFixed(2)}` : 'N/A'}
+            {orden?.costo_real ? `$${Number(orden.costo_real).toFixed(2)}` : 'N/A'}
           </p>
         </div>
       </div>
@@ -411,12 +413,30 @@ export default function OrdenTrabajoDetailModal({ isOpen, onClose, ordenId, onRe
                   </div>
                 )}
               </div>
-              <button
-                onClick={onClose}
-                className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
+              <div className="flex items-center gap-2">
+                {orden && onEdit && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      try {
+                        onEdit(orden)
+                      } finally {
+                        onClose()
+                      }
+                    }}
+                    className="bg-white/10 text-white"
+                  >
+                    Editar
+                  </Button>
+                )}
+                <button
+                  onClick={onClose}
+                  className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
             </div>
           </div>
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { X, Package, Calendar, User, AlertCircle, TrendingUp, Clock, CheckCircle, XCircle, History, FileText } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Button } from '@/components/ui/button'
 import { Lote, LoteEtapa, Parada, ControlCalidad, LogAuditoria } from '@/types/models'
 import { api } from '@/lib/api'
 import { Badge } from '@/components/ui/badge'
@@ -51,8 +52,8 @@ export default function LoteDetailModal({ isOpen, onClose, loteId, onEdit, onUpd
       const controlesData = await api.getControlesCalidad({ lote_etapa: loteId })
       setControles(Array.isArray(controlesData?.results) ? controlesData.results : [])
 
-      // Cargar logs de auditoría
-      const logsData = await api.getLogsAuditoria({ modelo: 'lote', objeto_id: String(loteId) })
+  // Cargar logs de auditoría (usar el nombre de modelo tal como se guarda en backend)
+  const logsData = await api.getLogsAuditoria({ modelo: 'Lote', objeto_id: String(loteId) })
       setLogs(Array.isArray(logsData?.logs) ? logsData.logs : [])
     } catch (err: any) {
       console.error('Error loading lote data:', err)
@@ -488,12 +489,24 @@ export default function LoteDetailModal({ isOpen, onClose, loteId, onEdit, onUpd
                   </div>
                 )}
               </div>
-              <button
-                onClick={onClose}
-                className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
+              <div className="flex items-center gap-2">
+                {onEdit && lote && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onEdit(lote)}
+                    className="bg-white/10 text-white"
+                  >
+                    Editar
+                  </Button>
+                )}
+                <button
+                  onClick={onClose}
+                  className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
             </div>
           </div>
 

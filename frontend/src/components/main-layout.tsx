@@ -1,46 +1,36 @@
 import React from 'react';
 import Link from 'next/link';
 import {
-  BarChart2,
-  Box,
-  ClipboardList,
-  Cpu,
   Factory,
   FileText,
-  FlaskConical,
-  Gauge,
-  HeartPulse,
   LayoutDashboard,
-  MapPin,
-  Package,
+  Settings,
   Siren,
-  Sliders,
-  User,
   Users,
   Wrench,
-  Clock,
-  Warehouse,
-  MinusCircle
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
+import { useAuth } from '@/stores/auth-store';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/productos', label: 'Productos', icon: Package },
-  { href: '/formulas', label: 'Fórmulas', icon: FlaskConical },
-  { href: '/maquinas', label: 'Máquinas', icon: Cpu },
-  { href: '/lotes', label: 'Lotes', icon: ClipboardList },
-  { href: '/inventario', label: 'Inventario', icon: Warehouse },
+  { href: '/produccion', label: 'Producción', icon: Factory },
   { href: '/mantenimiento', label: 'Mantenimiento', icon: Wrench },
   { href: '/incidentes', label: 'Incidentes', icon: Siren },
-  { href: '/desviaciones', label: 'Desviaciones', icon: FileText },
-  { href: '/control-calidad', label: 'Control Calidad', icon: HeartPulse },
-  { href: '/kpis', label: 'KPIs', icon: Gauge },
-  { href: '/ubicaciones', label: 'Ubicaciones', icon: MapPin },
-  { href: '/turnos', label: 'Turnos', icon: Clock },
-  { href: '/etapas-produccion', label: 'Etapas Producción', icon: Factory },
-  { href: '/paradas', label: 'Paradas', icon: MinusCircle },
-  { href: '/configuracion/usuarios', label: 'Usuarios', icon: Users },
+  { href: '/observaciones', label: 'Observaciones Generales', icon: FileText },
+  { href: '/configuracion/usuarios', label: 'Gestión de Usuarios', icon: Users },
+  { href: '/configuraciones-maestras', label: 'Configuraciones Maestras', icon: Settings },
+  // ---------------- DESACTIVADAS ----------------
+  // { href: '/productos', label: 'Productos', icon: Package },
+  // { href: '/formulas', label: 'Fórmulas', icon: FlaskConical },
+  // { href: '/lotes', label: 'Lotes', icon: ClipboardList },
+  // { href: '/inventario', label: 'Inventario', icon: Warehouse },
+  // { href: '/desviaciones', label: 'Desviaciones', icon: FileText },
+  // { href: '/control-calidad', label: 'Control Calidad', icon: HeartPulse },
+  // { href: '/kpis', label: 'KPIs', icon: Gauge },
+  // { href: '/ubicaciones', label: 'Ubicaciones', icon: MapPin },
+  // { href: '/turnos', label: 'Turnos', icon: Clock },
+  // { href: '/paradas', label: 'Paradas', icon: MinusCircle },
 ];
 
 const NavLink = ({ item }: { item: typeof navItems[0] }) => {
@@ -63,6 +53,7 @@ const NavLink = ({ item }: { item: typeof navItems[0] }) => {
 };
 
 const MainLayout = ({ children }: { children: React.ReactNode }) => {
+  const { user } = useAuth();
   return (
     <div className="flex h-screen bg-gray-50">
       <aside className="w-64 flex flex-col bg-white shadow-lg border-r">
@@ -72,9 +63,17 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
           </h1>
         </div>
         <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto">
-          {navItems.map((item) => (
-            <NavLink key={item.href} item={item} />
-          ))}
+          {navItems
+            .filter(item => {
+              // Ocultar "Gestión de Usuarios" a los no-admin
+              if (item.href === '/configuracion/usuarios' && !user?.is_staff && !user?.is_superuser) {
+                return false;
+              }
+              return true;
+            })
+            .map((item) => (
+              <NavLink key={item.href} item={item} />
+            ))}
         </nav>
         {/* User profile section can be added here */}
       </aside>

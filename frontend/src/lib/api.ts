@@ -67,13 +67,56 @@ const createApiError = (error: unknown): ApiError => {
   const axiosError = error as AxiosError
   const status = axiosError.response?.status ?? 500
   const data = axiosError.response?.data as Record<string, unknown> | undefined
+  const details = data?.details || data?.detail || data
 
-  const message =
-    (typeof data?.message === 'string' && data?.message) ||
-    (typeof data?.detail === 'string' && data?.detail) ||
-    (typeof data?.error === 'string' && data?.error) ||
-    axiosError.message ||
-    'Error inesperado'
+  let message = 'Error inesperado';
+  
+  if (status === 400) {
+    message = 'Acción no permitida';
+  } else if (status === 422) {
+    // Para errores 422, intentamos obtener el mensaje directamente
+    const responseData = axiosError.response?.data;
+    console.log('Error 422 Response:', {
+      data: responseData,
+      status,
+      statusText: axiosError.response?.statusText,
+      headers: axiosError.response?.headers,
+      raw: axiosError.response
+    });
+
+    if (typeof responseData === 'string') {
+      message = responseData;
+    } else if (responseData && typeof responseData === 'object') {
+      const dataObj = responseData as Record<string, unknown>;
+      // Intentar obtener el mensaje desde cualquier parte de la respuesta
+      if (typeof dataObj === 'object') {
+        message = String(
+          // Intentar todas las posibles ubicaciones del mensaje de error
+          dataObj.detail ||
+          dataObj.message ||
+          dataObj.error ||
+          // Si hay un objeto anidado, intentar obtener el mensaje de allí
+          (typeof dataObj.body === 'object' && dataObj.body && (dataObj.body as any).message) ||
+          // Si la respuesta completa es un string, usarlo
+          (typeof axiosError.response?.data === 'string' && axiosError.response.data) ||
+          // Si hay un mensaje en el error mismo, usarlo
+          axiosError.message ||
+          'Error de validación'
+        );
+      }
+    }
+    
+    // Si después de todo no tenemos mensaje, usar el statusText
+    if (!message || message === '[object Object]' || message === 'Error de validación') {
+      message = axiosError.response?.statusText || 'Error de validación';
+    }
+  } else {
+    message = (typeof data?.error === 'string' && data?.error) ||
+              (typeof data?.message === 'string' && data?.message) ||
+              (typeof data?.detail === 'string' && data?.detail) ||
+              axiosError.message ||
+              'Error inesperado';
+  }
 
   const apiError = new Error(message) as ApiError
   apiError.status = status
@@ -704,23 +747,7 @@ export interface KpiHistorial {
   historial: KpiHistorialPoint[]
 }
 
-export interface KpiAlertas {
-  insumos_por_vencer: number
-  insumos_stock_critico: number
-  maquinas_fuera_servicio: number
-  ordenes_atrasadas: number
-  desviaciones_criticas_abiertas: number
-}
 
-export type LiveAlertLevel = 'info' | 'warning' | 'critical'
-export type LiveAlertType = 'inventario' | 'produccion' | 'mantenimiento' | 'calidad'
-
-export interface LiveAlert {
-  id: number
-  tipo: LiveAlertType
-  nivel: LiveAlertLevel
-  mensaje: string
-}
 
 export interface OeeSeriesPoint {
   fecha: string
@@ -830,7 +857,7 @@ const api = {
   },
 
   async getParadas(params?: Record<string, unknown>) {
-    return get('/produccion/paradas/', { params })
+    return get('/api/produccion/paradas/', { params })
   },
 
   async createParada(data: Record<string, unknown>) {
@@ -850,7 +877,7 @@ const api = {
   },
 
   async getLote(id: number | string) {
-    return get(`/produccion/lotes/${id}/`)
+    return get(`/api/produccion/lotes/${id}/`)
   },
 
   async createLote(data: Record<string, unknown>) {
@@ -862,7 +889,7 @@ const api = {
   },
 
   async getLotesEtapas(params?: Record<string, unknown>) {
-    return get('/produccion/lotes-etapas/', { params })
+    return get('/api/produccion/lotes-etapas/', { params })
   },
 
   async iniciarLoteEtapa(id: number | string, payload?: Record<string, unknown>) {
@@ -878,7 +905,11 @@ const api = {
   },
 
   async getControlesCalidad(params?: Record<string, unknown>) {
-    return get('/produccion/controles-calidad/', { params })
+    return get('/api/produccion/controles-calidad/', { params })
+  },
+
+  async getLogsAuditoria(params?: Record<string, unknown>) {
+    return get('/api/auditoria/logs/', { params })
   },
 
   async getFormulas(params?: Record<string, unknown>) {
@@ -934,36 +965,22 @@ const api = {
   },
 
   async getIncidentes(params?: Record<string, unknown>) {
-    return get('/incidentes/', { params })
+    return get('/api/incidencias/incidentes/', { params })
   },
 
   async getIncidente(id: number | string) {
-    return get(`/incidentes/${id}/`)
+    return get(`/api/incidencias/incidentes/${id}/`)
   },
 
   async createIncidente(data: Record<string, unknown>) {
-    return post('/incidentes/', data)
+    return post('/api/incidencias/incidentes/', data)
   },
 
   async updateIncidente(id: number | string, data: Record<string, unknown>) {
-    return put(`/incidentes/${id}/`, data)
+    return put(`/api/incidencias/incidentes/${id}/`, data)
   },
 
-  async getNotificaciones(params?: Record<string, unknown>) {
-    return get('/notificaciones/', { params })
-  },
 
-  async getContadorNotificacionesNoLeidas() {
-    return get('/notificaciones/no_leidas/')
-  },
-
-  async marcarNotificacionLeida(id: number | string) {
-    return post(`/notificaciones/${id}/marcar_leida/`)
-  },
-
-  async marcarTodasNotificacionesLeidas() {
-    return post('/notificaciones/marcar_todas_leidas/')
-  },
 
   async getDashboardResumen(): Promise<KpiDashboard> {
     try {
@@ -992,23 +1009,7 @@ const api = {
     }
   },
 
-  async getAlertas(): Promise<KpiAlertas> {
-    try {
-      const response = await get<ApiEnvelope<KpiAlertas>>('/kpis/alertas/')
-      return response.data
-    } catch (error) {
-      throw handleApiError(error)
-    }
-  },
 
-  async getLiveAlerts(): Promise<LiveAlert[]> {
-    try {
-      const response = await get<ApiEnvelope<LiveAlert[]>>('/kpis/live_alerts/')
-      return response.data
-    } catch (error) {
-      throw handleApiError(error)
-    }
-  },
 
   async getDashboardStats(params?: Record<string, unknown>) {
     return get('/kpis/resumen_dashboard/', { params })
@@ -1019,40 +1020,34 @@ const api = {
   },
 
   async getOrdenTrabajo(id: number | string) {
-    return get(`/ordenes-trabajo/${id}/`)
+    return get(`/api/mantenimiento/ordenes-trabajo/${id}/`)
   },
 
   async createOrdenTrabajo(data: Record<string, unknown>) {
-    return post('/ordenes-trabajo/', data)
+    return post('/api/mantenimiento/ordenes-trabajo/', data)
   },
 
   async updateOrdenTrabajo(id: number | string, data: Record<string, unknown>) {
-    return put(`/ordenes-trabajo/${id}/`, data)
+    return put(`/api/mantenimiento/ordenes-trabajo/${id}/`, data)
   },
 
   async iniciarOrdenTrabajo(id: number | string, payload?: Record<string, unknown>) {
-    return post(`/ordenes-trabajo/${id}/iniciar/`, payload)
+    return post(`/api/mantenimiento/ordenes-trabajo/${id}/iniciar/`, payload)
   },
 
   async pausarOrdenTrabajo(id: number | string, payload: Record<string, unknown>) {
-    return post(`/ordenes-trabajo/${id}/pausar/`, payload)
+    return post(`/api/mantenimiento/ordenes-trabajo/${id}/pausar/`, payload)
   },
 
   async completarOrdenTrabajo(id: number | string, payload: Record<string, unknown>) {
-    return post(`/ordenes-trabajo/${id}/completar/`, payload)
+    return post(`/api/mantenimiento/ordenes-trabajo/${id}/completar/`, payload)
   },
 
   async cerrarOrdenTrabajo(id: number | string, payload?: Record<string, unknown>) {
-    return post(`/ordenes-trabajo/${id}/cerrar/`, payload)
+    return post(`/api/mantenimiento/ordenes-trabajo/${id}/cerrar/`, payload)
   },
 
-  async getLogsAuditoria(params?: Record<string, unknown>) {
-    return get('/auditoria/', { params })
-  },
 
-  async buscarGlobal(params: Record<string, unknown>) {
-    return get('/buscar/', { params })
-  },
 }
 
 export const getInsumos = async (
