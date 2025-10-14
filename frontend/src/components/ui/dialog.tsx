@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Dialog as HeadlessDialog, DialogTitle as HeadlessDialogTitle, Transition } from "@headlessui/react";
+import { Dialog as HeadlessDialog, Transition } from "@headlessui/react";
 import { cn } from "@/lib/utils";
 
 interface DialogContextValue {
@@ -104,6 +104,8 @@ export interface DialogHeaderProps extends React.HTMLAttributes<HTMLDivElement> 
 export function DialogHeader({ className, ...props }: DialogHeaderProps) {
   return <div className={cn("mb-4 space-y-1", className)} {...props} />;
 }
+
+const HeadlessDialogTitle = HeadlessDialog.Title;
 
 export interface DialogTitleProps extends React.ComponentProps<typeof HeadlessDialogTitle> {}
 
