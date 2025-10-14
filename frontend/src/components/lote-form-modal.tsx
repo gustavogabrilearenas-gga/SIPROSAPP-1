@@ -13,6 +13,7 @@ interface LoteFormModalProps {
   onClose: () => void
   onSuccess: () => void
   lote?: Lote | null // Si es null, es modo crear; si tiene datos, es modo editar
+  completeAfterSave?: boolean
 }
 
 interface FormData {
@@ -54,7 +55,7 @@ interface Formula {
   version: string
 }
 
-export default function LoteFormModal({ isOpen, onClose, onSuccess, lote }: LoteFormModalProps) {
+export default function LoteFormModal({ isOpen, onClose, onSuccess, lote, completeAfterSave }: LoteFormModalProps) {
   const [formData, setFormData] = useState<FormData>({
     codigo_lote: '',
     producto: '',
@@ -83,6 +84,18 @@ export default function LoteFormModal({ isOpen, onClose, onSuccess, lote }: Lote
 
   const isEditMode = !!lote
 
+  const getNowLocalDatetimeMinutes = () => {
+    const d = new Date()
+    // local YYYY-MM-DDTHH:mm
+    const pad = (n: number) => n.toString().padStart(2, '0')
+    const yyyy = d.getFullYear()
+    const mm = pad(d.getMonth() + 1)
+    const dd = pad(d.getDate())
+    const hh = pad(d.getHours())
+    const min = pad(d.getMinutes())
+    return `${yyyy}-${mm}-${dd}T${hh}:${min}`
+  }
+
   useEffect(() => {
     if (isOpen) {
       fetchData()
@@ -101,7 +114,7 @@ export default function LoteFormModal({ isOpen, onClose, onSuccess, lote }: Lote
       
       if (lote) {
         // Modo edición: cargar datos del lote
-        setFormData({
+        const initialData = {
           codigo_lote: lote.codigo_lote,
           producto: lote.producto,
           formula: lote.formula || '',
@@ -119,7 +132,18 @@ export default function LoteFormModal({ isOpen, onClose, onSuccess, lote }: Lote
           turno: lote.turno,
           supervisor: lote.supervisor || currentUserId,
           observaciones: lote.observaciones || '',
-        })
+        }
+
+        // If the modal was opened as part of a 'completar' action, and there is no fecha_real_fin yet,
+        // default it to current local datetime so the user doesn't have to type it.
+        if (completeAfterSave && !lote.fecha_real_fin) {
+          // Only set default if the lote is not in PLANIFICADO state
+          if (lote.estado !== 'PLANIFICADO') {
+            initialData.fecha_real_fin = getNowLocalDatetimeMinutes()
+          }
+        }
+
+        setFormData(initialData)
       } else {
         // Modo creación: usar usuario actual como supervisor por defecto
         setFormData({
@@ -144,6 +168,7 @@ export default function LoteFormModal({ isOpen, onClose, onSuccess, lote }: Lote
       setError(null)
     }
   }, [isOpen, lote])
+
 
   const fetchData = async () => {
     setIsLoading(true)
@@ -245,7 +270,18 @@ export default function LoteFormModal({ isOpen, onClose, onSuccess, lote }: Lote
       console.log('Enviando datos al backend:', dataToSubmit)
 
       if (isEditMode && lote) {
-        await api.updateLote(lote.id, dataToSubmit)
+        // If user requested complete after save, update the lote to FINALIZADO in one request
+        if (completeAfterSave) {
+          dataToSubmit.estado = 'FINALIZADO'
+          // Ensure fecha_real_fin is included when completing
+          if (!dataToSubmit.fecha_real_fin && formData.fecha_real_fin) {
+            dataToSubmit.fecha_real_fin = formData.fecha_real_fin + ':00'
+          }
+          // Use update endpoint to set final state and fecha_real_fin in one go. This triggers signals/audit.
+          await api.updateLote(lote.id, dataToSubmit)
+        } else {
+          await api.updateLote(lote.id, dataToSubmit)
+        }
       } else {
         await api.createLote(dataToSubmit)
       }
@@ -567,24 +603,42 @@ export default function LoteFormModal({ isOpen, onClose, onSuccess, lote }: Lote
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             Fecha y Hora Real de Inicio
                           </label>
-                          <input
-                            type="datetime-local"
-                            value={formData.fecha_real_inicio}
-                            onChange={(e) => handleInputChange('fecha_real_inicio', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                          />
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="datetime-local"
+                              value={formData.fecha_real_inicio}
+                              onChange={(e) => handleInputChange('fecha_real_inicio', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleInputChange('fecha_real_inicio', getNowLocalDatetimeMinutes())}
+                              className="px-3 py-2 bg-green-50 text-green-700 border border-green-100 rounded-md text-sm"
+                            >
+                              Ahora
+                            </button>
+                          </div>
                           <p className="text-xs text-gray-500 mt-1">Hora efectiva de inicio de producción</p>
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             Fecha y Hora Real de Fin
                           </label>
-                          <input
-                            type="datetime-local"
-                            value={formData.fecha_real_fin}
-                            onChange={(e) => handleInputChange('fecha_real_fin', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                          />
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="datetime-local"
+                              value={formData.fecha_real_fin}
+                              onChange={(e) => handleInputChange('fecha_real_fin', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleInputChange('fecha_real_fin', getNowLocalDatetimeMinutes())}
+                              className="px-3 py-2 bg-green-50 text-green-700 border border-green-100 rounded-md text-sm"
+                            >
+                              Ahora
+                            </button>
+                          </div>
                           <p className="text-xs text-gray-500 mt-1">Hora efectiva de finalización</p>
                         </div>
                       </div>

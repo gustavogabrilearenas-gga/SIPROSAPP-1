@@ -1111,7 +1111,16 @@ export const completarLote = async (
   id: number | string,
   payload?: CompletarLotePayload,
 ): Promise<LoteActionResponse> =>
-  withHandledRequest(() => post<LoteActionResponse>(`produccion/lotes/${id}/completar/`, payload))
+  // If client provides an explicit fecha_real_fin, prefer to update the lote via PUT
+  // to set estado=FINALIZADO and fecha_real_fin in one request. This avoids server-side
+  // overwriting with timezone.now() and avoids 422 when lote is not in EN_PROCESO.
+  withHandledRequest(() => {
+    if (payload && (payload as any).fecha_real_fin) {
+      const data: Record<string, unknown> = { ...(payload as Record<string, unknown>), estado: 'FINALIZADO' }
+      return put<LoteActionResponse>(`produccion/lotes/${id}/`, data)
+    }
+    return post<LoteActionResponse>(`produccion/lotes/${id}/completar/`, payload)
+  })
 
 export const pausarLote = async (
   id: number | string,

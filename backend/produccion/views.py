@@ -2,6 +2,11 @@
 
 from django.db.models import Count
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
+import logging
+
+logger = logging.getLogger(__name__)
+from django.utils.dateparse import parse_datetime
 from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -192,6 +197,14 @@ class LoteViewSet(viewsets.ModelViewSet):
             else:
                 mensaje_error = 'Solo se pueden completar lotes en estado EN_PROCESO'
             
+            # Log details to help debugging client 422s
+            logger.warning(
+                'Attempt to completar lote denied: lote_id=%s estado=%s request_data=%s',
+                lote.id,
+                lote.estado,
+                request.data,
+            )
+
             return Response(
                 {
                     'error': mensaje_error,
@@ -202,8 +215,30 @@ class LoteViewSet(viewsets.ModelViewSet):
             )
 
         # Completar el lote
+        # Allow client to provide an explicit fecha_real_fin (ISO format). If invalid or not provided, use server now().
+        fecha_real_fin_input = request.data.get('fecha_real_fin', None)
+        if fecha_real_fin_input:
+            # parse_datetime can handle ISO 8601 strings like 'YYYY-MM-DDTHH:MM:SS' optionally with timezone
+            parsed = parse_datetime(fecha_real_fin_input)
+            if parsed is None:
+                logger.warning(
+                    'Invalid fecha_real_fin provided to completar: lote_id=%s value=%s',
+                    lote.id,
+                    fecha_real_fin_input,
+                )
+                return Response(
+                    {'error': 'Formato de fecha inválido para fecha_real_fin. Use ISO8601: YYYY-MM-DDTHH:MM:SS'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            # If parsed datetime is naive, make it timezone-aware using current timezone
+            if timezone.is_naive(parsed):
+                parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
+
+            lote.fecha_real_fin = parsed
+        else:
+            lote.fecha_real_fin = timezone.now()
+
         lote.estado = 'FINALIZADO'
-        lote.fecha_real_fin = timezone.now()
 
         # Adjuntar información para auditoria
         lote._usuario_actual = request.user
