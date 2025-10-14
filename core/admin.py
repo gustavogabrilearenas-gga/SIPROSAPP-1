@@ -10,9 +10,6 @@ from .models import (
     # Notificaciones
     Notificacion,
 )
-from backend.inventario.models import FormulaInsumo
-
-
 # ============================================
 # CATÁLOGOS MAESTROS
 # ============================================
@@ -39,17 +36,11 @@ class ProductoAdmin(admin.ModelAdmin):
     search_fields = ['codigo', 'nombre', 'principio_activo']
 
 
-class FormulaInsumoInline(admin.TabularInline):
-    model = FormulaInsumo
-    extra = 1
-
-
 @admin.register(Formula)
 class FormulaAdmin(admin.ModelAdmin):
     list_display = ['producto', 'version', 'fecha_vigencia_desde', 'activa', 'aprobada_por']
     list_filter = ['activa', 'fecha_vigencia_desde']
     search_fields = ['producto__nombre', 'version']
-    inlines = [FormulaInsumoInline]
 
 
 @admin.register(EtapaProduccion)

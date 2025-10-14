@@ -3,13 +3,12 @@
 from datetime import timedelta
 from decimal import Decimal
 
-from django.db.models import Count, F, Sum
+from django.db.models import Count, Sum
 from django.db.models.functions import TruncDate
 from django.utils import timezone
 from rest_framework import serializers
 
 from backend.calidad.models import Desviacion
-from backend.inventario.models import LoteInsumo
 from backend.mantenimiento.models import OrdenTrabajo
 from backend.produccion.models import ControlCalidad, Lote, LoteEtapa, Parada
 
@@ -23,8 +22,6 @@ class ResumenDashboardSerializer(serializers.Serializer):
     produccion_diaria = serializers.IntegerField()
     produccion_semanal = serializers.IntegerField()
     rendimiento_promedio = serializers.FloatField()
-    inventario_stock_bajo = serializers.IntegerField()
-    inventario_por_vencer = serializers.IntegerField()
     mantenimiento_abiertas = serializers.IntegerField()
     mantenimiento_en_pausa = serializers.IntegerField()
     mantenimiento_completadas_semana = serializers.IntegerField()
@@ -60,15 +57,6 @@ class ResumenDashboardSerializer(serializers.Serializer):
         total_producida = rendimiento_agg.get("total_producida") or 0
         rendimiento_promedio = float(total_producida) / float(total_planificada) if total_planificada else 0.0
 
-        inventario_stock_bajo = LoteInsumo.objects.filter(
-            estado__in=["APROBADO", "CUARENTENA"],
-            cantidad_actual__lte=F("insumo__punto_reorden"),
-        ).count()
-        inventario_por_vencer = LoteInsumo.objects.filter(
-            estado__in=["APROBADO", "CUARENTENA"],
-            fecha_vencimiento__lte=today + timedelta(days=30),
-        ).count()
-
         mantenimiento_abiertas = OrdenTrabajo.objects.filter(
             estado__in=["ABIERTA", "ASIGNADA"]
         ).count()
@@ -87,8 +75,6 @@ class ResumenDashboardSerializer(serializers.Serializer):
             "produccion_diaria": produccion_diaria,
             "produccion_semanal": produccion_semanal,
             "rendimiento_promedio": round(rendimiento_promedio, 2),
-            "inventario_stock_bajo": inventario_stock_bajo,
-            "inventario_por_vencer": inventario_por_vencer,
             "mantenimiento_abiertas": mantenimiento_abiertas,
             "mantenimiento_en_pausa": mantenimiento_en_pausa,
             "mantenimiento_completadas_semana": mantenimiento_completadas_semana,
@@ -232,8 +218,6 @@ class HistorialProduccionSerializer(serializers.Serializer):
 class AlertasSerializer(serializers.Serializer):
     """Resumen de alertas operativas relevantes."""
 
-    insumos_por_vencer = serializers.IntegerField()
-    insumos_stock_critico = serializers.IntegerField()
     maquinas_fuera_servicio = serializers.IntegerField()
     ordenes_atrasadas = serializers.IntegerField()
     desviaciones_criticas_abiertas = serializers.IntegerField()
@@ -241,19 +225,6 @@ class AlertasSerializer(serializers.Serializer):
     @staticmethod
     def get_data() -> dict:
         """Calcula alertas a partir de los modelos operativos."""
-
-        today = timezone.localdate()
-        proximos_30 = today + timedelta(days=30)
-
-        insumos_por_vencer = LoteInsumo.objects.filter(
-            estado__in=["APROBADO", "CUARENTENA"],
-            fecha_vencimiento__lte=proximos_30,
-        ).count()
-
-        insumos_stock_critico = LoteInsumo.objects.filter(
-            estado__in=["APROBADO", "CUARENTENA"],
-            cantidad_actual__lte=F("insumo__stock_minimo"),
-        ).count()
 
         ordenes_en_curso = OrdenTrabajo.objects.filter(
             estado__in=["ABIERTA", "ASIGNADA", "EN_PROCESO", "PAUSADA"],
@@ -271,8 +242,6 @@ class AlertasSerializer(serializers.Serializer):
         ).count()
 
         return {
-            "insumos_por_vencer": insumos_por_vencer,
-            "insumos_stock_critico": insumos_stock_critico,
             "maquinas_fuera_servicio": maquinas_fuera_servicio,
             "ordenes_atrasadas": ordenes_atrasadas,
             "desviaciones_criticas_abiertas": desviaciones_criticas_abiertas,

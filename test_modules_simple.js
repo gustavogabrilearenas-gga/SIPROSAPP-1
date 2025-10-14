@@ -86,7 +86,6 @@ class SimpleModuleTester {
       { name: 'Fórmulas', path: '/formulas' },
       { name: 'Máquinas', path: '/maquinas' },
       { name: 'Lotes', path: '/lotes' },
-      { name: 'Inventario', path: '/inventario' },
       { name: 'Mantenimiento', path: '/mantenimiento' },
       { name: 'Incidentes', path: '/incidentes' },
       { name: 'Desviaciones', path: '/desviaciones' },

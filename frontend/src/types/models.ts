@@ -478,69 +478,6 @@ export interface NotificacionListItem {
 }
 
 // ============================================
-// INVENTARIO
-// ============================================
-
-export interface Insumo {
-  id: number
-  codigo: string
-  nombre: string
-  descripcion?: string
-  unidad_medida: string
-  stock_minimo: number
-  stock_actual: number
-  precio_unitario: number
-  proveedor_principal?: string
-  activo: boolean
-}
-
-export interface Repuesto {
-  id: number
-  codigo: string
-  nombre: string
-  descripcion?: string
-  maquinas_compatibles: number[]  // Array de IDs de máquinas
-  stock_minimo: number
-  stock_actual: number
-  precio_unitario: number
-  proveedor_principal?: string
-  activo: boolean
-}
-
-export interface ProductoTerminado {
-  id: number
-  lote: number
-  lote_codigo?: string
-  producto: number
-  producto_nombre?: string
-  cantidad: number
-  unidad: string
-  fecha_fabricacion: string
-  fecha_vencimiento: string
-  numero_lote_sanitario?: string
-  ubicacion_almacen?: string
-  estado: 'CUARENTENA' | 'APROBADO' | 'RECHAZADO' | 'DESPACHADO'
-}
-
-export interface MovimientoInventario {
-  id: number
-  tipo_item: 'INSUMO' | 'REPUESTO' | 'PRODUCTO_TERMINADO'
-  item_id: number
-  item_nombre?: string
-  tipo_movimiento: 'ENTRADA' | 'SALIDA' | 'AJUSTE' | 'TRANSFERENCIA'
-  cantidad: number
-  unidad: string
-  fecha_movimiento: string
-  lote_proveedor?: string
-  fecha_vencimiento?: string
-  responsable: number
-  responsable_nombre?: string
-  motivo?: string
-  ubicacion_origen?: string
-  ubicacion_destino?: string
-}
-
-// ============================================
 // FIRMAS ELECTRÓNICAS
 // ============================================
 
