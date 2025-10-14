@@ -73,7 +73,7 @@ INSTALLED_APPS = [
     'backend.usuarios',
     'backend.produccion',
     #'backend.calidad',        # No MVP - Módulo de calidad
-    #'backend.inventario',     # No MVP - Módulo de inventario
+    'backend.inventario',     # Módulo de inventario habilitado
     'backend.mantenimiento',
     'backend.incidencias',
     #'backend.auditoria',      # No MVP - Módulo de auditoría
