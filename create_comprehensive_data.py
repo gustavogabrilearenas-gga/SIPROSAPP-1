@@ -21,11 +21,6 @@ from core.models import (
 )
 from backend.incidencias.models import TipoIncidente, Incidente
 from backend.produccion.models import Lote, LoteEtapa, Parada, ControlCalidad
-from backend.inventario.models import (
-    CategoriaInsumo, FormulaInsumo, Insumo,
-    LoteInsumo, LoteInsumoConsumo, Repuesto,
-)
-
 def create_users():
     """Crear usuarios del sistema"""
     print("\n👥 Creando usuarios...")

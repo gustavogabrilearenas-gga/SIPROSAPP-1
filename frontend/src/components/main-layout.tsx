@@ -24,7 +24,6 @@ const navItems = [
   // { href: '/configuraciones-maestras/productos', label: 'Productos', icon: Package },
   // { href: '/configuraciones-maestras/formulas', label: 'Fórmulas', icon: FlaskConical },
   // { href: '/lotes', label: 'Lotes', icon: ClipboardList },
-  // { href: '/configuraciones-maestras/inventario', label: 'Inventario', icon: Warehouse },
   // { href: '/desviaciones', label: 'Desviaciones', icon: FileText },
   // { href: '/control-calidad', label: 'Control Calidad', icon: HeartPulse },
   // { href: '/kpis', label: 'KPIs', icon: Gauge },

@@ -1,16 +1,13 @@
 """Vistas API para exponer KPIs y métricas operativas."""
 
 from datetime import datetime, time, timedelta
-from decimal import Decimal
 
-from django.db.models import Q
 from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from backend.calidad.models import Desviacion
-from backend.inventario.models import LoteInsumo
 from backend.mantenimiento.models import OrdenTrabajo
 from backend.produccion.models import Parada
 
@@ -88,50 +85,6 @@ class LiveAlertsView(APIView):
             return timezone.make_aware(combined)
 
         live_alerts = []
-
-        inventario_qs = (
-            LoteInsumo.objects.filter(
-                Q(consumos__fecha_consumo__gte=since)
-                | Q(fecha_aprobacion__gte=since.date())
-                | Q(fecha_recepcion__gte=since.date())
-            )
-            .select_related("insumo")
-            .distinct()
-        )
-
-        zero = Decimal("0")
-
-        for lote in inventario_qs:
-            cantidad_actual = lote.cantidad_actual or zero
-            if cantidad_actual <= zero or cantidad_actual <= lote.insumo.stock_minimo:
-                nivel = "critical"
-                estado_stock = "sin stock" if cantidad_actual <= zero else "crítico"
-            elif cantidad_actual <= lote.insumo.punto_reorden:
-                nivel = "warning"
-                estado_stock = "bajo"
-            else:
-                continue
-
-            consumo_reciente = (
-                lote.consumos.filter(fecha_consumo__gte=since)
-                .order_by("-fecha_consumo")
-                .values_list("fecha_consumo", flat=True)
-                .first()
-            )
-            referencia_tiempo = consumo_reciente or lote.fecha_aprobacion or lote.fecha_recepcion
-
-            live_alerts.append(
-                {
-                    "id": lote.id,
-                    "tipo": "inventario",
-                    "nivel": nivel,
-                    "mensaje": (
-                        f"Insumo {lote.insumo.nombre} con stock {estado_stock} "
-                        f"({cantidad_actual} {lote.unidad})"
-                    ),
-                    "timestamp": to_datetime(referencia_tiempo),
-                }
-            )
 
         ordenes_qs = OrdenTrabajo.objects.filter(fecha_creacion__gte=since).select_related("maquina")
         for orden in ordenes_qs:

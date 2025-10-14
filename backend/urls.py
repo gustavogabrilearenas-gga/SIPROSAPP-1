@@ -11,7 +11,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/produccion/', include('backend.produccion.urls')),
     #path('api/calidad/', include('backend.calidad.urls')),        # No MVP - Módulo de calidad
-    path('api/inventario/', include('backend.inventario.urls')),
     path('api/mantenimiento/', include('backend.mantenimiento.urls')),
     path('api/incidencias/', include('backend.incidencias.urls')),
     path('api/auditoria/', include('backend.auditoria.urls')),

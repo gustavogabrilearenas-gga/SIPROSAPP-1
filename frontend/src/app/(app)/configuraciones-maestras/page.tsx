@@ -7,7 +7,6 @@ import {
   ArrowLeft,
   Briefcase,
   Beaker,
-  Archive,
   Layers,
   Clock,
   PowerOff,
@@ -29,12 +28,6 @@ const modules = [
     href: '/configuraciones-maestras/formulas',
     icon: Beaker,
     description: 'Define las fórmulas de los productos.',
-  },
-  {
-    name: 'Inventario',
-    href: '/configuraciones-maestras/inventario',
-    icon: Archive,
-    description: 'Controla el inventario de materiales.',
   },
   {
     name: 'Etapas de Producción',

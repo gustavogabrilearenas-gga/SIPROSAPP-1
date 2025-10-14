@@ -10,9 +10,6 @@ from .models import (
     # Notificaciones
     Notificacion,
 )
-from backend.inventario.models import FormulaInsumo
-
-
 # ============================================
 # CATÁLOGOS
 # ============================================
@@ -21,13 +18,12 @@ class UbicacionSerializer(serializers.ModelSerializer):
     """Serializer de ubicaciones"""
     tipo_display = serializers.CharField(source='get_tipo_display', read_only=True)
     maquinas_count = serializers.IntegerField(read_only=True)
-    lotes_insumo_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Ubicacion
         fields = [
             'id', 'codigo', 'nombre', 'tipo', 'tipo_display', 'descripcion', 'activa',
-            'maquinas_count', 'lotes_insumo_count'
+            'maquinas_count'
         ]
         read_only_fields = ['id']
 
@@ -75,27 +71,6 @@ class FormulaSerializer(serializers.ModelSerializer):
             'aprobada_por', 'aprobada_por_nombre', 'activa'
         ]
         read_only_fields = ['id']
-
-
-class FormulaInsumoSerializer(serializers.ModelSerializer):
-    """Serializer para los insumos que componen una fórmula"""
-
-    insumo_codigo = serializers.CharField(source='insumo.codigo', read_only=True)
-    insumo_nombre = serializers.CharField(source='insumo.nombre', read_only=True)
-
-    class Meta:
-        model = FormulaInsumo
-        fields = [
-            'id',
-            'insumo',
-            'insumo_codigo',
-            'insumo_nombre',
-            'cantidad',
-            'unidad',
-            'es_critico',
-            'orden',
-        ]
-        read_only_fields = ['id', 'insumo_codigo', 'insumo_nombre']
 
 
 class EtapaProduccionSerializer(serializers.ModelSerializer):

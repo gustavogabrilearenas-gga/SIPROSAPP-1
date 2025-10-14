@@ -160,30 +160,6 @@ class MESTester:
                     "capacidad_nominal": 1200.0
                 }
             },
-            "insumos": {
-                "endpoint": "insumos",
-                "test_data": {
-                    "codigo": f"TEST-INS-{int(time.time())}",
-                    "nombre": "Insumo de Prueba",
-                    "categoria": "MATERIA_PRIMA",
-                    "unidad_medida": "kg",
-                    "stock_minimo": 100,
-                    "stock_maximo": 1000,
-                    "punto_reorden": 200,
-                    "requiere_cadena_frio": False,
-                    "requiere_control_lote": True,
-                    "tiempo_vida_util_meses": 12,
-                    "proveedor_principal": "Proveedor Test",
-                    "codigo_proveedor": "PROV123",
-                    "precio_unitario": 25.50,
-                    "activo": True,
-                    "ficha_tecnica_url": "https://test.com/ficha.pdf"
-                },
-                "update_data": {
-                    "nombre": "Insumo de Prueba Actualizado",
-                    "precio_unitario": 30.00
-                }
-            },
             "ubicaciones": {
                 "endpoint": "ubicaciones",
                 "test_data": {

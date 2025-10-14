@@ -317,105 +317,6 @@ export interface PaginatedResponse<T> {
   results: T[]
 }
 
-export interface Insumo {
-  id: number
-  codigo: string
-  nombre: string
-  categoria: number
-  categoria_nombre?: string
-  unidad_medida: string
-  stock_minimo: number
-  stock_maximo: number
-  punto_reorden: number
-  stock_disponible?: number
-  activo: boolean
-}
-
-export type CreateInsumoPayload = Omit<
-  Insumo,
-  'id' | 'categoria_nombre' | 'stock_disponible'
->
-
-export type UpdateInsumoPayload = Partial<CreateInsumoPayload>
-
-export interface InsumoListParams {
-  search?: string
-  categoria?: number
-  activo?: boolean
-  ordering?: string
-  page?: number
-}
-
-export interface LoteInsumo {
-  id: number
-  insumo: number
-  insumo_nombre?: string
-  codigo_lote_proveedor: string
-  fecha_recepcion: string
-  fecha_vencimiento: string
-  dias_vencimiento?: number | null
-  cantidad_inicial: number
-  cantidad_actual: number
-  unidad: string
-  ubicacion: number
-  ubicacion_nombre?: string
-  ubicacion_detalle?: string
-  estado: string
-  estado_display?: string
-  proveedor: string
-}
-
-export type CreateLoteInsumoPayload = Omit<
-  LoteInsumo,
-  'id' | 'insumo_nombre' | 'dias_vencimiento' | 'ubicacion_nombre' | 'estado_display'
->
-
-export interface LoteInsumoListParams {
-  insumo?: number
-  estado?: string
-  ordering?: string
-  search?: string
-  page?: number
-}
-
-export interface MovimientoInventario {
-  id: number
-  tipo_item: string
-  tipo_item_display?: string
-  item_id: number
-  lote_item_id?: number | null
-  tipo_movimiento: string
-  tipo_movimiento_display?: string
-  motivo?: string | null
-  cantidad: number
-  unidad: string
-  ubicacion_origen?: number | null
-  ubicacion_destino?: number | null
-  referencia_documento?: string | null
-  fecha_movimiento: string
-  registrado_por: number
-  observaciones?: string | null
-}
-
-export type CreateMovimientoInventarioPayload = Pick<
-  MovimientoInventario,
-  'tipo_item' | 'item_id' | 'tipo_movimiento' | 'cantidad' | 'unidad'
-> &
-  Partial<
-    Pick<
-      MovimientoInventario,
-      'lote_item_id' | 'motivo' | 'ubicacion_origen' | 'ubicacion_destino' | 'referencia_documento' | 'observaciones'
-    >
-  >
-
-export interface MovimientoInventarioParams {
-  tipo_item?: string
-  item_id?: number
-  tipo_movimiento?: string
-  ordering?: string
-  page?: number
-}
-
 export interface LoteListItem {
   id: number
   codigo_lote: string
@@ -734,8 +635,6 @@ export interface KpiDashboard {
   produccion_diaria: number
   produccion_semanal: number
   rendimiento_promedio: number
-  inventario_stock_bajo: number
-  inventario_por_vencer: number
   mantenimiento_abiertas: number
   mantenimiento_en_pausa: number
   mantenimiento_completadas_semana: number
@@ -1064,43 +963,6 @@ const api = {
 
 }
 
-export const getInsumos = async (
-  params?: InsumoListParams,
-): Promise<PaginatedResponse<Insumo>> =>
-  withHandledRequest(() => get<PaginatedResponse<Insumo>>('inventario/insumos/', { params }))
-
-export const createInsumo = async (payload: CreateInsumoPayload): Promise<Insumo> =>
-  withHandledRequest(() => post<Insumo>('inventario/insumos/', payload))
-
-export const updateInsumo = async (
-  id: number | string,
-  payload: UpdateInsumoPayload,
-): Promise<Insumo> =>
-  withHandledRequest(() => put<Insumo>(`inventario/insumos/${id}/`, payload))
-
-export const deleteInsumo = async (id: number | string): Promise<void> =>
-  withHandledRequest(() => del<void>(`inventario/insumos/${id}/`))
-
-export const getLotesInsumo = async (
-  params?: LoteInsumoListParams,
-): Promise<PaginatedResponse<LoteInsumo>> =>
-  withHandledRequest(() => get<PaginatedResponse<LoteInsumo>>('inventario/lotes-insumo/', { params }))
-
-export const createLoteInsumo = async (
-  payload: CreateLoteInsumoPayload,
-): Promise<LoteInsumo> =>
-  withHandledRequest(() => post<LoteInsumo>('inventario/lotes-insumo/', payload))
-
-export const getMovimientosInventario = async (
-  params?: MovimientoInventarioParams,
-): Promise<PaginatedResponse<MovimientoInventario>> =>
-  withHandledRequest(() => get<PaginatedResponse<MovimientoInventario>>('inventario/movimientos/', { params }))
-
-export const createMovimientoInventario = async (
-  payload: CreateMovimientoInventarioPayload,
-): Promise<MovimientoInventario> =>
-  withHandledRequest(() => post<MovimientoInventario>('inventario/movimientos/', payload))
-
 export const getLotes = async (
   params?: LoteListParams,
 ): Promise<PaginatedResponse<LoteListItem>> =>
@@ -1240,14 +1102,6 @@ export const exportCSV = async (params?: OeeParams): Promise<Blob> =>
   withHandledRequest(() => get<Blob>('kpis/export.csv', { params, responseType: 'blob' }))
 
 Object.assign(api, {
-  getInsumos,
-  createInsumo,
-  updateInsumo,
-  deleteInsumo,
-  getLotesInsumo,
-  createLoteInsumo,
-  getMovimientosInventario,
-  createMovimientoInventario,
   getLotes,
   createLote,
   cancelarLote,

@@ -252,17 +252,6 @@ class FrontendTester {
           cantidad_producir: 1500
         }
       },
-      inventario: {
-        create: {
-          codigo: 'INV-TEST-001',
-          nombre: 'Insumo de Prueba',
-          tipo: 'INSUMO',
-          unidad_medida: 'KG'
-        },
-        edit: {
-          nombre: 'Insumo de Prueba Editado'
-        }
-      },
       mantenimiento: {
         create: {
           titulo: 'Orden de Prueba',
@@ -364,7 +353,6 @@ class FrontendTester {
       { name: 'Fórmulas', path: '/formulas' },
       { name: 'Máquinas', path: '/maquinas' },
       { name: 'Lotes', path: '/lotes' },
-      { name: 'Inventario', path: '/inventario' },
       { name: 'Mantenimiento', path: '/mantenimiento' },
       { name: 'Incidentes', path: '/incidentes' },
       { name: 'Desviaciones', path: '/desviaciones' },
