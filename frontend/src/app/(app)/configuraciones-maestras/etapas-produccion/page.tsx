@@ -94,7 +94,7 @@ export default function EtapasProduccionPage() {
               <div className="flex items-center gap-4">
                 <Button
                   variant="outline"
-                  onClick={() => router.push('/')}
+                  onClick={() => router.push('/configuraciones-maestras')}
                   className="flex items-center gap-2"
                 >
                   <ArrowLeft className="w-4 h-4" />

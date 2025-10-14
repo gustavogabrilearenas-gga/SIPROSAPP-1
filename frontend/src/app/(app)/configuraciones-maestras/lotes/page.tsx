@@ -7,7 +7,7 @@ import {
   Package,
   Plus,
   Filter,
-  Home,
+  ArrowLeft,
   Loader2,
   Eye,
   EyeOff,
@@ -222,11 +222,11 @@ function LotesContent() {
           <div className="flex space-x-3">
             <Button
               variant="outline"
-              onClick={() => router.push('/')}
+              onClick={() => router.push('/configuraciones-maestras')}
               className="bg-white/80"
             >
-              <Home className="h-4 w-4 mr-2" />
-              Dashboard
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Configuraciones Maestras
             </Button>
             <Button
               onClick={handleCreateLote}
