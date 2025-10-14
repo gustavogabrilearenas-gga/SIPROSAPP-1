@@ -523,6 +523,14 @@ export interface OrdenTrabajoListParams {
   page?: number
 }
 
+export interface TipoMantenimiento {
+  id: number
+  codigo: string
+  nombre: string
+  descripcion: string
+  activo: boolean
+}
+
 export interface OrdenTrabajo extends OrdenTrabajoListItem {
   descripcion: string | null
   fecha_inicio: string | null
@@ -1016,7 +1024,7 @@ const api = {
   },
 
   async getOrdenesTrabajo(params?: Record<string, unknown>) {
-    return get('/ordenes-trabajo/', { params })
+    return get('/mantenimiento/ordenes-trabajo/', { params })
   },
 
   async getOrdenTrabajo(id: number | string) {
@@ -1145,6 +1153,11 @@ export const getOrdenesTrabajo = async (
 ): Promise<PaginatedResponse<OrdenTrabajoListItem>> =>
   withHandledRequest(() => get<PaginatedResponse<OrdenTrabajoListItem>>('mantenimiento/ordenes-trabajo/', { params }))
 
+export const getTiposMantenimiento = async (
+  params?: Record<string, unknown>,
+): Promise<PaginatedResponse<TipoMantenimiento>> =>
+  withHandledRequest(() => get<PaginatedResponse<TipoMantenimiento>>('mantenimiento/tipos-mantenimiento/', { params }))
+
 export const createOrdenTrabajo = async (
   payload: CreateOrdenTrabajoPayload,
 ): Promise<OrdenTrabajo> =>
@@ -1238,6 +1251,7 @@ Object.assign(api, {
   liberarLote,
   rechazarLote,
   getOrdenesTrabajo,
+  getTiposMantenimiento,
   createOrdenTrabajo,
   updateOrdenTrabajo,
   iniciarOrdenTrabajo,

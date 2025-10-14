@@ -117,13 +117,19 @@ export default function OrdenTrabajoFormModal({
     setIsLoading(true)
     try {
       const [tiposData, maquinasData, usuariosData] = await Promise.all([
-        api.getTiposMantenimiento(),
+        api.getTiposMantenimiento({ activo: true, page_size: 100 }),
         api.getMaquinas(),
         api.getUsuarios()
       ])
-      
+
       // Asegurar que los datos sean arrays
-      setTiposMantenimiento(Array.isArray(tiposData) ? tiposData : [])
+      if (Array.isArray((tiposData as any)?.results)) {
+        setTiposMantenimiento((tiposData as any).results)
+      } else if (Array.isArray(tiposData as any)) {
+        setTiposMantenimiento(tiposData as any)
+      } else {
+        setTiposMantenimiento([])
+      }
       setMaquinas(Array.isArray(maquinasData?.results) ? maquinasData.results : [])
       setUsuarios(Array.isArray(usuariosData?.results) ? usuariosData.results : [])
     } catch (err: any) {

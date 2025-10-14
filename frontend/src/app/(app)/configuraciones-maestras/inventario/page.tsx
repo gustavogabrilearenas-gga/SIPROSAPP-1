@@ -26,6 +26,8 @@ import {
 import { api, handleApiError } from '@/lib/api'
 import { featureFlags } from '@/lib/feature-flags'
 import { showError } from '@/components/common/toast-utils'
+import InsumoFormModal from '@/components/insumo-form-modal'
+import LoteFormModal from '@/components/lote-form-modal'
 
 interface Insumo {
   id: number
@@ -122,6 +124,9 @@ export default function InventarioPage() {
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [activeTab, setActiveTab] = useState<'insumos' | 'lotes'>('insumos')
+  const [isInsumoModalOpen, setIsInsumoModalOpen] = useState(false)
+  const [isLoteModalOpen, setIsLoteModalOpen] = useState(false)
+  const [selectedInsumoId, setSelectedInsumoId] = useState<number | null>(null)
 
   useEffect(() => {
     if (activeTab === 'insumos') {
@@ -252,7 +257,12 @@ export default function InventarioPage() {
               {(user?.is_superuser || user?.is_staff) && featureFlags.inventarioEdicion && (
                 <Button
                   onClick={() => {
-                    console.warn('Alta de inventario deshabilitada hasta implementar el flujo de creación')
+                    if (activeTab === 'insumos') {
+                      setSelectedInsumoId(null)
+                      setIsInsumoModalOpen(true)
+                    } else {
+                      setIsLoteModalOpen(true)
+                    }
                   }}
                   className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
@@ -356,6 +366,18 @@ export default function InventarioPage() {
                               </CardTitle>
                               <p className="text-sm font-medium text-gray-900">{insumo.nombre}</p>
                             </div>
+                            {(user?.is_superuser || user?.is_staff) && featureFlags.inventarioEdicion && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedInsumoId(insumo.id)
+                                  setIsInsumoModalOpen(true)
+                                }}
+                              >
+                                Editar
+                              </Button>
+                            )}
                           </div>
                         </CardHeader>
                         <CardContent>
@@ -482,6 +504,30 @@ export default function InventarioPage() {
           </DataState>
         </main>
       </div>
+      <InsumoFormModal
+        isOpen={isInsumoModalOpen}
+        onClose={() => {
+          setIsInsumoModalOpen(false)
+          setSelectedInsumoId(null)
+        }}
+        insumoId={selectedInsumoId}
+        onSuccess={() => {
+          if (activeTab === 'insumos') {
+            fetchInsumos()
+          }
+        }}
+      />
+      <LoteFormModal
+        isOpen={isLoteModalOpen}
+        onClose={() => {
+          setIsLoteModalOpen(false)
+        }}
+        onSuccess={() => {
+          if (activeTab === 'lotes') {
+            fetchLotesInsumo()
+          }
+        }}
+      />
     </ProtectedRoute>
   )
 }

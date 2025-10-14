@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { toast } from '@/hooks/use-toast'
+import EtapaProduccionFormModal from '@/components/etapa-produccion-form-modal'
 
 interface EtapaProduccion {
   id: number
@@ -221,7 +222,11 @@ export default function EtapasProduccionPage() {
                             variant="outline"
                             size="sm"
                             className="flex-1"
-                            onClick={() => router.push(`/lotes?etapa=${etapa.id}`)}
+                            onClick={() =>
+                              router.push(
+                                `/configuraciones-maestras/lotes?etapa=${etapa.id}&etapaNombre=${encodeURIComponent(etapa.nombre)}`,
+                              )
+                            }
                           >
                             <Activity className="w-4 h-4 mr-1" />
                             Ver Lotes
@@ -254,6 +259,15 @@ export default function EtapasProduccionPage() {
             </div>
           )}
         </main>
+        <EtapaProduccionFormModal
+          isOpen={isFormOpen}
+          etapaId={selectedEtapaId}
+          onClose={() => {
+            setIsFormOpen(false)
+            setSelectedEtapaId(null)
+          }}
+          onSuccess={fetchEtapas}
+        />
       </div>
     </ProtectedRoute>
   )

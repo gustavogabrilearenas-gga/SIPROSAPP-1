@@ -53,7 +53,17 @@ export default function FormulaFormModal({ isOpen, onClose, formulaId, onSuccess
   const fetchFormula = async () => {
     try {
       const data = await api.get(`/api/formulas/${formulaId}/`)
-      setFormData(data.data)
+      setFormData({
+        producto: data.producto ?? null,
+        version: data.version ?? '',
+        descripcion: data.descripcion ?? '',
+        instrucciones: data.instrucciones ?? '',
+        tiempo_total_minutos: data.tiempo_total_minutos ?? 0,
+        temperatura_objetivo: data.temperatura_objetivo ?? null,
+        humedad_objetivo: data.humedad_objetivo ?? null,
+        aprobada: data.aprobada ?? false,
+        activa: data.activa ?? true,
+      })
     } catch (err) {
       console.error('Error fetching formula:', err)
     }

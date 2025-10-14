@@ -105,14 +105,20 @@ export default function IncidenteFormModal({ isOpen, onClose, onSuccess, inciden
     setCatalogLoading(true)
     try {
       const [tiposData, ubicacionesData, maquinasData, lotesData, usuariosData] = await Promise.all([
-        api.get('/api/tipos-incidente/'),
+        api.get('/api/incidencias/tipos-incidente/'),
         api.getUbicaciones(),
         api.getMaquinas(),
         api.getLotes(),
         api.getUsuarios(),
       ])
 
-      setTipos(Array.isArray(tiposData?.data) ? tiposData.data : [])
+      if (Array.isArray((tiposData as any)?.results)) {
+        setTipos((tiposData as any).results)
+      } else if (Array.isArray(tiposData as any)) {
+        setTipos(tiposData as any)
+      } else {
+        setTipos([])
+      }
       setUbicaciones(Array.isArray(ubicacionesData?.results) ? ubicacionesData.results : [])
       setMaquinas(Array.isArray(maquinasData?.results) ? maquinasData.results : [])
       setLotes(Array.isArray(lotesData?.results) ? lotesData.results : [])

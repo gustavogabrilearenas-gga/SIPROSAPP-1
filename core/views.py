@@ -26,7 +26,7 @@ from backend.incidencias.models import Incidente
 from .serializers import (
     # Catálogos
     UbicacionSerializer, MaquinaSerializer, ProductoSerializer,
-    FormulaSerializer, EtapaProduccionSerializer, TurnoSerializer,
+    FormulaSerializer, FormulaInsumoSerializer, EtapaProduccionSerializer, TurnoSerializer,
     # Notificaciones
     NotificacionSerializer,
 )
@@ -166,6 +166,23 @@ class FormulaViewSet(viewsets.ModelViewSet):
         else:
             perm_classes = [IsAdmin]
         return [p() for p in perm_classes]
+
+    @action(detail=True, methods=['get'])
+    def insumos(self, request, pk=None):
+        """Devuelve el detalle de insumos asociados a la fórmula seleccionada"""
+
+        formula = self.get_object()
+        ingredientes = formula.insumos.select_related('insumo').order_by('orden')
+        serializer = FormulaInsumoSerializer(ingredientes, many=True)
+        formula_data = FormulaSerializer(formula, context={'request': request}).data
+        return Response({
+            'formula': {
+                'id': formula_data['id'],
+                'producto_nombre': formula_data['producto_nombre'],
+                'version': formula_data['version'],
+            },
+            'insumos': serializer.data,
+        })
 
 
 class EtapaProduccionViewSet(viewsets.ModelViewSet):

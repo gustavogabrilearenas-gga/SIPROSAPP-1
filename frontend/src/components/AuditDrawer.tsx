@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { LogAuditoria, AuditoriaResponse } from '@/types/models'
 import { api } from '@/lib/api'
 import { featureFlags } from '@/lib/feature-flags'
+import { showError } from '@/components/common/toast-utils'
 
 interface AuditDrawerProps {
   isOpen: boolean
@@ -72,15 +73,67 @@ export default function AuditDrawer({ isOpen, onClose }: AuditDrawerProps) {
     setTimeout(loadLogs, 100)
   }
 
-  const handleExport = async () => {
+  const handleExport = () => {
+    if (!featureFlags.auditoriaExport) {
+      showError(
+        'Exportación deshabilitada',
+        'La exportación de auditorías no está disponible en este entorno.',
+      )
+      return
+    }
+
+    if (!logs.length) {
+      showError('Sin datos para exportar', 'No hay registros de auditoría que descargar.')
+      return
+    }
+
     try {
-      if (!featureFlags.auditoriaExport) {
-        console.warn('La exportación de auditoría está deshabilitada hasta contar con soporte backend.')
-        return
-      }
-      // Aquí podrías implementar la exportación a CSV cuando esté habilitada
+      const headers = ['ID', 'Fecha', 'Usuario', 'Acción', 'Modelo', 'Objeto', 'Detalle']
+      const rows = logs.map((log) => {
+        const fecha = (() => {
+          try {
+            return new Date(log.fecha).toISOString()
+          } catch {
+            return log.fecha
+          }
+        })()
+        const cambiosTexto = log.cambios ? JSON.stringify(log.cambios) : ''
+        return [
+          log.id,
+          fecha,
+          log.usuario_nombre || `Usuario ${log.usuario}`,
+          log.accion_display || log.accion,
+          log.modelo,
+          log.objeto_str || log.objeto_id,
+          cambiosTexto,
+        ]
+      })
+
+      const csvContent = [headers, ...rows]
+        .map((row) =>
+          row
+            .map((cell) => {
+              const value = cell ?? ''
+              const normalized = typeof value === 'string' ? value : String(value)
+              return `"${normalized.replace(/"/g, '""')}"`
+            })
+            .join(';'),
+        )
+        .join('\n')
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+      link.download = `auditoria-${timestamp}.csv`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
     } catch (err) {
       console.error('Error exporting logs:', err)
+      showError('Error al exportar', 'Ocurrió un problema al generar el archivo CSV.')
     }
   }
 
@@ -175,7 +228,12 @@ export default function AuditDrawer({ isOpen, onClose }: AuditDrawerProps) {
               {featureFlags.auditoriaExport && (
                 <button
                   onClick={handleExport}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  disabled={!logs.length}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                    logs.length
+                      ? 'bg-green-600 text-white hover:bg-green-700'
+                      : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                  }`}
                 >
                   <Download className="w-4 h-4" />
                   Exportar

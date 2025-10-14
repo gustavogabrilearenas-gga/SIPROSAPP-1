@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import {
   Package,
@@ -34,6 +34,7 @@ type LoteActionType = 'iniciar' | 'pausar' | 'completar' | 'cancelar'
 
 function LotesContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user } = useAuth()
   const [lotes, setLotes] = useState<LoteListItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -49,9 +50,12 @@ function LotesContent() {
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [transitioningLoteId, setTransitioningLoteId] = useState<number | null>(null)
 
+  const etapaFilter = searchParams.get('etapa')
+  const etapaNombre = searchParams.get('etapaNombre')
+
   useEffect(() => {
     fetchLotes(1)
-  }, [filtroEstado, mostrarOcultos])
+  }, [filtroEstado, mostrarOcultos, etapaFilter])
 
   const fetchLotes = async (requestedPage: number = page) => {
     setIsLoading(true)
@@ -60,6 +64,7 @@ function LotesContent() {
       const params: Record<string, any> = { page: requestedPage }
       if (filtroEstado !== 'todos') params.estado = filtroEstado
       if (mostrarOcultos) params.mostrar_ocultos = 'true'
+      if (etapaFilter) params.etapa = etapaFilter
       const response = await api.getLotes(params)
       setLotes(response.results)
       setCount(response.count)
@@ -233,6 +238,11 @@ function LotesContent() {
           </div>
         </div>
       </motion.div>
+      {etapaNombre && (
+        <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+          Mostrando lotes asociados a la etapa <span className="font-semibold">{etapaNombre}</span>
+        </div>
+      )}
 
       {/* Filtros */}
       <motion.div
