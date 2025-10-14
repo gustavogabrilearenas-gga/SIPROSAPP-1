@@ -21,16 +21,16 @@ const navItems = [
   { href: '/configuracion/usuarios', label: 'Gestión de Usuarios', icon: Users },
   { href: '/configuraciones-maestras', label: 'Configuraciones Maestras', icon: Settings },
   // ---------------- DESACTIVADAS ----------------
-  // { href: '/productos', label: 'Productos', icon: Package },
-  // { href: '/formulas', label: 'Fórmulas', icon: FlaskConical },
+  // { href: '/configuraciones-maestras/productos', label: 'Productos', icon: Package },
+  // { href: '/configuraciones-maestras/formulas', label: 'Fórmulas', icon: FlaskConical },
   // { href: '/lotes', label: 'Lotes', icon: ClipboardList },
-  // { href: '/inventario', label: 'Inventario', icon: Warehouse },
+  // { href: '/configuraciones-maestras/inventario', label: 'Inventario', icon: Warehouse },
   // { href: '/desviaciones', label: 'Desviaciones', icon: FileText },
   // { href: '/control-calidad', label: 'Control Calidad', icon: HeartPulse },
   // { href: '/kpis', label: 'KPIs', icon: Gauge },
-  // { href: '/ubicaciones', label: 'Ubicaciones', icon: MapPin },
-  // { href: '/turnos', label: 'Turnos', icon: Clock },
-  // { href: '/paradas', label: 'Paradas', icon: MinusCircle },
+  // { href: '/configuraciones-maestras/ubicaciones', label: 'Ubicaciones', icon: MapPin },
+  // { href: '/configuraciones-maestras/turnos', label: 'Turnos', icon: Clock },
+  // { href: '/configuraciones-maestras/paradas', label: 'Paradas', icon: MinusCircle },
 ];
 
 const NavLink = ({ item }: { item: typeof navItems[0] }) => {
