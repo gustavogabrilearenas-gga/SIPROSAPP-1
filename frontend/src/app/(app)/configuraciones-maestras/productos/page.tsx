@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { useAuth } from '@/stores/auth-store'
 import {
@@ -42,6 +43,7 @@ interface Producto {
 }
 
 export default function ProductosPage() {
+  const router = useRouter()
   const { user } = useAuth()
   const [productos, setProductos] = useState<Producto[]>([])
   const [loading, setLoading] = useState(true)
@@ -201,7 +203,7 @@ export default function ProductosPage() {
                             size="sm"
                             className="flex-1"
                             onClick={() => {
-                              console.warn('Asociación de fórmulas a productos deshabilitada sin soporte backend')
+                              router.push(`/configuraciones-maestras/formulas?productoId=${producto.id}&productoNombre=${encodeURIComponent(producto.nombre)}`)
                             }}
                           >
                             <FileText className="w-4 h-4 mr-1" />

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { useAuth } from '@/stores/auth-store'
@@ -46,6 +46,13 @@ interface Maquina {
   requiere_calificacion: boolean
 }
 
+interface OrdenTrabajoAbierta {
+  id: number
+  maquina: number | null
+  estado: string
+  prioridad: string
+}
+
 export default function MaquinasPage() {
   const router = useRouter()
   const { user } = useAuth()
@@ -55,6 +62,7 @@ export default function MaquinasPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [selectedMaquinaId, setSelectedMaquinaId] = useState<number | null>(null)
+  const [ordenesAbiertas, setOrdenesAbiertas] = useState<OrdenTrabajoAbierta[]>([])
 
   useEffect(() => {
     fetchMaquinas()
@@ -64,8 +72,24 @@ export default function MaquinasPage() {
     try {
       setLoading(true)
       setError(null)
-      const response = await api.get('/maquinas/')
-      setMaquinas(response.results || response)
+      const [maquinasResponse, ordenesResponse] = await Promise.all([
+        api.getMaquinas(),
+        api.get('/api/mantenimiento/ordenes-trabajo/abiertas/')
+      ])
+      setMaquinas(maquinasResponse.results || maquinasResponse)
+      const ordenesList = Array.isArray((ordenesResponse as any)?.results)
+        ? (ordenesResponse as any).results
+        : Array.isArray(ordenesResponse)
+        ? ordenesResponse
+        : []
+      setOrdenesAbiertas(
+        ordenesList.map((orden: any) => ({
+          id: orden.id,
+          maquina: orden.maquina ?? null,
+          estado: orden.estado,
+          prioridad: orden.prioridad,
+        }))
+      )
     } catch (error: any) {
       const message = error?.message || 'No se pudieron obtener las máquinas'
       setError(message)
@@ -92,14 +116,31 @@ export default function MaquinasPage() {
     return colors[tipo] || 'bg-gray-100 text-gray-800'
   }
 
-  // Mock status for demonstration
+  const ordenesPorMaquina = useMemo(() => {
+    const map = new Map<number, OrdenTrabajoAbierta[]>()
+    ordenesAbiertas.forEach((orden) => {
+      if (!orden.maquina) return
+      if (!map.has(orden.maquina)) {
+        map.set(orden.maquina, [])
+      }
+      map.get(orden.maquina)!.push(orden)
+    })
+    return map
+  }, [ordenesAbiertas])
+
   const getEstadoMaquina = (maquina: Maquina) => {
-    const estados = [
-      { label: 'Operativa', color: 'bg-green-500', icon: CheckCircle },
-      { label: 'Mantenimiento', color: 'bg-yellow-500', icon: Wrench },
-      { label: 'Fuera de Servicio', color: 'bg-red-500', icon: XCircle },
-    ]
-    return estados[Math.floor(Math.random() * estados.length)]
+    if (!maquina.activa) {
+      return { label: 'Fuera de Servicio', color: 'bg-red-500', icon: XCircle }
+    }
+
+    const ordenes = ordenesPorMaquina.get(maquina.id) || []
+    if (ordenes.some((orden) => ['EN_PROCESO', 'ASIGNADA', 'PAUSADA'].includes(orden.estado))) {
+      return { label: 'Mantenimiento', color: 'bg-yellow-500', icon: Wrench }
+    }
+    if (ordenes.length > 0) {
+      return { label: 'Programado', color: 'bg-amber-500', icon: Wrench }
+    }
+    return { label: 'Operativa', color: 'bg-green-500', icon: CheckCircle }
   }
 
   const hasError = Boolean(error)
@@ -185,7 +226,8 @@ export default function MaquinasPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredMaquinas.map((maquina, index) => {
                 const estado = getEstadoMaquina(maquina)
-                const EstadoIcon = estado.icon
+                const ordenes = ordenesPorMaquina.get(maquina.id) || []
+                const ordenesEnCurso = ordenes.filter((orden) => ['EN_PROCESO', 'ASIGNADA'].includes(orden.estado))
 
                 return (
                   <motion.div
@@ -201,6 +243,11 @@ export default function MaquinasPage() {
                             <div className="flex items-center gap-2 mb-2">
                               <div className={`w-3 h-3 rounded-full ${estado.color} animate-pulse`}></div>
                               <span className="text-xs font-medium text-gray-600">{estado.label}</span>
+                              {ordenes.length > 0 && (
+                                <span className="text-[11px] text-blue-600 bg-blue-50 border border-blue-200 rounded-full px-2 py-0.5">
+                                  {ordenes.length} OT abiertas{ordenesEnCurso.length > 0 ? ` · ${ordenesEnCurso.length} en curso` : ''}
+                                </span>
+                              )}
                             </div>
                             <CardTitle className="text-lg font-bold mb-1">
                               {maquina.codigo}

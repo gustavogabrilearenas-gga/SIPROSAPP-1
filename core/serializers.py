@@ -10,6 +10,7 @@ from .models import (
     # Notificaciones
     Notificacion,
 )
+from backend.inventario.models import FormulaInsumo
 
 
 # ============================================
@@ -64,7 +65,7 @@ class FormulaSerializer(serializers.ModelSerializer):
     """Serializer de fórmulas"""
     producto_nombre = serializers.CharField(source='producto.nombre', read_only=True)
     aprobada_por_nombre = serializers.CharField(source='aprobada_por.get_full_name', read_only=True)
-    
+
     class Meta:
         model = Formula
         fields = [
@@ -74,6 +75,27 @@ class FormulaSerializer(serializers.ModelSerializer):
             'aprobada_por', 'aprobada_por_nombre', 'activa'
         ]
         read_only_fields = ['id']
+
+
+class FormulaInsumoSerializer(serializers.ModelSerializer):
+    """Serializer para los insumos que componen una fórmula"""
+
+    insumo_codigo = serializers.CharField(source='insumo.codigo', read_only=True)
+    insumo_nombre = serializers.CharField(source='insumo.nombre', read_only=True)
+
+    class Meta:
+        model = FormulaInsumo
+        fields = [
+            'id',
+            'insumo',
+            'insumo_codigo',
+            'insumo_nombre',
+            'cantidad',
+            'unidad',
+            'es_critico',
+            'orden',
+        ]
+        read_only_fields = ['id', 'insumo_codigo', 'insumo_nombre']
 
 
 class EtapaProduccionSerializer(serializers.ModelSerializer):

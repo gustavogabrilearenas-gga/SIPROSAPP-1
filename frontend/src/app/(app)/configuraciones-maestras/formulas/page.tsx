@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useMemo } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { useAuth } from '@/stores/auth-store'
 import { ProtectedRoute } from '@/components/protected-route'
@@ -28,6 +28,7 @@ import {
 import { api } from '@/lib/api'
 import { featureFlags } from '@/lib/feature-flags'
 import FormulaFormModal from '@/components/formula-form-modal'
+import FormulaIngredientesModal from '@/components/formula-ingredientes-modal'
 import DataState from '@/components/common/data-state'
 import { showError } from '@/components/common/toast-utils'
 
@@ -48,6 +49,7 @@ interface Formula {
 
 export default function FormulasPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user } = useAuth()
   const [formulas, setFormulas] = useState<Formula[]>([])
   const [loading, setLoading] = useState(true)
@@ -55,16 +57,31 @@ export default function FormulasPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [selectedFormulaId, setSelectedFormulaId] = useState<number | null>(null)
+  const [isIngredientesOpen, setIsIngredientesOpen] = useState(false)
+  const [formulaIdIngredientes, setFormulaIdIngredientes] = useState<number | null>(null)
+
+  const productoFiltro = useMemo(() => searchParams.get('productoId') || null, [searchParams])
+  const productoFiltroNombre = useMemo(() => searchParams.get('productoNombre') || null, [searchParams])
 
   useEffect(() => {
     fetchFormulas()
-  }, [])
+  }, [productoFiltro])
+
+  useEffect(() => {
+    if (productoFiltroNombre) {
+      setSearchTerm(productoFiltroNombre)
+    }
+  }, [productoFiltroNombre])
 
   const fetchFormulas = async () => {
     try {
       setLoading(true)
       setError(null)
-      const response = await api.getFormulas()
+      const params: Record<string, unknown> = {}
+      if (productoFiltro) {
+        params.producto = productoFiltro
+      }
+      const response = await api.getFormulas(params)
       setFormulas(response.results || response)
     } catch (error: any) {
       const message = error?.message || 'No se pudieron obtener las fórmulas'
@@ -242,7 +259,8 @@ export default function FormulasPage() {
                               size="sm"
                               className="flex-1"
                               onClick={() => {
-                                console.warn('Detalle de insumos por fórmula pendiente de implementación backend')
+                                setFormulaIdIngredientes(formula.id)
+                                setIsIngredientesOpen(true)
                               }}
                             >
                               <Package className="w-4 h-4 mr-1" />
@@ -271,12 +289,28 @@ export default function FormulasPage() {
           </DataState>
         </main>
 
+        {productoFiltroNombre && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="bg-blue-50 border border-blue-200 text-blue-700 text-sm rounded-lg px-4 py-2 mb-6">
+              Mostrando fórmulas para el producto <span className="font-semibold">{productoFiltroNombre}</span>
+            </div>
+          </div>
+        )}
+
         {/* Form Modal */}
         <FormulaFormModal
           isOpen={isFormOpen}
           onClose={() => setIsFormOpen(false)}
           formulaId={selectedFormulaId}
           onSuccess={handleFormSuccess}
+        />
+        <FormulaIngredientesModal
+          isOpen={isIngredientesOpen}
+          onClose={() => {
+            setIsIngredientesOpen(false)
+            setFormulaIdIngredientes(null)
+          }}
+          formulaId={formulaIdIngredientes}
         />
       </div>
     </ProtectedRoute>
