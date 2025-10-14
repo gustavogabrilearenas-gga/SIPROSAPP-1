@@ -140,8 +140,14 @@ const resolvePath = (path: string): string => {
   if (/^https?:/i.test(path)) {
     return path
   }
-  const normalized = path.startsWith('/api/') ? path.slice(4) : path
-  return normalized.startsWith('/') ? normalized : `/${normalized}`
+
+  const trimmed = path.replace(/^\/+/, '')
+
+  if (trimmed.startsWith('api/')) {
+    return `/${trimmed}`
+  }
+
+  return `/api/${trimmed}`
 }
 
 const getStoredToken = (key: string): string | null => {
