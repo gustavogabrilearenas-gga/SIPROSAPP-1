@@ -100,7 +100,7 @@ def me_view(request):
     
     # Agregar perfil si existe
     try:
-        profile = user.profile
+        profile = user.user_profile
         user_data['profile'] = {
             'legajo': profile.legajo,
             'area': profile.area,
