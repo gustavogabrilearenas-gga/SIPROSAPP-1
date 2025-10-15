@@ -220,46 +220,4 @@ class HistorialMantenimiento(models.Model):
         return f"{self.maquina.codigo} - {self.fecha.strftime('%Y-%m-%d')}"
 
 
-class IndicadorMantenimiento(models.Model):
-    """KPIs de mantenimiento (MTBF, MTTR, Disponibilidad)."""
 
-    PERIODO_CHOICES = [
-        ('SEMANAL', 'Semanal'),
-        ('MENSUAL', 'Mensual'),
-        ('ANUAL', 'Anual'),
-    ]
-
-    maquina = models.ForeignKey(
-        'core.Maquina',
-        on_delete=models.CASCADE,
-        related_name='indicadores_mantenimiento',
-    )
-    periodo = models.CharField(max_length=10, choices=PERIODO_CHOICES)
-    fecha_inicio = models.DateField()
-    fecha_fin = models.DateField()
-    mtbf_horas = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        help_text="Mean Time Between Failures",
-    )
-    mttr_horas = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        help_text="Mean Time To Repair",
-    )
-    disponibilidad_porcentaje = models.DecimalField(max_digits=5, decimal_places=2)
-    numero_fallas = models.IntegerField()
-    numero_mantenimientos_preventivos = models.IntegerField()
-    numero_mantenimientos_correctivos = models.IntegerField()
-    costo_total_mantenimiento = models.DecimalField(max_digits=12, decimal_places=2)
-    fecha_calculo = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        app_label = 'core'
-        verbose_name = "Indicador de Mantenimiento"
-        verbose_name_plural = "Indicadores de Mantenimiento"
-        ordering = ['-fecha_inicio']
-        unique_together = ['maquina', 'periodo', 'fecha_inicio']
-
-    def __str__(self):
-        return f"{self.maquina.codigo} - {self.periodo} ({self.fecha_inicio} - {self.fecha_fin})"

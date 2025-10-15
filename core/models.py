@@ -13,7 +13,6 @@ import hashlib
 from backend.usuarios.models import Rol, UserProfile, UsuarioRol
 from backend.mantenimiento.models import (
     HistorialMantenimiento,
-    IndicadorMantenimiento,
     OrdenTrabajo,
     PlanMantenimiento,
     TipoMantenimiento,

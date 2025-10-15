@@ -4,7 +4,6 @@ from django.contrib import admin
 
 from .models import (
     HistorialMantenimiento,
-    IndicadorMantenimiento,
     OrdenTrabajo,
     PlanMantenimiento,
     TipoMantenimiento,
@@ -41,8 +40,4 @@ class HistorialMantenimientoAdmin(admin.ModelAdmin):
     date_hierarchy = 'fecha'
 
 
-@admin.register(IndicadorMantenimiento)
-class IndicadorMantenimientoAdmin(admin.ModelAdmin):
-    list_display = ['maquina', 'periodo', 'fecha_inicio', 'mtbf_horas', 'mttr_horas', 'disponibilidad_porcentaje']
-    list_filter = ['periodo', 'maquina']
-    date_hierarchy = 'fecha_inicio'
+

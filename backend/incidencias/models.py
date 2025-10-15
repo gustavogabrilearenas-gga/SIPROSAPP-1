@@ -70,28 +70,3 @@ class Incidente(models.Model):
         return f"{self.codigo} - {self.titulo}"
 
 
-class InvestigacionIncidente(models.Model):
-    """Análisis de causa raíz de incidentes"""
-
-    METODOLOGIA_CHOICES = [
-        ('5_PORQUES', '5 Porqués'),
-        ('ISHIKAWA', 'Diagrama de Ishikawa'),
-        ('FMEA', 'FMEA'),
-        ('OTRO', 'Otro'),
-    ]
-
-    incidente = models.OneToOneField(Incidente, on_delete=models.CASCADE, related_name='investigacion')
-    metodologia = models.CharField(max_length=20, choices=METODOLOGIA_CHOICES)
-    causa_raiz = models.TextField()
-    analisis_detallado = models.TextField()
-    diagrama_url = models.CharField(max_length=500, blank=True)
-    fecha_investigacion = models.DateTimeField(auto_now_add=True)
-    investigado_por = models.ForeignKey(User, on_delete=models.PROTECT, related_name='investigaciones_realizadas')
-
-    class Meta:
-        app_label = 'core'
-        verbose_name = "Investigación de Incidente"
-        verbose_name_plural = "Investigaciones de Incidentes"
-
-    def __str__(self):
-        return f"Investigación - {self.incidente.codigo}"

@@ -215,63 +215,6 @@ class TurnoViewSet(viewsets.ModelViewSet):
 # NOTIFICACIONES
 # ============================================
 
-class NotificacionViewSet(viewsets.ModelViewSet):
-    """ViewSet para gestionar Notificaciones"""
-    serializer_class = NotificacionSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    filter_backends = [filters.OrderingFilter]
-    ordering_fields = ['fecha_creacion']
-    
-    def get_queryset(self):
-        """Solo devolver notificaciones del usuario actual"""
-        queryset = Notificacion.objects.filter(usuario=self.request.user).order_by('-fecha_creacion')
-        
-        # Filtro por leída/no leída
-        leida = self.request.query_params.get('leida', None)
-        if leida is not None:
-            leida = leida.lower() == 'true'
-            queryset = queryset.filter(leida=leida)
-        
-        return queryset
-    
-    @action(detail=True, methods=['post'])
-    def marcar_leida(self, request, pk=None):
-        """Endpoint: /api/notificaciones/{id}/marcar_leida/"""
-        notificacion = self.get_object()
-        notificacion.leida = True
-        notificacion.fecha_lectura = timezone.now()
-        notificacion.save()
-        
-        serializer = self.get_serializer(notificacion)
-        return Response({
-            'message': 'Notificación marcada como leída',
-            'notificacion': serializer.data
-        })
-    
-    @action(detail=False, methods=['post'])
-    def marcar_todas_leidas(self, request):
-        """Endpoint: /api/notificaciones/marcar_todas_leidas/"""
-        notificaciones = self.get_queryset().filter(leida=False)
-        count = notificaciones.update(leida=True, fecha_lectura=timezone.now())
-        
-        return Response({
-            'message': f'{count} notificaciones marcadas como leídas',
-            'count': count
-        })
-    
-    @action(detail=False, methods=['get'])
-    def no_leidas(self, request):
-        """Endpoint: /api/notificaciones/no_leidas/ - Contador de no leídas"""
-        count = self.get_queryset().filter(leida=False).count()
-        return Response({'count': count})
-
-
-# ============================================
-# KPIs Y DASHBOARD
-# ============================================
-
-
-
 
 # ============================================
 # BÚSQUEDA GLOBAL

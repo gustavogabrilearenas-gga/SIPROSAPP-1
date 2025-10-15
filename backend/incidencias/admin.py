@@ -2,7 +2,7 @@
 
 from django.contrib import admin
 
-from .models import Incidente, InvestigacionIncidente, TipoIncidente
+from .models import Incidente, TipoIncidente
 
 
 @admin.register(TipoIncidente)
@@ -20,7 +20,4 @@ class IncidenteAdmin(admin.ModelAdmin):
     date_hierarchy = 'fecha_ocurrencia'
 
 
-@admin.register(InvestigacionIncidente)
-class InvestigacionIncidenteAdmin(admin.ModelAdmin):
-    list_display = ['incidente', 'metodologia', 'fecha_investigacion', 'investigado_por']
-    list_filter = ['metodologia', 'fecha_investigacion']
+

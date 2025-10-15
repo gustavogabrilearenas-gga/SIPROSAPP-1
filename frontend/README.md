@@ -44,7 +44,7 @@ npm run dev
 ```
 
 Notas:
-- Si Next corre dentro de Docker Compose y el backend es el servicio `web`, puedes usar `NEXT_PUBLIC_API_URL_SERVER=http://web:8000`.
+- Si Next corre dentro de Docker Compose y el backend es el servicio `api`, puedes usar `NEXT_PUBLIC_API_URL_SERVER=http://api:8000`.
 - Si las peticiones desde el navegador reciben errores CORS, revisa `backend/settings.py` y asegúrate que `CORS_ALLOWED_ORIGINS` incluya el origen del frontend (por ejemplo `http://localhost:3000`).
 
 ## 📁 Estructura

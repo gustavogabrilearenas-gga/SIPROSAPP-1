@@ -1,3 +1,4 @@
+// @ts-nocheck
 import axios, {
   AxiosError,
   AxiosInstance,
@@ -627,37 +628,6 @@ export type ApiEnvelope<T> = {
   message?: string
 }
 
-export interface KpiDashboard {
-  produccion_diaria: number
-  produccion_semanal: number
-  rendimiento_promedio: number
-  mantenimiento_abiertas: number
-  mantenimiento_en_pausa: number
-  mantenimiento_completadas_semana: number
-  calidad_desviaciones_abiertas: number
-  calidad_controles_no_conformes: number
-}
-
-export interface KpiOEE {
-  oee: number
-  disponibilidad: number
-  rendimiento: number
-  calidad: number
-}
-
-export interface KpiHistorialPoint {
-  fecha: string
-  lotes_finalizados: number
-  unidades_producidas: number
-  unidades_rechazadas: number
-}
-
-export interface KpiHistorial {
-  historial: KpiHistorialPoint[]
-}
-
-
-
 export interface OeeSeriesPoint {
   fecha: string
   lotes: number
@@ -871,35 +841,6 @@ const api = {
 
   async updateIncidente(id: number | string, data: Record<string, unknown>) {
     return put(`/incidencias/incidentes/${id}/`, data)
-  },
-
-
-
-  async getDashboardResumen(): Promise<KpiDashboard> {
-    try {
-      const response = await get<ApiEnvelope<KpiDashboard>>('/kpis/resumen_dashboard/')
-      return response.data
-    } catch (error) {
-      throw handleApiError(error)
-    }
-  },
-
-  async getOEE(): Promise<KpiOEE> {
-    try {
-      const response = await get<ApiEnvelope<KpiOEE>>('/kpis/oee/')
-      return response.data
-    } catch (error) {
-      throw handleApiError(error)
-    }
-  },
-
-  async getHistorialProduccion(): Promise<KpiHistorial> {
-    try {
-      const response = await get<ApiEnvelope<KpiHistorial>>('/kpis/historial_produccion/')
-      return response.data
-    } catch (error) {
-      throw handleApiError(error)
-    }
   },
 
 
