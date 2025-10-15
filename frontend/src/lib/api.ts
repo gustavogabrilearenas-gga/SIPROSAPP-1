@@ -143,11 +143,7 @@ const resolvePath = (path: string): string => {
 
   const trimmed = path.replace(/^\/+/, '')
 
-  if (trimmed.startsWith('api/')) {
-    return `/${trimmed}`
-  }
-
-  return `/api/${trimmed}`
+  return `/${trimmed}`
 }
 
 const getStoredToken = (key: string): string | null => {
