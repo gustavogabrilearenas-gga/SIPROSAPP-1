@@ -74,7 +74,7 @@ export default function MaquinasPage() {
       setError(null)
       const [maquinasResponse, ordenesResponse] = await Promise.all([
         api.getMaquinas(),
-        api.get('/api/mantenimiento/ordenes-trabajo/abiertas/')
+        api.get('/mantenimiento/ordenes-trabajo/abiertas/')
       ])
       setMaquinas(maquinasResponse.results || maquinasResponse)
       const ordenesList = Array.isArray((ordenesResponse as any)?.results)
