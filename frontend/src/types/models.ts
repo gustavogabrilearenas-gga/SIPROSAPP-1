@@ -209,30 +209,6 @@ export interface LoteEtapaListItem {
   porcentaje_rendimiento?: number
 }
 
-export interface Parada {
-  id: number
-  lote_etapa: number
-  lote_id?: number
-  lote_codigo?: string
-  etapa_id?: number
-  etapa_codigo?: string
-  etapa_nombre?: string
-  lote_etapa_descripcion?: string
-  tipo: 'PLANIFICADA' | 'NO_PLANIFICADA'
-  categoria: 'FALLA_EQUIPO' | 'FALTA_INSUMO' | 'CAMBIO_FORMATO' | 'LIMPIEZA' | 'CALIDAD' | 'OTROS'
-  tipo_display?: string
-  categoria_display?: string
-  fecha_inicio: string
-  fecha_fin?: string | null
-  duracion_minutos?: number | null
-  duracion_actual_minutos?: number | null
-  duracion_legible?: string | null
-  descripcion: string
-  solucion: string
-  registrado_por: number
-  registrado_por_nombre?: string
-}
-
 export interface ControlCalidad {
   id: number
   lote_etapa: number

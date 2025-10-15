@@ -94,7 +94,6 @@ class SimpleModuleTester {
       { name: 'Ubicaciones', path: '/ubicaciones' },
       { name: 'Turnos', path: '/turnos' },
       { name: 'Etapas Producción', path: '/etapas-produccion' },
-      { name: 'Paradas', path: '/paradas' },
       { name: 'Usuarios', path: '/configuracion/usuarios' }
     ];
 

@@ -9,7 +9,6 @@ import {
   Beaker,
   Layers,
   Clock,
-  PowerOff,
   MapPin,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -34,12 +33,6 @@ const modules = [
     href: '/configuraciones-maestras/etapas-produccion',
     icon: Layers,
     description: 'Configura las etapas del proceso productivo.',
-  },
-  {
-    name: 'Paradas',
-    href: '/configuraciones-maestras/paradas',
-    icon: PowerOff,
-    description: 'Gestiona los tipos de paradas de producción.',
   },
   {
     name: 'Turnos',

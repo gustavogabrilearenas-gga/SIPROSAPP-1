@@ -151,17 +151,6 @@
       "success": false
     },
     {
-      "module": "Paradas",
-      "tests": [
-        {
-          "operation": "module_error",
-          "success": false,
-          "error": "this.page.waitForTimeout is not a function"
-        }
-      ],
-      "success": false
-    },
-    {
       "module": "Usuarios",
       "tests": [
         {

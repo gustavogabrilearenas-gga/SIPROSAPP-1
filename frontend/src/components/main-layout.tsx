@@ -29,7 +29,6 @@ const navItems = [
   // { href: '/kpis', label: 'KPIs', icon: Gauge },
   // { href: '/configuraciones-maestras/ubicaciones', label: 'Ubicaciones', icon: MapPin },
   // { href: '/configuraciones-maestras/turnos', label: 'Turnos', icon: Clock },
-  // { href: '/configuraciones-maestras/paradas', label: 'Paradas', icon: MinusCircle },
 ];
 
 const NavLink = ({ item }: { item: typeof navItems[0] }) => {
