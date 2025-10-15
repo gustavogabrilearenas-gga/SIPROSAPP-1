@@ -766,7 +766,7 @@ const api = {
   },
 
   async getParadas(params?: Record<string, unknown>) {
-    return get('/api/produccion/paradas/', { params })
+    return get('/produccion/paradas/', { params })
   },
 
   async createParada(data: Record<string, unknown>) {
@@ -786,7 +786,7 @@ const api = {
   },
 
   async getLote(id: number | string) {
-    return get(`/api/produccion/lotes/${id}/`)
+    return get(`/produccion/lotes/${id}/`)
   },
 
   async createLote(data: Record<string, unknown>) {
@@ -798,7 +798,7 @@ const api = {
   },
 
   async getLotesEtapas(params?: Record<string, unknown>) {
-    return get('/api/produccion/lotes-etapas/', { params })
+    return get('/produccion/lotes-etapas/', { params })
   },
 
   async iniciarLoteEtapa(id: number | string, payload?: Record<string, unknown>) {
@@ -814,11 +814,11 @@ const api = {
   },
 
   async getControlesCalidad(params?: Record<string, unknown>) {
-    return get('/api/produccion/controles-calidad/', { params })
+    return get('/produccion/controles-calidad/', { params })
   },
 
   async getLogsAuditoria(params?: Record<string, unknown>) {
-    return get('/api/auditoria/logs/', { params })
+    return get('/auditoria/logs/', { params })
   },
 
   async getFormulas(params?: Record<string, unknown>) {
@@ -874,19 +874,19 @@ const api = {
   },
 
   async getIncidentes(params?: Record<string, unknown>) {
-    return get('/api/incidencias/incidentes/', { params })
+    return get('/incidencias/incidentes/', { params })
   },
 
   async getIncidente(id: number | string) {
-    return get(`/api/incidencias/incidentes/${id}/`)
+    return get(`/incidencias/incidentes/${id}/`)
   },
 
   async createIncidente(data: Record<string, unknown>) {
-    return post('/api/incidencias/incidentes/', data)
+    return post('/incidencias/incidentes/', data)
   },
 
   async updateIncidente(id: number | string, data: Record<string, unknown>) {
-    return put(`/api/incidencias/incidentes/${id}/`, data)
+    return put(`/incidencias/incidentes/${id}/`, data)
   },
 
 
@@ -929,31 +929,31 @@ const api = {
   },
 
   async getOrdenTrabajo(id: number | string) {
-    return get(`/api/mantenimiento/ordenes-trabajo/${id}/`)
+    return get(`/mantenimiento/ordenes-trabajo/${id}/`)
   },
 
   async createOrdenTrabajo(data: Record<string, unknown>) {
-    return post('/api/mantenimiento/ordenes-trabajo/', data)
+    return post('/mantenimiento/ordenes-trabajo/', data)
   },
 
   async updateOrdenTrabajo(id: number | string, data: Record<string, unknown>) {
-    return put(`/api/mantenimiento/ordenes-trabajo/${id}/`, data)
+    return put(`/mantenimiento/ordenes-trabajo/${id}/`, data)
   },
 
   async iniciarOrdenTrabajo(id: number | string, payload?: Record<string, unknown>) {
-    return post(`/api/mantenimiento/ordenes-trabajo/${id}/iniciar/`, payload)
+    return post(`/mantenimiento/ordenes-trabajo/${id}/iniciar/`, payload)
   },
 
   async pausarOrdenTrabajo(id: number | string, payload: Record<string, unknown>) {
-    return post(`/api/mantenimiento/ordenes-trabajo/${id}/pausar/`, payload)
+    return post(`/mantenimiento/ordenes-trabajo/${id}/pausar/`, payload)
   },
 
   async completarOrdenTrabajo(id: number | string, payload: Record<string, unknown>) {
-    return post(`/api/mantenimiento/ordenes-trabajo/${id}/completar/`, payload)
+    return post(`/mantenimiento/ordenes-trabajo/${id}/completar/`, payload)
   },
 
   async cerrarOrdenTrabajo(id: number | string, payload?: Record<string, unknown>) {
-    return post(`/api/mantenimiento/ordenes-trabajo/${id}/cerrar/`, payload)
+    return post(`/mantenimiento/ordenes-trabajo/${id}/cerrar/`, payload)
   },
 
 

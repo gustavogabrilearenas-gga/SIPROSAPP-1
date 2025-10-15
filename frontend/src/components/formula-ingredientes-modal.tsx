@@ -55,7 +55,7 @@ export default function FormulaIngredientesModal({ isOpen, onClose, formulaId }:
       setIsLoading(true)
       setError(null)
       try {
-        const response = await api.get<FormulaIngredientesResponse>(`/api/formulas/${formulaId}/insumos/`)
+        const response = await api.get<FormulaIngredientesResponse>(`/formulas/${formulaId}/insumos/`)
         setFormula(response.formula)
         setIngredientes(Array.isArray(response.insumos) ? response.insumos : [])
       } catch (err) {

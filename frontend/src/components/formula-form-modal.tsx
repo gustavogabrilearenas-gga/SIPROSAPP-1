@@ -52,7 +52,7 @@ export default function FormulaFormModal({ isOpen, onClose, formulaId, onSuccess
 
   const fetchFormula = async () => {
     try {
-      const data = await api.get(`/api/formulas/${formulaId}/`)
+      const data = await api.get(`/formulas/${formulaId}/`)
       setFormData({
         producto: data.producto ?? null,
         version: data.version ?? '',
@@ -97,9 +97,9 @@ export default function FormulaFormModal({ isOpen, onClose, formulaId, onSuccess
       }
 
       if (formulaId) {
-        await api.put(`/api/formulas/${formulaId}/`, payload)
+        await api.put(`/formulas/${formulaId}/`, payload)
       } else {
-        await api.post('/api/formulas/', payload)
+        await api.post('/formulas/', payload)
       }
       onSuccess()
       onClose()
