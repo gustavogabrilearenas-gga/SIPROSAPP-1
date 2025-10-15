@@ -1,7 +1,6 @@
 """Serializers del dominio de usuarios."""
 
 from django.contrib.auth.models import User
-from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
 
 from .models import UserProfile
@@ -104,9 +103,9 @@ class UsuarioDetalleSerializer(serializers.ModelSerializer):
         return obj.get_full_name() or obj.username
 
     def get_profile(self, instance):
-        try:
-            profile = instance.profile
-        except ObjectDoesNotExist:
+        profile = getattr(instance, "user_profile", None)
+
+        if not profile:
             return None
 
         return UserProfileSerializer(profile).data
@@ -122,10 +121,7 @@ class UsuarioDetalleSerializer(serializers.ModelSerializer):
         if instance.last_login:
             data["last_login"] = instance.last_login.isoformat()
 
-        try:
-            profile_instance = instance.profile
-        except ObjectDoesNotExist:
-            profile_instance = None
+        profile_instance = getattr(instance, "user_profile", None)
 
         if profile_instance:
             data["legajo"] = profile_instance.legajo or ""
