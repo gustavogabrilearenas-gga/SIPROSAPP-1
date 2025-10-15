@@ -2,8 +2,7 @@ import logging
 import traceback
 
 from django.conf import settings
-from django.http import JsonResponse
-from django.http import Http404
+from django.http import Http404, JsonResponse
 
 
 logger = logging.getLogger(__name__)
