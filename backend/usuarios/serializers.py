@@ -1,6 +1,7 @@
 """Serializers del dominio de usuarios."""
 
 from django.contrib.auth.models import User
+from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
 
 from .models import UserProfile
@@ -55,7 +56,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 class UsuarioDetalleSerializer(serializers.ModelSerializer):
     """Serializer completo para gestión de usuarios (admin)."""
 
-    profile = UserProfileSerializer(read_only=True)
+    profile = serializers.SerializerMethodField()
     full_name = serializers.SerializerMethodField()
     is_superuser = serializers.BooleanField(read_only=True)
     is_staff = serializers.BooleanField(read_only=True)
@@ -102,6 +103,14 @@ class UsuarioDetalleSerializer(serializers.ModelSerializer):
     def get_full_name(self, obj):
         return obj.get_full_name() or obj.username
 
+    def get_profile(self, instance):
+        try:
+            profile = instance.user_profile
+        except ObjectDoesNotExist:
+            return None
+
+        return UserProfileSerializer(profile).data
+
     def to_representation(self, instance):
         """Convertir fechas a formato ISO sin zona horaria."""
 
@@ -113,13 +122,27 @@ class UsuarioDetalleSerializer(serializers.ModelSerializer):
         if instance.last_login:
             data["last_login"] = instance.last_login.isoformat()
 
-        if hasattr(instance, "profile"):
-            profile = instance.profile
-            data["legajo"] = profile.legajo or ""
-            data["area"] = profile.area or ""
-            data["turno_habitual"] = profile.turno_habitual or ""
-            data["telefono"] = profile.telefono or ""
-            data["fecha_ingreso"] = profile.fecha_ingreso
+        try:
+            profile_instance = instance.user_profile
+        except ObjectDoesNotExist:
+            profile_instance = None
+
+        if profile_instance:
+            data["legajo"] = profile_instance.legajo or ""
+            data["area"] = profile_instance.area or ""
+            data["turno_habitual"] = profile_instance.turno_habitual or ""
+            data["telefono"] = profile_instance.telefono or ""
+            data["fecha_ingreso"] = (
+                profile_instance.fecha_ingreso.isoformat()
+                if profile_instance.fecha_ingreso
+                else None
+            )
+        else:
+            data["legajo"] = ""
+            data["area"] = ""
+            data["turno_habitual"] = ""
+            data["telefono"] = ""
+            data["fecha_ingreso"] = None
 
         return data
 
