@@ -73,11 +73,8 @@ INSTALLED_APPS = [
     'core',
     'backend.usuarios.apps.UsuariosConfig',
     'backend.produccion',
-    #'backend.calidad',        # No MVP - Módulo de calidad
     'backend.mantenimiento',
     'backend.incidencias',
-    #'backend.auditoria',      # No MVP - Módulo de auditoría
-    #'backend.kpis',           # No MVP - Módulo de KPIs
 ]
 
 MIDDLEWARE = [
