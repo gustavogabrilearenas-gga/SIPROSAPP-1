@@ -185,7 +185,7 @@ def lote_post_delete(sender, instance, **kwargs):
 def update_existing_user_profile(sender, instance, created, **kwargs):
     """Actualiza el perfil del usuario solo si ya existe."""
     try:
-        profile = instance.profile
+        profile = instance.user_profile
     except UserProfile.DoesNotExist:
         # La creación del perfil se delega al serializer de usuarios
         return

@@ -71,7 +71,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'core',
-    'backend.usuarios',
+    'backend.usuarios.apps.UsuariosConfig',
     'backend.produccion',
     #'backend.calidad',        # No MVP - Módulo de calidad
     'backend.mantenimiento',

@@ -6,6 +6,9 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils.functional import cached_property
 
+# Se importa el modelo User para evitar referencias como string que puedan fallar.
+from django.contrib.auth.models import User
+
 
 class UserProfile(models.Model):
     """Perfil extendido de usuario con datos específicos de SIPROSA."""
@@ -82,13 +85,13 @@ class UsuarioRol(models.Model):
     """Relación muchos a muchos entre usuarios y roles."""
 
     usuario = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        User,  # Corregido: Se usa la referencia directa al modelo User importado.
         on_delete=models.CASCADE,
         related_name="roles_asignados",
         verbose_name="Usuario"
     )
     rol = models.ForeignKey(
-        Rol,
+        'usuarios.Rol',  # Corregido: Se usa la referencia como string para evitar problemas de importación circular.
         on_delete=models.CASCADE,
         related_name="usuarios",
         verbose_name="Rol"
@@ -98,7 +101,7 @@ class UsuarioRol(models.Model):
         verbose_name="Fecha de Asignación"
     )
     asignado_por = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        User,  # Corregido: Se usa la referencia directa al modelo User importado.
         on_delete=models.SET_NULL,
         null=True,
         related_name="roles_que_asigno",
