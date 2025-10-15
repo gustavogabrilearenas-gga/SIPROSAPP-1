@@ -10,12 +10,20 @@ import {
   Layers,
   Clock,
   MapPin,
+  type LucideIcon,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ProtectedRoute } from '@/components/protected-route'
 
-const modules = [
+type MasterModule = {
+  name: string
+  href: string
+  icon: LucideIcon
+  description: string
+}
+
+const masterModules: MasterModule[] = [
   {
     name: 'Productos',
     href: '/configuraciones-maestras/productos',
@@ -47,6 +55,10 @@ const modules = [
     description: 'Administra las ubicaciones de la planta.',
   },
 ]
+
+const disabledModuleHrefs = new Set(['/configuraciones-maestras/paradas'])
+
+const modules = masterModules.filter((module) => !disabledModuleHrefs.has(module.href))
 
 export default function ConfiguracionPage() {
   const router = useRouter()
