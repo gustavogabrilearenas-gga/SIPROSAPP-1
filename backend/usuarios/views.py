@@ -17,7 +17,9 @@ from core.permissions import IsAdmin
 class UsuarioViewSet(viewsets.ModelViewSet):
     """ViewSet para gestión de usuarios (solo admin/superuser)."""
 
-    queryset = User.objects.all().select_related("profile").order_by("username")
+    queryset = (
+        User.objects.all().select_related("user_profile").order_by("username")
+    )
     serializer_class = UsuarioDetalleSerializer
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]

@@ -99,8 +99,8 @@ def me_view(request):
     user_data = UserSerializer(user).data
     
     # Agregar perfil si existe
-    try:
-        profile = user.profile
+    profile = getattr(user, 'user_profile', None)
+    if profile:
         user_data['profile'] = {
             'legajo': profile.legajo,
             'area': profile.area,
@@ -109,7 +109,7 @@ def me_view(request):
             'telefono': profile.telefono,
             'activo': profile.activo,
         }
-    except:
+    else:
         user_data['profile'] = None
     
     # Agregar grupos del usuario
