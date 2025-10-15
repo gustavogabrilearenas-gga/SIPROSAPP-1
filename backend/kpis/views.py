@@ -7,7 +7,6 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from backend.calidad.models import Desviacion
 from backend.mantenimiento.models import OrdenTrabajo
 from backend.produccion.models import Parada
 
@@ -136,27 +135,6 @@ class LiveAlertsView(APIView):
                         f"Parada {parada.get_categoria_display()} {lote_codigo}{duracion_texto}"
                     ),
                     "timestamp": to_datetime(parada.fecha_inicio),
-                }
-            )
-
-        desviaciones_qs = Desviacion.objects.filter(fecha_deteccion__gte=since)
-        for desviacion in desviaciones_qs:
-            if desviacion.severidad == "CRITICA":
-                nivel = "critical"
-            elif desviacion.severidad == "MAYOR":
-                nivel = "warning"
-            else:
-                nivel = "info"
-
-            live_alerts.append(
-                {
-                    "id": desviacion.id,
-                    "tipo": "calidad",
-                    "nivel": nivel,
-                    "mensaje": (
-                        f"Desviación {desviacion.codigo} {desviacion.get_severidad_display()}"
-                    ),
-                    "timestamp": to_datetime(desviacion.fecha_deteccion),
                 }
             )
 

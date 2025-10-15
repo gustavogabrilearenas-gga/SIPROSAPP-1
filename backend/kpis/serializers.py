@@ -8,7 +8,6 @@ from django.db.models.functions import TruncDate
 from django.utils import timezone
 from rest_framework import serializers
 
-from backend.calidad.models import Desviacion
 from backend.mantenimiento.models import OrdenTrabajo
 from backend.produccion.models import ControlCalidad, Lote, LoteEtapa, Parada
 
@@ -68,7 +67,6 @@ class ResumenDashboardSerializer(serializers.Serializer):
             fecha_fin__date__gte=start_week,
         ).count()
 
-        calidad_desviaciones_abiertas = Desviacion.objects.exclude(estado="CERRADA").count()
         calidad_controles_no_conformes = ControlCalidad.objects.filter(conforme=False).count()
 
         return {
@@ -78,7 +76,7 @@ class ResumenDashboardSerializer(serializers.Serializer):
             "mantenimiento_abiertas": mantenimiento_abiertas,
             "mantenimiento_en_pausa": mantenimiento_en_pausa,
             "mantenimiento_completadas_semana": mantenimiento_completadas_semana,
-            "calidad_desviaciones_abiertas": calidad_desviaciones_abiertas,
+            "calidad_desviaciones_abiertas": 0,
             "calidad_controles_no_conformes": calidad_controles_no_conformes,
         }
 
@@ -236,13 +234,8 @@ class AlertasSerializer(serializers.Serializer):
             fecha_planificada__lt=timezone.now(),
         ).count()
 
-        desviaciones_criticas_abiertas = Desviacion.objects.filter(
-            severidad="CRITICA",
-            estado__in=["ABIERTA", "EN_INVESTIGACION", "EN_CAPA"],
-        ).count()
-
         return {
             "maquinas_fuera_servicio": maquinas_fuera_servicio,
             "ordenes_atrasadas": ordenes_atrasadas,
-            "desviaciones_criticas_abiertas": desviaciones_criticas_abiertas,
+            "desviaciones_criticas_abiertas": 0,
         }
