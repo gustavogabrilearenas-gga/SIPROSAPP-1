@@ -8,8 +8,6 @@ from .views import (
     # Catálogos
     UbicacionViewSet, MaquinaViewSet, ProductoViewSet, FormulaViewSet,
     EtapaProduccionViewSet, TurnoViewSet,
-    # KPIs
-    KpiOEEView, KpiDashboardView, KpiExportCSVView,
     # Health check
     health_check,
 )
@@ -39,10 +37,5 @@ urlpatterns = [
     path("auth/me/", me_view, name="me"),
     path("auth/refresh/", refresh_token_view, name="refresh_token"),
     path("auth/register/", register_view, name="register"),
-    
-    # KPIs
-    path("kpis/oee/", KpiOEEView.as_view(), name="kpi_oee"),
-    path("kpis/resumen_dashboard/", KpiDashboardView.as_view(), name="kpi_dashboard"),
-    path("kpis/export.csv", KpiExportCSVView.as_view(), name="kpi_export_csv"),
     
 ] + router.urls
