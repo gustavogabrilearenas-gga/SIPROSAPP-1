@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
+    'core',
     'backend.usuarios',
     'backend.produccion',
     #'backend.calidad',        # No MVP - Módulo de calidad
@@ -77,7 +78,6 @@ INSTALLED_APPS = [
     'backend.incidencias',
     #'backend.auditoria',      # No MVP - Módulo de auditoría
     #'backend.kpis',           # No MVP - Módulo de KPIs
-    'core',
 ]
 
 MIDDLEWARE = [
@@ -173,9 +173,10 @@ STORAGES = {
 }
 
 # ============================================
-# DEFAULT PRIMARY KEY
+# DEFAULT PRIMARY KEY AND USER MODEL
 # ============================================
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+AUTH_USER_MODEL = 'auth.User'
 
 # ============================================
 # CORS & CSRF CONFIGURATION
