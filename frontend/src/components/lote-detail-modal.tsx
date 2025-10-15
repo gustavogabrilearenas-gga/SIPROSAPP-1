@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { X, Package, Calendar, User, AlertCircle, TrendingUp, Clock, CheckCircle, XCircle, History, FileText } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { Lote, LoteEtapa, Parada, ControlCalidad, LogAuditoria } from '@/types/models'
+import { Lote, LoteEtapa, ControlCalidad, LogAuditoria } from '@/types/models'
 import { api } from '@/lib/api'
 import { Badge } from '@/components/ui/badge'
 
@@ -19,12 +19,11 @@ interface LoteDetailModalProps {
 export default function LoteDetailModal({ isOpen, onClose, loteId, onEdit, onUpdate }: LoteDetailModalProps) {
   const [lote, setLote] = useState<Lote | null>(null)
   const [etapas, setEtapas] = useState<LoteEtapa[]>([])
-  const [paradas, setParadas] = useState<Parada[]>([])
   const [controles, setControles] = useState<ControlCalidad[]>([])
   const [logs, setLogs] = useState<LogAuditoria[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'general' | 'etapas' | 'paradas' | 'calidad' | 'auditoria'>('general')
+  const [activeTab, setActiveTab] = useState<'general' | 'etapas' | 'calidad' | 'auditoria'>('general')
 
   useEffect(() => {
     if (isOpen && loteId) {
@@ -43,10 +42,6 @@ export default function LoteDetailModal({ isOpen, onClose, loteId, onEdit, onUpd
       // Cargar etapas del lote
       const etapasData = await api.getLotesEtapas({ lote: loteId })
       setEtapas(Array.isArray(etapasData?.results) ? etapasData.results : [])
-
-      // Cargar paradas
-      const paradasData = await api.getParadas({ lote_etapa: loteId })
-      setParadas(Array.isArray(paradasData?.results) ? paradasData.results : [])
 
       // Cargar controles de calidad
       const controlesData = await api.getControlesCalidad({ lote_etapa: loteId })
@@ -306,63 +301,6 @@ export default function LoteDetailModal({ isOpen, onClose, loteId, onEdit, onUpd
     </div>
   )
 
-  const renderParadasTab = () => (
-    <div className="space-y-4">
-      {paradas.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">
-          <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <p>No hay paradas registradas para este lote</p>
-        </div>
-      ) : (
-        paradas.map((parada) => (
-          <div key={parada.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <h4 className="font-semibold">{parada.categoria}</h4>
-                <p className="text-sm text-gray-600">{parada.lote_etapa_descripcion}</p>
-              </div>
-              <Badge className={parada.tipo === 'PLANIFICADA' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'}>
-                {parada.tipo}
-              </Badge>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-3">
-              <div>
-                <p className="text-xs text-gray-500">Inicio</p>
-                <p className="font-medium">{formatFecha(parada.fecha_inicio)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">Fin</p>
-                <p className="font-medium">{formatFecha(parada.fecha_fin)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">Duración</p>
-                <p className="font-medium">{parada.duracion_minutos ? `${parada.duracion_minutos} min` : 'En curso'}</p>
-              </div>
-            </div>
-
-            <div className="space-y-2 text-sm">
-              <div className="bg-gray-50 p-2 rounded">
-                <p className="text-xs text-gray-500 mb-1">Descripción</p>
-                <p className="text-gray-700">{parada.descripcion}</p>
-              </div>
-              {parada.solucion && (
-                <div className="bg-green-50 p-2 rounded">
-                  <p className="text-xs text-gray-500 mb-1">Solución</p>
-                  <p className="text-gray-700">{parada.solucion}</p>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-2 text-xs text-gray-500">
-              Registrado por: {parada.registrado_por_nombre}
-            </div>
-          </div>
-        ))
-      )}
-    </div>
-  )
-
   const renderCalidadTab = () => (
     <div className="space-y-4">
       {controles.length === 0 ? (
@@ -516,7 +454,6 @@ export default function LoteDetailModal({ isOpen, onClose, loteId, onEdit, onUpd
               {[
                 { id: 'general', label: 'General', icon: Package },
                 { id: 'etapas', label: 'Etapas', icon: TrendingUp },
-                { id: 'paradas', label: 'Paradas', icon: Clock },
                 { id: 'calidad', label: 'Calidad', icon: CheckCircle },
                 { id: 'auditoria', label: 'Auditoría', icon: History },
               ].map((tab) => (
@@ -551,7 +488,6 @@ export default function LoteDetailModal({ isOpen, onClose, loteId, onEdit, onUpd
               <>
                 {activeTab === 'general' && renderGeneralTab()}
                 {activeTab === 'etapas' && renderEtapasTab()}
-                {activeTab === 'paradas' && renderParadasTab()}
                 {activeTab === 'calidad' && renderCalidadTab()}
                 {activeTab === 'auditoria' && renderAuditoriaTab()}
               </>

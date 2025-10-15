@@ -765,22 +765,6 @@ const api = {
     return post(`/usuarios/${id}/cambiar_password/`, data)
   },
 
-  async getParadas(params?: Record<string, unknown>) {
-    return get('/produccion/paradas/', { params })
-  },
-
-  async createParada(data: Record<string, unknown>) {
-    return post('/produccion/paradas/', data)
-  },
-
-  async updateParada(id: number | string, data: Record<string, unknown>) {
-    return patch(`/produccion/paradas/${id}/`, data)
-  },
-
-  async finalizarParada(id: number | string, data: Record<string, unknown>) {
-    return post(`/produccion/paradas/${id}/finalizar/`, data)
-  },
-
   async getLotes(params?: Record<string, unknown>) {
     return get('/produccion/lotes/', { params })
   },

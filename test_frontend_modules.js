@@ -323,16 +323,6 @@ class FrontendTester {
           nombre: 'Etapa de Prueba Editada'
         }
       },
-      paradas: {
-        create: {
-          motivo: 'Parada de Prueba',
-          categoria: 'TECNICA',
-          tipo: 'PLANIFICADA'
-        },
-        edit: {
-          motivo: 'Parada de Prueba Editada'
-        }
-      },
       usuarios: {
         create: {
           username: 'usuario_test',
@@ -361,7 +351,6 @@ class FrontendTester {
       { name: 'Ubicaciones', path: '/ubicaciones' },
       { name: 'Turnos', path: '/turnos' },
       { name: 'Etapas Producción', path: '/etapas-produccion' },
-      { name: 'Paradas', path: '/paradas' },
       { name: 'Usuarios', path: '/configuracion/usuarios' }
     ];
 
