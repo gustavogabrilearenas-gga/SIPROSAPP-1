@@ -15,7 +15,6 @@ from backend.mantenimiento.models import (
     HistorialMantenimiento,
     IndicadorMantenimiento,
     OrdenTrabajo,
-    OrdenTrabajoRepuesto,
     PlanMantenimiento,
     TipoMantenimiento,
 )

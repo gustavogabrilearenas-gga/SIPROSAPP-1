@@ -6,7 +6,6 @@ from .models import (
     HistorialMantenimiento,
     IndicadorMantenimiento,
     OrdenTrabajo,
-    OrdenTrabajoRepuesto,
     PlanMantenimiento,
     TipoMantenimiento,
 )
@@ -26,11 +25,6 @@ class PlanMantenimientoAdmin(admin.ModelAdmin):
     search_fields = ['codigo', 'nombre']
 
 
-class OrdenTrabajoRepuestoInline(admin.TabularInline):
-    model = OrdenTrabajoRepuesto
-    extra = 1
-
-
 @admin.register(OrdenTrabajo)
 class OrdenTrabajoAdmin(admin.ModelAdmin):
     list_display = ['codigo', 'maquina', 'tipo', 'prioridad', 'estado', 'fecha_creacion', 'asignada_a']
@@ -38,7 +32,6 @@ class OrdenTrabajoAdmin(admin.ModelAdmin):
     search_fields = ['codigo', 'titulo']
     date_hierarchy = 'fecha_creacion'
     readonly_fields = ['duracion_real_horas', 'fecha_creacion']
-    inlines = [OrdenTrabajoRepuestoInline]
 
 
 @admin.register(HistorialMantenimiento)

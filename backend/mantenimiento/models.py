@@ -186,31 +186,6 @@ class OrdenTrabajo(models.Model):
         super().save(*args, **kwargs)
 
 
-class OrdenTrabajoRepuesto(models.Model):
-    """Repuestos utilizados en órdenes de trabajo."""
-
-    orden_trabajo = models.ForeignKey(
-        OrdenTrabajo,
-        on_delete=models.CASCADE,
-        related_name='repuestos_utilizados',
-    )
-    repuesto = models.ForeignKey('core.Repuesto', on_delete=models.PROTECT)
-    cantidad_planificada = models.IntegerField(validators=[MinValueValidator(1)])
-    cantidad_real = models.IntegerField(
-        validators=[MinValueValidator(0)],
-        default=0,
-    )
-    fecha_uso = models.DateTimeField(null=True, blank=True)
-
-    class Meta:
-        app_label = 'core'
-        verbose_name = "Repuesto de Orden de Trabajo"
-        verbose_name_plural = "Repuestos de Órdenes de Trabajo"
-
-    def __str__(self):
-        return f"{self.orden_trabajo.codigo} - {self.repuesto.nombre}"
-
-
 class HistorialMantenimiento(models.Model):
     """Historial consolidado de mantenimientos por máquina."""
 
