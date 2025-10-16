@@ -22,9 +22,5 @@ EXPOSE 3000
 ENV PORT 3000
 ENV NODE_ENV development
 
-# Script de inicio personalizado
-COPY docker-entrypoint-dev.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint-dev.sh
-
-# Usar el script de inicio como punto de entrada
-CMD ["/usr/local/bin/docker-entrypoint-dev.sh"]
+# Comando para iniciar en modo desarrollo (hot reload)
+CMD ["npm", "run", "dev"]

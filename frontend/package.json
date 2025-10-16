@@ -4,11 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "dev:warm": "node ./scripts/start-dev-with-warmup.mjs",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "warmup:routes": "node ./scripts/warmup-pages.mjs"
+    "lint": "next lint"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.17",
