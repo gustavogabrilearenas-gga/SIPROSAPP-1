@@ -18,7 +18,7 @@ import {
   Plus,
   Search,
   Edit,
-  FileText,
+  FileTextIcon,
 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { featureFlags } from '@/lib/feature-flags'
@@ -206,7 +206,7 @@ export default function ProductosPage() {
                               router.push(`/configuraciones-maestras/formulas?productoId=${producto.id}&productoNombre=${encodeURIComponent(producto.nombre)}`)
                             }}
                           >
-                            <FileText className="w-4 h-4 mr-1" />
+                            <FileTextIcon className="w-4 h-4 mr-1" />
                             Fórmulas
                           </Button>
                         )}

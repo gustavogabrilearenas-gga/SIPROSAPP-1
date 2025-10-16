@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import {
   Factory,
-  FileText,
+  FileTextIcon,
   LayoutDashboard,
   Settings,
   Siren,
@@ -17,14 +17,14 @@ const navItems = [
   { href: '/produccion', label: 'Producción', icon: Factory },
   { href: '/mantenimiento', label: 'Mantenimiento', icon: Wrench },
   { href: '/incidentes', label: 'Incidentes', icon: Siren },
-  { href: '/observaciones', label: 'Observaciones Generales', icon: FileText },
+  { href: '/observaciones', label: 'Observaciones Generales', icon: FileTextIcon },
   { href: '/configuracion/usuarios', label: 'Gestión de Usuarios', icon: Users },
   { href: '/configuraciones-maestras', label: 'Configuraciones Maestras', icon: Settings },
   // ---------------- DESACTIVADAS ----------------
   // { href: '/configuraciones-maestras/productos', label: 'Productos', icon: Package },
   // { href: '/configuraciones-maestras/formulas', label: 'Fórmulas', icon: FlaskConical },
   // { href: '/lotes', label: 'Lotes', icon: ClipboardList },
-  // { href: '/desviaciones', label: 'Desviaciones', icon: FileText },
+  // { href: '/desviaciones', label: 'Desviaciones', icon: FileTextIcon },
   // { href: '/control-calidad', label: 'Control Calidad', icon: HeartPulse },
   // { href: '/kpis', label: 'KPIs', icon: Gauge },
   // { href: '/configuraciones-maestras/ubicaciones', label: 'Ubicaciones', icon: MapPin },
