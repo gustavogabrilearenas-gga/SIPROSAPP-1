@@ -16,7 +16,6 @@ class TipoMantenimiento(models.Model):
     activo = models.BooleanField(default=True)
 
     class Meta:
-        app_label = 'core'
         verbose_name = "Tipo de Mantenimiento"
         verbose_name_plural = "Tipos de Mantenimiento"
         ordering = ['codigo']
@@ -30,7 +29,7 @@ class PlanMantenimiento(models.Model):
 
     codigo = models.CharField(max_length=30, unique=True, verbose_name="Código")
     maquina = models.ForeignKey(
-        'core.Maquina',
+        'catalogos.Maquina',
         on_delete=models.CASCADE,
         related_name='planes_mantenimiento',
     )
@@ -70,7 +69,6 @@ class PlanMantenimiento(models.Model):
     fecha_creacion = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        app_label = 'core'
         verbose_name = "Plan de Mantenimiento"
         verbose_name_plural = "Planes de Mantenimiento"
         ordering = ['maquina', 'codigo']
@@ -101,7 +99,7 @@ class OrdenTrabajo(models.Model):
     codigo = models.CharField(max_length=30, unique=True, verbose_name="Código")
     tipo = models.ForeignKey(TipoMantenimiento, on_delete=models.PROTECT)
     maquina = models.ForeignKey(
-        'core.Maquina',
+        'catalogos.Maquina',
         on_delete=models.PROTECT,
         related_name='ordenes_trabajo',
     )
@@ -171,7 +169,6 @@ class OrdenTrabajo(models.Model):
     )
 
     class Meta:
-        app_label = 'core'
         verbose_name = "Orden de Trabajo"
         verbose_name_plural = "Órdenes de Trabajo"
         ordering = ['-fecha_creacion']
@@ -190,7 +187,7 @@ class HistorialMantenimiento(models.Model):
     """Historial consolidado de mantenimientos por máquina."""
 
     maquina = models.ForeignKey(
-        'core.Maquina',
+        'catalogos.Maquina',
         on_delete=models.CASCADE,
         related_name='historial_mantenimiento',
     )
@@ -211,7 +208,6 @@ class HistorialMantenimiento(models.Model):
     )
 
     class Meta:
-        app_label = 'core'
         verbose_name = "Historial de Mantenimiento"
         verbose_name_plural = "Historiales de Mantenimiento"
         ordering = ['-fecha']

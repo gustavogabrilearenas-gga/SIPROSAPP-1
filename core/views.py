@@ -13,29 +13,22 @@ from django.db import connections
 from django.db.utils import OperationalError
 from datetime import datetime, timedelta
 
-from .models import (
-    # Catálogos
-    Ubicacion, Maquina, Producto, Formula, EtapaProduccion, Turno,
-    # Mantenimiento
-    OrdenTrabajo,
-    # Notificaciones
-    Notificacion,
+from backend.catalogos.models import (
+    Ubicacion, Maquina, Producto, Formula, EtapaProduccion, Turno
 )
+from backend.mantenimiento.models import OrdenTrabajo
 from backend.incidencias.models import Incidente
 
-from .serializers import (
-    # Catálogos
+from backend.catalogos.serializers import (
     UbicacionSerializer, MaquinaSerializer, ProductoSerializer,
-    FormulaSerializer, EtapaProduccionSerializer, TurnoSerializer,
-    # Notificaciones
-    NotificacionSerializer,
+    FormulaSerializer, EtapaProduccionSerializer, TurnoSerializer
 )
 
 from .permissions import (
     IsAdmin, IsAdminOrSupervisor, IsAdminOrOperario
 )
 
-from backend.produccion.models import Lote, Parada
+from backend.produccion.models import Lote
 from backend.produccion.serializers import LoteListSerializer
 
 
@@ -168,11 +161,11 @@ class FormulaViewSet(viewsets.ModelViewSet):
 
 class EtapaProduccionViewSet(viewsets.ModelViewSet):
     """ViewSet para gestionar Etapas de Producci�n"""
-    queryset = EtapaProduccion.objects.all().order_by('orden_tipico')
+    queryset = EtapaProduccion.objects.all().order_by('codigo')
     serializer_class = EtapaProduccionSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['codigo', 'nombre']
-    ordering_fields = ['orden_tipico', 'codigo']
+    ordering_fields = ['codigo', 'nombre']
     
     def get_permissions(self):
         if self.request.method in permissions.SAFE_METHODS:

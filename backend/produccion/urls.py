@@ -4,17 +4,13 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from backend.produccion.views import (
-    ControlCalidadViewSet,
     LoteEtapaViewSet,
     LoteViewSet,
-    ParadaViewSet,
 )
 
 router = DefaultRouter()
 router.register(r'lotes', LoteViewSet, basename='lote')
 router.register(r'lotes-etapas', LoteEtapaViewSet, basename='loteetapa')
-router.register(r'paradas', ParadaViewSet, basename='parada')
-router.register(r'controles-calidad', ControlCalidadViewSet, basename='controlcalidad')
 
 lote_list = LoteViewSet.as_view({'get': 'list', 'post': 'create'})
 lote_detail = LoteViewSet.as_view({

@@ -75,6 +75,8 @@ INSTALLED_APPS = [
     'backend.produccion',
     'backend.mantenimiento',
     'backend.incidencias',
+    'backend.eventos.apps.EventosConfig',
+    'backend.catalogos.apps.CatalogosConfig',
 ]
 
 MIDDLEWARE = [

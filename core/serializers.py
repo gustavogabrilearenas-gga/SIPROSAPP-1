@@ -6,9 +6,7 @@ Nota: Esta es una versión inicial. Se expandirá según se necesite.
 from rest_framework import serializers
 from .models import (
     # Catálogos
-    Ubicacion, Maquina, Producto, Formula, EtapaProduccion, Turno, TipoDocumento,
-    # Notificaciones
-    Notificacion,
+    Ubicacion, Maquina, Producto, Formula, EtapaProduccion, Turno,
 )
 # ============================================
 # CATÁLOGOS
@@ -96,21 +94,5 @@ class TurnoSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
 
 
-# ============================================
-# NOTIFICACIONES
-# ============================================
 
-class NotificacionSerializer(serializers.ModelSerializer):
-    """Serializer de notificaciones"""
-    tipo_display = serializers.CharField(source='get_tipo_display', read_only=True)
-    usuario_nombre = serializers.CharField(source='usuario.get_full_name', read_only=True)
-    
-    class Meta:
-        model = Notificacion
-        fields = [
-            'id', 'usuario', 'usuario_nombre', 'tipo', 'tipo_display',
-            'titulo', 'mensaje', 'referencia_modelo', 'referencia_id',
-            'leida', 'fecha_creacion', 'fecha_lectura'
-        ]
-        read_only_fields = ['id', 'fecha_creacion', 'fecha_lectura']
 

@@ -11,15 +11,13 @@ from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from backend.produccion.models import ControlCalidad, Lote, LoteEtapa, Parada
+from backend.produccion.models import Lote, LoteEtapa
 from backend.produccion.serializers import (
-    ControlCalidadSerializer,
     LoteEtapaSerializer,
     LoteListSerializer,
     LoteSerializer,
-    ParadaSerializer,
 )
-from core.models import Notificacion
+
 from backend.auditoria.models import ElectronicSignature, LogAuditoria
 from backend.auditoria.serializers import ElectronicSignatureSerializer
 from core.permissions import IsAdmin, IsAdminOrOperario, IsAdminOrSupervisor
@@ -582,15 +580,7 @@ class LoteViewSet(viewsets.ModelViewSet):
         lote._user_agent = request.META.get('HTTP_USER_AGENT', '')
         lote.save()
         
-        # Crear notificación para el supervisor
-        Notificacion.objects.create(
-            usuario=lote.supervisor,
-            tipo='INFO',
-            titulo=f'Lote {lote.codigo_lote} liberado',
-            mensaje=f'El lote {lote.codigo_lote} ha sido liberado por {request.user.get_full_name()}. Motivo: {motivo}',
-            referencia_modelo='Lote',
-            referencia_id=lote.id
-        )
+
         
         serializer = self.get_serializer(lote)
         return Response({
@@ -683,15 +673,7 @@ class LoteViewSet(viewsets.ModelViewSet):
         lote._user_agent = request.META.get('HTTP_USER_AGENT', '')
         lote.save()
         
-        # Crear notificación para el supervisor
-        Notificacion.objects.create(
-            usuario=lote.supervisor,
-            tipo='URGENTE',
-            titulo=f'Lote {lote.codigo_lote} rechazado',
-            mensaje=f'El lote {lote.codigo_lote} ha sido RECHAZADO por {request.user.get_full_name()}. Motivo: {motivo}',
-            referencia_modelo='Lote',
-            referencia_id=lote.id
-        )
+
         
         serializer = self.get_serializer(lote)
         return Response({
@@ -789,51 +771,7 @@ class LoteEtapaViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # VALIDACIÓN QC: Verificar controles de calidad pendientes
-        controles_requeridos = lote_etapa.etapa.parametros_esperados if lote_etapa.etapa.requiere_registro_parametros else []
-        if controles_requeridos:
-            # Verificar si hay controles de calidad registrados
-            controles_registrados = ControlCalidad.objects.filter(
-                lote_etapa=lote_etapa
-            ).count()
-            
-            # Si se requieren controles y no hay ninguno registrado, bloquear
-            if controles_registrados == 0:
-                return Response(
-                    {
-                        'error': 'No se puede completar la etapa sin registrar controles de calidad',
-                        'codigo': 'QC_PENDIENTE',
-                        'controles_requeridos': len(controles_requeridos),
-                        'controles_registrados': 0,
-                        'message': f'Esta etapa requiere {len(controles_requeridos)} control(es) de calidad antes de completarse'
-                    },
-                    status=status.HTTP_409_CONFLICT
-                )
-            
-            # Verificar si hay controles NO conformes
-            controles_no_conformes = ControlCalidad.objects.filter(
-                lote_etapa=lote_etapa,
-                conforme=False
-            )
-            
-            if controles_no_conformes.exists():
-                return Response(
-                    {
-                        'error': 'No se puede completar la etapa con controles de calidad no conformes',
-                        'codigo': 'QC_NO_CONFORME',
-                        'controles_no_conformes': controles_no_conformes.count(),
-                        'detalles': [
-                            {
-                                'tipo_control': c.tipo_control,
-                                'valor_medido': float(c.valor_medido),
-                                'rango': f"{c.valor_minimo} - {c.valor_maximo}"
-                            }
-                            for c in controles_no_conformes
-                        ],
-                        'message': 'Hay controles de calidad que no cumplen especificaciones'
-                    },
-                    status=status.HTTP_409_CONFLICT
-                )
+
 
         # Obtener datos adicionales
         cantidad_salida = request.data.get('cantidad_salida')
@@ -911,102 +849,4 @@ class LoteEtapaViewSet(viewsets.ModelViewSet):
         })
 
 
-class ParadaViewSet(viewsets.ModelViewSet):
-    """ViewSet para gestionar Paradas"""
-    queryset = Parada.objects.select_related(
-        'lote_etapa', 'lote_etapa__lote', 'lote_etapa__etapa', 'registrado_por'
-    ).all().order_by('-fecha_inicio')
-    serializer_class = ParadaSerializer
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = [
-        'descripcion', 'lote_etapa__lote__codigo_lote', 'lote_etapa__etapa__nombre'
-    ]
-    ordering_fields = ['fecha_inicio', 'fecha_fin', 'duracion_minutos']
 
-    def get_queryset(self):
-        queryset = super().get_queryset()
-
-        # Filtro por lote
-        lote_id = self.request.query_params.get('lote')
-        if lote_id:
-            queryset = queryset.filter(lote_etapa__lote_id=lote_id)
-
-        # Filtro por lote_etapa
-        lote_etapa_id = self.request.query_params.get('lote_etapa')
-        if lote_etapa_id:
-            queryset = queryset.filter(lote_etapa_id=lote_etapa_id)
-
-        # Filtro por tipo
-        tipo = self.request.query_params.get('tipo', None)
-        if tipo:
-            queryset = queryset.filter(tipo=tipo.upper())
-
-        # Filtro por categor�a
-        categoria = self.request.query_params.get('categoria', None)
-        if categoria:
-            queryset = queryset.filter(categoria=categoria.upper())
-        
-        return queryset
-    
-    def get_permissions(self):
-        if self.request.method in permissions.SAFE_METHODS:
-            perm_classes = [IsAdminOrSupervisor]
-        else:
-            perm_classes = [IsAdminOrOperario]
-        return [p() for p in perm_classes]
-
-    @action(detail=True, methods=['post'], permission_classes=[IsAdminOrOperario])
-    def finalizar(self, request, pk=None):
-        """
-        Endpoint: /api/paradas/{id}/finalizar/
-        Finaliza una parada (establece fecha_fin)
-        """
-        parada = self.get_object()
-
-        # Validar que la parada no est� ya finalizada
-        if parada.fecha_fin:
-            return Response(
-                {
-                    'error': 'Esta parada ya est� finalizada',
-                    'fecha_fin': parada.fecha_fin
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Obtener soluci�n
-        solucion = request.data.get('solucion', '')
-        if not solucion.strip():
-            return Response(
-                {'error': 'Debe proporcionar una soluci�n para finalizar la parada'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Finalizar la parada
-        parada.fecha_fin = timezone.now()
-        parada.solucion = solucion
-
-        parada.save()
-
-        serializer = self.get_serializer(parada)
-        return Response({
-            'message': 'Parada finalizada exitosamente',
-            'parada': serializer.data
-        })
-
-
-class ControlCalidadViewSet(viewsets.ModelViewSet):
-    """ViewSet para gestionar Controles de Calidad"""
-    queryset = ControlCalidad.objects.select_related(
-        'lote_etapa', 'controlado_por'
-    ).all().order_by('-fecha_control')
-    serializer_class = ControlCalidadSerializer
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['tipo_control', 'lote_etapa__lote__codigo_lote']
-    ordering_fields = ['fecha_control', 'conforme']
-    
-    def get_permissions(self):
-        if self.request.method in permissions.SAFE_METHODS:
-            perm_classes = [IsAdminOrSupervisor]
-        else:
-            perm_classes = [IsAdmin]  # Solo Calidad/Admin puede registrar controles
-        return [p() for p in perm_classes]

@@ -8,6 +8,15 @@ from .models import (
     PlanMantenimiento,
     TipoMantenimiento,
 )
+from backend.eventos.models import RegistroMantenimiento as OriginalRegistroMantenimiento
+
+
+class RegistroMantenimiento(OriginalRegistroMantenimiento):
+    class Meta:
+        proxy = True
+        app_label = 'mantenimiento'
+        verbose_name = OriginalRegistroMantenimiento._meta.verbose_name
+        verbose_name_plural = OriginalRegistroMantenimiento._meta.verbose_name_plural
 
 
 @admin.register(TipoMantenimiento)
@@ -40,4 +49,9 @@ class HistorialMantenimientoAdmin(admin.ModelAdmin):
     date_hierarchy = 'fecha'
 
 
-
+@admin.register(RegistroMantenimiento)
+class RegistroMantenimientoAdmin(admin.ModelAdmin):
+    list_display = ['fecha_mantenimiento', 'registrado_por', 'turno', 'maquina', 'tipo_mantenimiento']
+    list_filter = ['fecha_mantenimiento', 'turno', 'maquina', 'tipo_mantenimiento', 'se_realizo_mantenimiento']
+    search_fields = ['maquina__codigo', 'descripcion', 'registrado_por__username']
+    date_hierarchy = 'fecha_mantenimiento'

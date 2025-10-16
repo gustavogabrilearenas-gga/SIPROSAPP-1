@@ -3,7 +3,7 @@
 from django.utils import timezone
 from rest_framework import serializers
 
-from backend.produccion.models import Lote, LoteEtapa, Parada, ControlCalidad
+from backend.produccion.models import Lote, LoteEtapa
 
 
 class LoteListSerializer(serializers.ModelSerializer):
@@ -88,72 +88,4 @@ class LoteEtapaSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'duracion_minutos', 'porcentaje_rendimiento']
 
 
-class ParadaSerializer(serializers.ModelSerializer):
-    """Serializer de paradas"""
 
-    tipo_display = serializers.CharField(source='get_tipo_display', read_only=True)
-    categoria_display = serializers.CharField(source='get_categoria_display', read_only=True)
-    lote_id = serializers.IntegerField(source='lote_etapa.lote_id', read_only=True)
-    lote_codigo = serializers.CharField(source='lote_etapa.lote.codigo_lote', read_only=True)
-    etapa_id = serializers.IntegerField(source='lote_etapa.etapa_id', read_only=True)
-    etapa_codigo = serializers.CharField(source='lote_etapa.etapa.codigo', read_only=True)
-    etapa_nombre = serializers.CharField(source='lote_etapa.etapa.nombre', read_only=True)
-    registrado_por_nombre = serializers.CharField(
-        source='registrado_por.get_full_name', read_only=True
-    )
-    duracion_actual_minutos = serializers.SerializerMethodField()
-    duracion_legible = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Parada
-        fields = [
-            'id', 'lote_etapa', 'lote_id', 'lote_codigo', 'etapa_id', 'etapa_codigo',
-            'etapa_nombre', 'tipo', 'tipo_display', 'categoria', 'categoria_display',
-            'fecha_inicio', 'fecha_fin', 'duracion_minutos', 'duracion_actual_minutos',
-            'duracion_legible', 'descripcion', 'solucion', 'registrado_por',
-            'registrado_por_nombre'
-        ]
-        read_only_fields = ['id', 'duracion_minutos']
-
-    def get_duracion_actual_minutos(self, obj):
-        """Devuelve la duración en minutos considerando paradas en curso."""
-        if obj.duracion_minutos is not None:
-            return obj.duracion_minutos
-
-        if not obj.fecha_inicio:
-            return None
-
-        delta = timezone.now() - obj.fecha_inicio
-        minutos = int(delta.total_seconds() // 60)
-        return max(minutos, 0)
-
-    def get_duracion_legible(self, obj):
-        """Formato amigable de la duración."""
-        minutos = self.get_duracion_actual_minutos(obj)
-
-        if minutos is None:
-            return None
-
-        if minutos <= 0:
-            return 'En curso (<1 min)'
-
-        if minutos < 60:
-            return f"{minutos} min"
-
-        horas, mins = divmod(minutos, 60)
-        if mins == 0:
-            return f"{horas} h"
-        return f"{horas} h {mins} min"
-
-
-class ControlCalidadSerializer(serializers.ModelSerializer):
-    """Serializer de controles de calidad"""
-
-    class Meta:
-        model = ControlCalidad
-        fields = [
-            'id', 'lote_etapa', 'tipo_control', 'valor_medido', 'unidad',
-            'valor_minimo', 'valor_maximo', 'conforme',
-            'fecha_control', 'controlado_por', 'observaciones'
-        ]
-        read_only_fields = ['id', 'conforme', 'fecha_control']

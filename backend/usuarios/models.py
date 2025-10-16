@@ -5,8 +5,6 @@ from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils.functional import cached_property
-
-# Se importa el modelo User para evitar referencias como string que puedan fallar.
 from django.contrib.auth.models import User
 
 
@@ -63,56 +61,3 @@ def create_user_profile(sender, instance, created, **kwargs):
         UserProfile.objects.create(user=instance)
 
 
-class Rol(models.Model):
-    """Roles del sistema con permisos específicos."""
-
-    nombre = models.CharField(max_length=50, unique=True)
-    descripcion = models.TextField(blank=True)
-    permisos = models.JSONField(default=dict, help_text="Estructura: {modulo: [acciones]}")
-    activo = models.BooleanField(default=True)
-
-    class Meta:
-        verbose_name = "Rol"
-        verbose_name_plural = "Roles"
-        ordering = ["nombre"]
-        app_label = "usuarios"
-
-    def __str__(self) -> str:  # pragma: no cover - repr simple
-        return self.nombre
-
-
-class UsuarioRol(models.Model):
-    """Relación muchos a muchos entre usuarios y roles."""
-
-    usuario = models.ForeignKey(
-        User,  # Corregido: Se usa la referencia directa al modelo User importado.
-        on_delete=models.CASCADE,
-        related_name="roles_asignados",
-        verbose_name="Usuario"
-    )
-    rol = models.ForeignKey(
-        'usuarios.Rol',  # Corregido: Se usa la referencia como string para evitar problemas de importación circular.
-        on_delete=models.CASCADE,
-        related_name="usuarios",
-        verbose_name="Rol"
-    )
-    fecha_asignacion = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name="Fecha de Asignación"
-    )
-    asignado_por = models.ForeignKey(
-        User,  # Corregido: Se usa la referencia directa al modelo User importado.
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name="roles_que_asigno",
-        verbose_name="Asignado por"
-    )
-
-    class Meta:
-        verbose_name = "Asignación de Rol"
-        verbose_name_plural = "Asignaciones de Roles"
-        unique_together = ["usuario", "rol"]
-        app_label = "usuarios"
-
-    def __str__(self) -> str:  # pragma: no cover - repr simple
-        return f"{self.usuario.username} - {self.rol.nombre}"

@@ -14,7 +14,6 @@ class TipoIncidente(models.Model):
     activo = models.BooleanField(default=True)
 
     class Meta:
-        app_label = 'core'
         verbose_name = "Tipo de Incidente"
         verbose_name_plural = "Tipos de Incidentes"
         ordering = ['codigo']
@@ -47,9 +46,9 @@ class Incidente(models.Model):
     titulo = models.CharField(max_length=200)
     descripcion = models.TextField()
     fecha_ocurrencia = models.DateTimeField()
-    ubicacion = models.ForeignKey('core.Ubicacion', on_delete=models.PROTECT, related_name='incidentes')
-    maquina = models.ForeignKey('core.Maquina', on_delete=models.SET_NULL, null=True, blank=True, related_name='incidentes')
-    lote_afectado = models.ForeignKey('core.Lote', on_delete=models.SET_NULL, null=True, blank=True, related_name='incidentes')
+    ubicacion = models.ForeignKey('catalogos.Ubicacion', on_delete=models.PROTECT, related_name='incidentes')
+    maquina = models.ForeignKey('catalogos.Maquina', on_delete=models.SET_NULL, null=True, blank=True, related_name='incidentes')
+    lote_afectado = models.ForeignKey('produccion.Lote', on_delete=models.SET_NULL, null=True, blank=True, related_name='incidentes')
     reportado_por = models.ForeignKey(User, on_delete=models.PROTECT, related_name='incidentes_reportados')
     fecha_reporte = models.DateTimeField(auto_now_add=True)
     asignado_a = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='incidentes_asignados')
@@ -61,7 +60,6 @@ class Incidente(models.Model):
     cerrado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='incidentes_cerrados')
 
     class Meta:
-        app_label = 'core'
         verbose_name = "Incidente"
         verbose_name_plural = "Incidentes"
         ordering = ['-fecha_ocurrencia']

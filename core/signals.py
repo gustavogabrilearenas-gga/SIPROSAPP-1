@@ -7,7 +7,7 @@ from django.db.models.signals import post_save, pre_save, post_delete
 from django.dispatch import receiver
 from django.contrib.auth.models import User
 from threading import local
-from .models import Notificacion
+
 from backend.auditoria.models import LogAuditoria
 from backend.incidencias.models import Incidente
 from backend.mantenimiento.models import OrdenTrabajo
@@ -194,106 +194,5 @@ def update_existing_user_profile(sender, instance, created, **kwargs):
         profile.save()
 
 
-# ============================================
-# SEÑALES PARA NOTIFICACIONES
-# ============================================
 
-def _crear_notificacion(usuarios, tipo, titulo, mensaje, referencia_modelo=None, referencia_id=None):
-    """Función auxiliar para crear notificaciones para múltiples usuarios"""
-    if not isinstance(usuarios, list):
-        usuarios = [usuarios]
-    
-    for usuario in usuarios:
-        if usuario:
-            Notificacion.objects.create(
-                usuario=usuario,
-                tipo=tipo,
-                titulo=titulo,
-                mensaje=mensaje,
-                referencia_modelo=referencia_modelo,
-                referencia_id=referencia_id
-            )
-
-
-@receiver(post_save, sender=LoteEtapa)
-def notificar_pausa_etapa(sender, instance, created, **kwargs):
-    """Notificar cuando se pausa una etapa"""
-    if not created and instance.estado == 'PAUSADO':
-        # Notificar al supervisor del lote
-        _crear_notificacion(
-            usuarios=instance.lote.supervisor,
-            tipo='ADVERTENCIA',
-            titulo=f'Etapa pausada: {instance.etapa.nombre}',
-            mensaje=f'La etapa {instance.etapa.nombre} del lote {instance.lote.codigo_lote} ha sido pausada.',
-            referencia_modelo='LoteEtapa',
-            referencia_id=instance.id
-        )
-
-
-@receiver(post_save, sender=Incidente)
-def notificar_incidente_critico(sender, instance, created, **kwargs):
-    """Notificar cuando se crea un incidente crítico"""
-    if created and instance.severidad == 'CRITICA':
-        # Obtener usuarios del área de Calidad y Mantenimiento
-        usuarios_calidad = User.objects.filter(
-            profile__area='CALIDAD',
-            is_active=True
-        )
-        
-        _crear_notificacion(
-            usuarios=list(usuarios_calidad),
-            tipo='URGENTE',
-            titulo=f'Incidente CRÍTICO: {instance.codigo}',
-            mensaje=f'Se ha reportado un incidente crítico: {instance.titulo}. Requiere atención inmediata.',
-            referencia_modelo='Incidente',
-            referencia_id=instance.id
-        )
-    
-    # Notificar al asignado cuando cambia el estado a CERRADO
-    if not created and instance.estado == 'CERRADO' and instance.asignado_a:
-        _crear_notificacion(
-            usuarios=instance.asignado_a,
-            tipo='INFO',
-            titulo=f'Incidente cerrado: {instance.codigo}',
-            mensaje=f'El incidente {instance.codigo} - {instance.titulo} ha sido cerrado.',
-            referencia_modelo='Incidente',
-            referencia_id=instance.id
-        )
-
-
-@receiver(post_save, sender=OrdenTrabajo)
-def notificar_orden_trabajo_urgente(sender, instance, created, **kwargs):
-    """Notificar cuando se crea una OT urgente"""
-    if created and instance.prioridad == 'URGENTE':
-        # Notificar a usuarios del área de Mantenimiento
-        usuarios_mantenimiento = User.objects.filter(
-            profile__area='MANTENIMIENTO',
-            is_active=True
-        )
-        
-        _crear_notificacion(
-            usuarios=list(usuarios_mantenimiento),
-            tipo='URGENTE',
-            titulo=f'OT URGENTE: {instance.codigo}',
-            mensaje=f'Nueva orden de trabajo urgente: {instance.titulo} - Máquina: {instance.maquina.nombre}',
-            referencia_modelo='OrdenTrabajo',
-            referencia_id=instance.id
-        )
-    
-    # Notificar al técnico asignado
-    if not created and instance.asignada_a:
-        # Verificar si cambió la asignación
-        try:
-            anterior = OrdenTrabajo.objects.get(pk=instance.pk)
-            if anterior.asignada_a != instance.asignada_a:
-                _crear_notificacion(
-                    usuarios=instance.asignada_a,
-                    tipo='INFO',
-                    titulo=f'OT asignada: {instance.codigo}',
-                    mensaje=f'Se te ha asignado la orden de trabajo: {instance.titulo}',
-                    referencia_modelo='OrdenTrabajo',
-                    referencia_id=instance.id
-                )
-        except OrdenTrabajo.DoesNotExist:
-            pass
 

@@ -2,7 +2,8 @@
 
 from django.contrib import admin
 
-from backend.produccion.models import ControlCalidad, Lote, LoteDocumento, LoteEtapa, Parada
+from backend.produccion.models import Lote, LoteEtapa
+from backend.eventos.models import RegistroProduccion as OriginalRegistroProduccion
 
 
 class LoteEtapaInline(admin.TabularInline):
@@ -34,23 +35,18 @@ class LoteEtapaAdmin(admin.ModelAdmin):
     readonly_fields = ['duracion_minutos', 'porcentaje_rendimiento']
 
 
-@admin.register(Parada)
-class ParadaAdmin(admin.ModelAdmin):
-    list_display = ['lote_etapa', 'tipo', 'categoria', 'fecha_inicio', 'duracion_minutos']
-    list_filter = ['tipo', 'categoria', 'fecha_inicio']
-    readonly_fields = ['duracion_minutos']
+class RegistroProduccion(OriginalRegistroProduccion):
+    class Meta:
+        proxy = True
+        app_label = 'produccion'
+        verbose_name = OriginalRegistroProduccion._meta.verbose_name
+        verbose_name_plural = OriginalRegistroProduccion._meta.verbose_name_plural
 
 
-@admin.register(ControlCalidad)
-class ControlCalidadAdmin(admin.ModelAdmin):
-    list_display = ['lote_etapa', 'tipo_control', 'valor_medido', 'conforme', 'fecha_control', 'controlado_por']
-    list_filter = ['conforme', 'fecha_control']
-    readonly_fields = ['conforme', 'fecha_control']
+@admin.register(RegistroProduccion)
+class RegistroProduccionAdmin(admin.ModelAdmin):
+    list_display = ['fecha_produccion', 'registrado_por', 'turno', 'maquina', 'producto', 'cantidad_producida']
+    list_filter = ['fecha_produccion', 'turno', 'maquina', 'producto', 'unidad_medida']
+    search_fields = ['maquina__codigo', 'producto__nombre', 'registrado_por__username']
+    date_hierarchy = 'fecha_produccion'
 
-
-@admin.register(LoteDocumento)
-class LoteDocumentoAdmin(admin.ModelAdmin):
-    list_display = ['lote', 'tipo_documento', 'nombre', 'fecha_subida', 'subido_por']
-    list_filter = ['tipo_documento', 'fecha_subida']
-    search_fields = ['lote__codigo_lote', 'nombre']
-    readonly_fields = ['hash_sha256', 'tamaño_bytes', 'fecha_subida']

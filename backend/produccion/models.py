@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator
 from django.db import models
 
-from core.models import Producto, Formula, EtapaProduccion, Maquina, Turno, TipoDocumento
+from backend.catalogos.models import Producto, Formula, EtapaProduccion, Maquina, Turno
 
 
 class Lote(models.Model):
@@ -60,7 +60,6 @@ class Lote(models.Model):
         verbose_name = "Lote de Producción"
         verbose_name_plural = "Lotes de Producción"
         ordering = ['-fecha_creacion']
-        app_label = 'core'
 
     def __str__(self):
         return f"{self.codigo_lote} - {self.producto.nombre}"
@@ -123,7 +122,6 @@ class LoteEtapa(models.Model):
         verbose_name_plural = "Etapas de Lotes"
         ordering = ['lote', 'orden']
         unique_together = ['lote', 'orden']
-        app_label = 'core'
 
     def __str__(self):
         return f"{self.lote.codigo_lote} - {self.etapa.nombre}"
@@ -141,95 +139,4 @@ class LoteEtapa(models.Model):
         super().save(*args, **kwargs)
 
 
-class Parada(models.Model):
-    """Paradas durante la producción"""
 
-    TIPO_CHOICES = [
-        ('PLANIFICADA', 'Planificada'),
-        ('NO_PLANIFICADA', 'No Planificada'),
-    ]
-
-    CATEGORIA_CHOICES = [
-        ('FALLA_EQUIPO', 'Falla de Equipo'),
-        ('FALTA_INSUMO', 'Falta de Insumo'),
-        ('CAMBIO_FORMATO', 'Cambio de Formato'),
-        ('LIMPIEZA', 'Limpieza'),
-        ('CALIDAD', 'Problema de Calidad'),
-        ('OTROS', 'Otros'),
-    ]
-
-    lote_etapa = models.ForeignKey(LoteEtapa, on_delete=models.CASCADE, related_name='paradas')
-    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
-    categoria = models.CharField(max_length=20, choices=CATEGORIA_CHOICES)
-    fecha_inicio = models.DateTimeField()
-    fecha_fin = models.DateTimeField(null=True, blank=True)
-    duracion_minutos = models.IntegerField(null=True, blank=True, editable=False)
-    descripcion = models.TextField()
-    solucion = models.TextField(blank=True)
-    registrado_por = models.ForeignKey(User, on_delete=models.PROTECT, related_name='paradas_registradas')
-
-    class Meta:
-        verbose_name = "Parada"
-        verbose_name_plural = "Paradas"
-        ordering = ['-fecha_inicio']
-        app_label = 'core'
-
-    def __str__(self):
-        return f"Parada {self.get_categoria_display()} - {self.lote_etapa.lote.codigo_lote}"
-
-    def save(self, *args, **kwargs):
-        if self.fecha_inicio and self.fecha_fin:
-            delta = self.fecha_fin - self.fecha_inicio
-            self.duracion_minutos = int(delta.total_seconds() / 60)
-        super().save(*args, **kwargs)
-
-
-class ControlCalidad(models.Model):
-    """Controles de calidad asociados a etapas de lote"""
-
-    lote_etapa = models.ForeignKey(LoteEtapa, on_delete=models.CASCADE, related_name='controles_calidad')
-    tipo_control = models.CharField(max_length=100, help_text="ej: Peso promedio, Dureza, Friabilidad")
-    valor_medido = models.DecimalField(max_digits=10, decimal_places=4)
-    unidad = models.CharField(max_length=20)
-    valor_minimo = models.DecimalField(max_digits=10, decimal_places=4)
-    valor_maximo = models.DecimalField(max_digits=10, decimal_places=4)
-    conforme = models.BooleanField(editable=False)
-    fecha_control = models.DateTimeField(auto_now_add=True)
-    controlado_por = models.ForeignKey(User, on_delete=models.PROTECT, related_name='controles_realizados')
-    observaciones = models.TextField(blank=True)
-
-    class Meta:
-        verbose_name = "Control de Calidad"
-        verbose_name_plural = "Controles de Calidad"
-        ordering = ['-fecha_control']
-        app_label = 'core'
-
-    def __str__(self):
-        return f"{self.tipo_control} - {self.lote_etapa.lote.codigo_lote}"
-
-    def save(self, *args, **kwargs):
-        # Determinar conformidad automáticamente
-        self.conforme = self.valor_minimo <= self.valor_medido <= self.valor_maximo
-        super().save(*args, **kwargs)
-
-
-class LoteDocumento(models.Model):
-    """Documentos adjuntos a lotes"""
-
-    lote = models.ForeignKey(Lote, on_delete=models.CASCADE, related_name='documentos')
-    tipo_documento = models.ForeignKey(TipoDocumento, on_delete=models.PROTECT)
-    nombre = models.CharField(max_length=200)
-    archivo_url = models.CharField(max_length=500)
-    hash_sha256 = models.CharField(max_length=64, editable=False, blank=True)
-    tamaño_bytes = models.BigIntegerField(editable=False, default=0)
-    subido_por = models.ForeignKey(User, on_delete=models.PROTECT, related_name='documentos_subidos')
-    fecha_subida = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        verbose_name = "Documento de Lote"
-        verbose_name_plural = "Documentos de Lotes"
-        ordering = ['-fecha_subida']
-        app_label = 'core'
-
-    def __str__(self):
-        return f"{self.nombre} - {self.lote.codigo_lote}"
