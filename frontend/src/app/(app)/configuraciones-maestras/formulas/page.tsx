@@ -25,7 +25,7 @@ import {
   User,
   CheckCircle,
 } from '@/lib/icons'
-import { api } from '@/lib/api'
+import { api, type PaginatedResponse } from '@/lib/api'
 import { featureFlags } from '@/lib/feature-flags'
 import FormulaFormModal from '@/components/formula-form-modal'
 import FormulaIngredientesModal from '@/components/formula-ingredientes-modal'
@@ -45,6 +45,43 @@ interface Formula {
   observaciones: string
   activa: boolean
   insumos_count: number
+}
+
+const isFormula = (value: unknown): value is Formula => {
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
+
+  const record = value as Record<string, unknown>
+  return (
+    typeof record.id === 'number' &&
+    typeof record.producto_nombre === 'string' &&
+    typeof record.version === 'string' &&
+    typeof record.fecha_vigencia_desde === 'string'
+  )
+}
+
+const isPaginatedFormulaResponse = (
+  value: unknown,
+): value is PaginatedResponse<Formula> => {
+  if (typeof value !== 'object' || value === null || !('results' in value)) {
+    return false
+  }
+
+  const { results } = value as { results: unknown }
+  return Array.isArray(results) && results.every(isFormula)
+}
+
+const parseFormulasResponse = (value: unknown): Formula[] | null => {
+  if (Array.isArray(value)) {
+    return value.every(isFormula) ? value : null
+  }
+
+  if (isPaginatedFormulaResponse(value)) {
+    return value.results
+  }
+
+  return null
 }
 
 export default function FormulasPage() {
@@ -82,7 +119,13 @@ export default function FormulasPage() {
         params.producto = productoFiltro
       }
       const response = await api.getFormulas(params)
-      setFormulas(response.results || response)
+      const parsed = parseFormulasResponse(response)
+
+      if (!parsed) {
+        throw new Error('Formato de respuesta inesperado del servidor al obtener las fórmulas')
+      }
+
+      setFormulas(parsed)
     } catch (error: any) {
       const message = error?.message || 'No se pudieron obtener las fórmulas'
       setError(message)
