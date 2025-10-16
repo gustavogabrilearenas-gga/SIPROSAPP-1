@@ -27,28 +27,16 @@ class Migration(migrations.Migration):
     """Migración para transferir roles a grupos y eliminar modelos antiguos."""
 
     dependencies = [
-        ('usuarios', '0001_initial'),
+        ('usuarios', '0002_migrate_roles_to_groups'),
         ('auth', '0012_alter_user_first_name_max_length'),
     ]
 
     operations = [
         migrations.RunPython(forwards, backwards),
-        migrations.RemoveField(
-            model_name='usuariorol',
-            name='asignado_por',
-        ),
-        migrations.RemoveField(
-            model_name='usuariorol',
-            name='rol',
-        ),
-        migrations.RemoveField(
-            model_name='usuariorol',
-            name='usuario',
+        migrations.DeleteModel(
+            name='UsuarioRol',
         ),
         migrations.DeleteModel(
             name='Rol',
-        ),
-        migrations.DeleteModel(
-            name='UsuarioRol',
         ),
     ]

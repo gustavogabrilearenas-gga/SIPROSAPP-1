@@ -12,6 +12,30 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.DeleteModel(
+            name='HistorialMantenimiento',
+        ),
+        migrations.DeleteModel(
+            name='Incidente',
+        ),
+        migrations.DeleteModel(
+            name='LoteEtapa',
+        ),
+        migrations.DeleteModel(
+            name='OrdenTrabajo',
+        ),
+        migrations.DeleteModel(
+            name='PlanMantenimiento',
+        ),
+        migrations.DeleteModel(
+            name='Lote',
+        ),
+        migrations.DeleteModel(
+            name='TipoIncidente',
+        ),
+        migrations.DeleteModel(
+            name='TipoMantenimiento',
+        ),
+        migrations.DeleteModel(
             name='Formula',
         ),
         migrations.DeleteModel(

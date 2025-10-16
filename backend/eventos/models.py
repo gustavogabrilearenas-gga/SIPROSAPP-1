@@ -125,7 +125,9 @@ class RegistroIncidente(models.Model):
     hora_fin = models.TimeField()
     maquina = models.ForeignKey(
         Maquina,
-        on_delete=models.PROTECT,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='registros_incidentes'
     )
     descripcion = models.TextField()

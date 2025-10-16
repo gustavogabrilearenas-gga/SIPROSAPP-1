@@ -6,7 +6,6 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('usuarios', '0002_migrate_roles_to_groups'),
         ('usuarios', '0002_remove_roles_migrate_to_groups'),
     ]
 
