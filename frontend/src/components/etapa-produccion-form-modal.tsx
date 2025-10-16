@@ -1,12 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion } from '@/lib/motion'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { api, handleApiError } from '@/lib/api'
 import { showError, showSuccess } from '@/components/common/toast-utils'
-import { Settings, Save, X } from 'lucide-react'
+import { Settings, Save, X } from '@/lib/icons'
 
 interface EtapaProduccionFormModalProps {
   isOpen: boolean

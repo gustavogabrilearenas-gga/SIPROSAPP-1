@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { X, Save, FileTextIcon } from 'lucide-react'
+import { motion } from '@/lib/motion'
+import { X, Save, FileText } from '@/lib/icons'
 import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -125,7 +125,7 @@ export default function FormulaFormModal({ isOpen, onClose, formulaId, onSuccess
           <div className="flex justify-between items-start">
             <div>
               <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
-                <FileTextIcon className="w-6 h-6" />
+                <FileText className="w-6 h-6" />
                 {formulaId ? 'Editar Fórmula' : 'Nueva Fórmula'}
               </h2>
               <p className="text-purple-100">Complete los datos de la fórmula de producción</p>

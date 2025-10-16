@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
+import { motion } from '@/lib/motion'
 import {
   Settings,
   ArrowLeft,
@@ -11,7 +11,7 @@ import {
   Clock,
   MapPin,
   type LucideIcon,
-} from 'lucide-react'
+} from '@/lib/icons'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ProtectedRoute } from '@/components/protected-route'

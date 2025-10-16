@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
+import { get } from '@/lib/api';
 
 export function useApiQuery<T>(
   key: string[], 
@@ -9,8 +9,7 @@ export function useApiQuery<T>(
   return useQuery({
     queryKey: key,
     queryFn: async () => {
-      const { data } = await axios.get<T>(url);
-      return data;
+      return get<T>(url);
     },
     ...options
   });

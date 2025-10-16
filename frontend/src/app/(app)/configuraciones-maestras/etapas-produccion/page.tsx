@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
+import { motion } from '@/lib/motion'
 import { useAuth } from '@/stores/auth-store'
 import { ProtectedRoute } from '@/components/protected-route'
 import {
@@ -22,7 +22,7 @@ import {
   Settings,
   CheckCircle,
   Clock,
-} from 'lucide-react'
+} from '@/lib/icons'
 import { api, type PaginatedResponse } from '@/lib/api'
 import { toast } from '@/hooks/use-toast'
 import EtapaProduccionFormModal from '@/components/etapa-produccion-form-modal'

@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Package, Calendar, User, AlertCircle, TrendingUp, Clock, CheckCircle, XCircle, History, FileTextIcon } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { X, Package, Calendar, User, AlertCircle, TrendingUp, Clock, CheckCircle, XCircle, History, FileText } from '@/lib/icons'
+import { motion, AnimatePresence } from '@/lib/motion'
 import { Button } from '@/components/ui/button'
 import { Lote, LoteEtapa, ControlCalidad, LogAuditoria } from '@/types/models'
 import { api } from '@/lib/api'
@@ -229,7 +229,7 @@ export default function LoteDetailModal({ isOpen, onClose, loteId, onEdit, onUpd
       {lote?.observaciones && (
         <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
           <div className="flex items-center gap-2 mb-2">
-            <FileTextIcon className="w-4 h-4 text-yellow-700" />
+            <FileText className="w-4 h-4 text-yellow-700" />
             <span className="text-sm font-medium text-yellow-700">Observaciones</span>
           </div>
           <p className="text-gray-700">{lote.observaciones}</p>
