@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, AlertTriangle, Calendar, User, MapPin, Package, History, FileText } from 'lucide-react'
+import { X, AlertTriangle, Calendar, User, MapPin, Package, History, FileTextIcon } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Incidente, LogAuditoria } from '@/types/models'
@@ -90,7 +90,7 @@ export default function IncidenteDetailModal({ isOpen, onClose, incidenteId, onE
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-gray-50 p-4 rounded-lg">
           <div className="flex items-center gap-2 mb-2">
-            <FileText className="w-4 h-4 text-blue-600" />
+            <FileTextIcon className="w-4 h-4 text-blue-600" />
             <span className="text-sm font-medium text-gray-600">Código</span>
           </div>
           <p className="text-lg font-bold">{incidente?.codigo}</p>
@@ -129,7 +129,7 @@ export default function IncidenteDetailModal({ isOpen, onClose, incidenteId, onE
       {/* Descripción */}
       <div className="bg-gray-50 p-4 rounded-lg">
         <h4 className="font-semibold mb-2 flex items-center gap-2">
-          <FileText className="w-4 h-4 text-gray-600" />
+          <FileTextIcon className="w-4 h-4 text-gray-600" />
           Descripción del Incidente
         </h4>
         <p className="text-gray-700 whitespace-pre-wrap">{incidente?.descripcion}</p>
