@@ -4,7 +4,7 @@ services:
   # Backend Django
   api:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
     container_name: siprosapp-api
     command: python manage.py runserver 0.0.0.0:8000

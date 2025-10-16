@@ -21,11 +21,12 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install Python dependencies
-COPY requirements.txt .
+COPY ../requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project files
-COPY . .
+COPY .. .
+COPY ../manage.py .
 
 # Create non-root user
 RUN useradd --create-home --shell /bin/bash django \
