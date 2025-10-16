@@ -10,7 +10,7 @@ declare module 'framer-motion' {
     onClick?: (e: React.MouseEvent) => void
   }
   export const motion: {
-    div: React.ComponentType<MotionProps>
+    [key: string]: React.ComponentType<MotionProps>
   }
   export const AnimatePresence: React.ComponentType<AnimatePresenceProps>
 }
