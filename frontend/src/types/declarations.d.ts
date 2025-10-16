@@ -31,5 +31,9 @@ declare module 'lucide-react' {
   export const Mail: React.ComponentType<{ className?: string }>
   export const Phone: React.ComponentType<{ className?: string }>
   export const Briefcase: React.ComponentType<{ className?: string }>
+  export const FileText: React.ComponentType<{ className?: string }>
+  export const Package: React.ComponentType<{ className?: string }>
+  export const Trash2: React.ComponentType<{ className?: string }>
+  export const User: React.ComponentType<{ className?: string }>
   export const Clock: React.ComponentType<{ className?: string }>
 }
