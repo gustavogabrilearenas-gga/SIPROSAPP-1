@@ -2,7 +2,7 @@
 
 import { useState, useEffect, type MouseEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
+import { motion } from '@/lib/motion'
 import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -25,7 +25,7 @@ import {
   Mail,
   Phone,
   Briefcase
-} from 'lucide-react'
+} from '@/lib/icons'
 import type { UsuarioDetalle } from '@/types/models'
 
 function UsuariosPageContent() {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
+import { motion } from '@/lib/motion'
 import { useAuth } from '@/stores/auth-store'
 import { ProtectedRoute } from '@/components/protected-route'
 import {
@@ -24,7 +24,7 @@ import {
   Wrench,
   Settings,
   type LucideIcon,
-} from 'lucide-react'
+} from '@/lib/icons'
 import { api } from '@/lib/api'
 import UbicacionFormModal from '@/components/ubicaciones/UbicacionFormModal'
 import DataState from '@/components/common/data-state'

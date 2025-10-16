@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/stores/auth-store'
-import { Loader2 } from 'lucide-react'
+import { Loader2 } from '@/lib/icons'
 
 /**
  * Componente para proteger rutas que requieren autenticación

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { motion } from 'framer-motion'
+import { motion } from '@/lib/motion'
 import { useAuth } from '@/stores/auth-store'
 import { ProtectedRoute } from '@/components/protected-route'
 import {
@@ -14,7 +14,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
-  FileTextIcon,
+  FileText,
   Plus,
   Search,
   Edit,
@@ -24,7 +24,7 @@ import {
   Clock,
   User,
   CheckCircle,
-} from 'lucide-react'
+} from '@/lib/icons'
 import { api } from '@/lib/api'
 import { featureFlags } from '@/lib/feature-flags'
 import FormulaFormModal from '@/components/formula-form-modal'
@@ -140,7 +140,7 @@ export default function FormulasPage() {
                 </Button>
                 <div>
                   <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-                    <FileTextIcon className="w-8 h-8 text-purple-600" />
+                    <FileText className="w-8 h-8 text-purple-600" />
                     Gestión de Fórmulas
                   </h1>
                   <p className="text-gray-600">Recetas de producción farmacéutica</p>
@@ -189,7 +189,7 @@ export default function FormulasPage() {
             empty={isEmptyState}
             emptyMessage={
               <div className="text-center py-12">
-                <FileTextIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500 text-lg">No se encontraron fórmulas</p>
               </div>
             }

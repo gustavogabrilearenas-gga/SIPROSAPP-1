@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, AlertTriangle, Save } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { X, AlertTriangle, Save } from '@/lib/icons'
+import { motion, AnimatePresence } from '@/lib/motion'
 import { Incidente, Ubicacion, Maquina, Lote, User } from '@/types/models'
 import { api } from '@/lib/api'
 

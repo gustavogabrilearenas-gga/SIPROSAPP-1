@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
-import { Wrench, Plus, Search, Filter, Home, Clock, AlertTriangle, CheckCircle, User, Calendar } from 'lucide-react'
+import { motion } from '@/lib/motion'
+import { Wrench, Plus, Search, Filter, Home, Clock, AlertTriangle, CheckCircle, User, Calendar } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
+import { motion } from '@/lib/motion'
 import { useAuth } from '@/stores/auth-store'
 import {
   Card,
@@ -18,8 +18,8 @@ import {
   Plus,
   Search,
   Edit,
-  FileTextIcon,
-} from 'lucide-react'
+  FileText,
+} from '@/lib/icons'
 import { api } from '@/lib/api'
 import { featureFlags } from '@/lib/feature-flags'
 import ProductoFormModal from '@/components/producto-form-modal'
@@ -206,7 +206,7 @@ export default function ProductosPage() {
                               router.push(`/configuraciones-maestras/formulas?productoId=${producto.id}&productoNombre=${encodeURIComponent(producto.nombre)}`)
                             }}
                           >
-                            <FileTextIcon className="w-4 h-4 mr-1" />
+                            <FileText className="w-4 h-4 mr-1" />
                             Fórmulas
                           </Button>
                         )}

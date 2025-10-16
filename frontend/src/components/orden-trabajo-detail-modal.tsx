@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Wrench, Calendar, User, AlertTriangle, Clock, CheckCircle, History, DollarSign } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { X, Wrench, Calendar, User, AlertTriangle, Clock, CheckCircle, History, DollarSign } from '@/lib/icons'
+import { motion, AnimatePresence } from '@/lib/motion'
 import { Button } from '@/components/ui/button'
 import { OrdenTrabajo, LogAuditoria } from '@/types/models'
 import { api } from '@/lib/api'

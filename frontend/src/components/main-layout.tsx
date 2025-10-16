@@ -2,13 +2,13 @@ import React from 'react';
 import Link from 'next/link';
 import {
   Factory,
-  FileTextIcon,
+  FileText,
   LayoutDashboard,
   Settings,
   Siren,
   Users,
   Wrench,
-} from 'lucide-react';
+} from '@/lib/icons';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/stores/auth-store';
 
@@ -17,14 +17,14 @@ const navItems = [
   { href: '/produccion', label: 'Producción', icon: Factory },
   { href: '/mantenimiento', label: 'Mantenimiento', icon: Wrench },
   { href: '/incidentes', label: 'Incidentes', icon: Siren },
-  { href: '/observaciones', label: 'Observaciones Generales', icon: FileTextIcon },
+  { href: '/observaciones', label: 'Observaciones Generales', icon: FileText },
   { href: '/configuracion/usuarios', label: 'Gestión de Usuarios', icon: Users },
   { href: '/configuraciones-maestras', label: 'Configuraciones Maestras', icon: Settings },
   // ---------------- DESACTIVADAS ----------------
   // { href: '/configuraciones-maestras/productos', label: 'Productos', icon: Package },
   // { href: '/configuraciones-maestras/formulas', label: 'Fórmulas', icon: FlaskConical },
   // { href: '/lotes', label: 'Lotes', icon: ClipboardList },
-  // { href: '/desviaciones', label: 'Desviaciones', icon: FileTextIcon },
+  // { href: '/desviaciones', label: 'Desviaciones', icon: FileText },
   // { href: '/control-calidad', label: 'Control Calidad', icon: HeartPulse },
   // { href: '/kpis', label: 'KPIs', icon: Gauge },
   // { href: '/configuraciones-maestras/ubicaciones', label: 'Ubicaciones', icon: MapPin },
