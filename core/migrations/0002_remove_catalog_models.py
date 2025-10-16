@@ -8,6 +8,7 @@ class Migration(migrations.Migration):
     dependencies = [
         ('core', '0001_initial'),
         ('catalogos', '0002_migrate_data_from_core'),
+        ('mantenimiento', '0002_migrate_data_from_core'),
     ]
 
     operations = [
