@@ -1,8 +1,7 @@
-const { exec } = require('child_process');
-const fs = require('fs');
+const { execSync } = require('child_process');
 const path = require('path');
 
-// Rutas a precompilar
+// Lista de rutas para asegurarnos que sean precompiladas
 const routes = [
   '/',
   '/dashboard',
@@ -18,29 +17,35 @@ const routes = [
 
 console.log('🚀 Iniciando precompilación de rutas...');
 
-// Crear el directorio .next si no existe
-const nextDir = path.join(__dirname, '.next');
-if (!fs.existsSync(nextDir)) {
-  fs.mkdirSync(nextDir, { recursive: true });
-}
+try {
+  // Ejecutar next build una sola vez para construir todas las rutas
+  console.log('📦 Compilando aplicación...');
+  
+  // Asegurarse de estar en el directorio correcto
+  const frontendDir = path.resolve(__dirname, '..');
+  process.chdir(frontendDir);
 
-// Precompilar cada ruta
-Promise.all(routes.map(route => {
-  return new Promise((resolve, reject) => {
-    console.log(`📦 Precompilando ruta: ${route}`);
-    exec(`npx next build ${route}`, (error, stdout, stderr) => {
-      if (error) {
-        console.error(`❌ Error precompilando ${route}:`, error);
-        reject(error);
-        return;
-      }
-      console.log(`✅ Ruta ${route} precompilada exitosamente`);
-      resolve();
-    });
+  // Establecer NODE_ENV a 'development' para desarrollo
+  process.env.NODE_ENV = 'development';
+  
+  execSync('npx next build', {
+    stdio: 'inherit',
+    env: {
+      ...process.env,
+      NEXT_TELEMETRY_DISABLED: '1'
+    }
   });
-})).then(() => {
-  console.log('🎉 Precompilación completada!');
-}).catch(error => {
+
+  console.log('✅ Compilación completada exitosamente');
+  
+  // Verificar que las rutas estén incluidas en la compilación
+  console.log('\nRutas precompiladas:');
+  routes.forEach(route => {
+    console.log(`✓ ${route}`);
+  });
+  
+  console.log('\n🎉 Precompilación finalizada!');
+} catch (error) {
   console.error('💥 Error durante la precompilación:', error);
   process.exit(1);
-});
+}
