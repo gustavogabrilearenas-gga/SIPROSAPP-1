@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/stores/auth-store'
 import { AuthInit } from '@/components/auth-init'
+import { RoutePreloader } from '@/components/route-preloader'
 import { QueryProvider } from '@/lib/query-provider'
 import DataState from '@/components/common/data-state'
 import { ToastProvider } from '@/components/ui/toast'
@@ -27,7 +28,10 @@ export default function RootLayout({
           <ToastProvider>
             <AuthProvider>
               <AuthInit>
-                <DataState>{children}</DataState>
+                <DataState>
+                  {children}
+                  <RoutePreloader />
+                </DataState>
               </AuthInit>
               <Toaster />
             </AuthProvider>

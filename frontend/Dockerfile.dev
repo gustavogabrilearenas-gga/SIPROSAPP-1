@@ -9,18 +9,25 @@ RUN apk add --no-cache libc6-compat
 
 WORKDIR /app
 
-# Copiar archivos de configuración
+# Copiar archivos de configuración primero para aprovechar la caché
 COPY package*.json ./
+COPY tsconfig.json ./
+COPY next.config.js ./
+COPY scripts ./scripts/
 
-# Generar package-lock.json si no existe e instalar dependencias
+# Instalar dependencias con caché
 RUN npm install
 
-# Exponer puerto
-EXPOSE 3000
+# Crear directorio de caché de Next.js
+RUN mkdir -p .next/cache/webpack
 
 # Variables de entorno para desarrollo
 ENV PORT 3000
 ENV NODE_ENV development
+ENV NEXT_TELEMETRY_DISABLED 1
 
-# Comando para iniciar en modo desarrollo (hot reload)
+# Exponer puerto
+EXPOSE 3000
+
+# Comando para iniciar en modo desarrollo con precompilación
 CMD ["npm", "run", "dev"]
