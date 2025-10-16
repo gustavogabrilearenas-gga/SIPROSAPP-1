@@ -8,11 +8,12 @@ const nextConfig = {
       },
     ]
   },
-  // Add performance optimizations
+  // Development optimizations
   poweredByHeader: false,
   compress: true,
-  reactStrictMode: true,
-  swcMinify: true,
+  reactStrictMode: false, // Disable in development
+  swcMinify: false, // Disable in development
+  productionBrowserSourceMaps: false,
   // Optimize module loading
   experimental: {
     optimizeCss: true,
@@ -41,33 +42,32 @@ const nextConfig = {
   // Docker-specific optimizations
   output: 'standalone', // Optimizes for containerized environments
   webpack: (config, { dev, isServer }) => {
-    // Optimize development performance
     if (dev && !isServer) {
+      // Fast Refresh optimizations
+      config.optimization = {
+        ...config.optimization,
+        moduleIds: 'named',
+        chunkIds: 'named',
+        runtimeChunk: 'single',
+        removeAvailableModules: false,
+        removeEmptyChunks: false,
+        splitChunks: false
+      };
+
+      // Minimal stats output
+      config.stats = 'minimal';
+
+      // Development-specific optimizations
+      config.mode = 'development';
+      config.devtool = 'eval';
+
+      // Fast file watching
       config.watchOptions = {
         ...config.watchOptions,
-        poll: 800,
-        aggregateTimeout: 300,
+        poll: false,
+        ignored: /node_modules/,
       };
-      
-      // Add cache for development
-      config.cache = {
-        type: 'filesystem',
-        buildDependencies: {
-          config: [__filename],
-        },
-      };
-      
-      // Optimize module resolution
-      config.snapshot = {
-        ...config.snapshot,
-        managedPaths: [/^(.+?[\\/]node_modules[\\/])/],
-        immutablePaths: [],
-      };
-      
-      // Increase parallelization
-      config.parallelism = 4;
     }
-    
     return config;
   },
   // Cache optimization
