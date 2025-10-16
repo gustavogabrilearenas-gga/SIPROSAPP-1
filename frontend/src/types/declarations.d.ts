@@ -37,3 +37,7 @@ declare module 'lucide-react' {
   export const User: React.ComponentType<{ className?: string }>
   export const Clock: React.ComponentType<{ className?: string }>
 }
+
+declare module '@/lib/icons' {
+  export * from 'lucide-react'
+}
