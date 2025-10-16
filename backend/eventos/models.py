@@ -1,28 +1,26 @@
-"""Modelos para el registro de eventos de producción, mantenimiento e incidentes."""
+"""Modelos para el registro de observaciones de producción, mantenimiento e incidentes."""
 
 from django.db import models
 from django.contrib.auth.models import User
-from backend.catalogos.models import Maquina, Producto
+from django.core.exceptions import ValidationError
+from backend.catalogos.models import Maquina, Producto, Turno
 
 
 class RegistroProduccion(models.Model):
-    """Registro de eventos de producción."""
+    """Registro de observaciones de producción."""
     
-    fecha_produccion = models.DateField()
+    fecha_produccion = models.DateField(db_index=True)
     fecha_registro = models.DateTimeField(auto_now_add=True)
     registrado_por = models.ForeignKey(
         User, 
         on_delete=models.PROTECT,
         related_name='registros_produccion'
     )
-    turno = models.CharField(
-        max_length=2, 
-        choices=[
-            ('M', 'Mañana'),
-            ('T', 'Tarde'),
-            ('N', 'Noche'),
-            ('R', 'Rotativo'),
-        ]
+    turno = models.ForeignKey(
+        Turno,
+        on_delete=models.PROTECT,
+        related_name='registros_produccion',
+        verbose_name='Turno'
     )
     hubo_produccion = models.BooleanField()
     maquina = models.ForeignKey(
@@ -50,30 +48,49 @@ class RegistroProduccion(models.Model):
     class Meta:
         verbose_name = "Registro de Producción"
         verbose_name_plural = "Registros de Producción"
-        ordering = ['-fecha_produccion']
+        ordering = ['-fecha_produccion', '-fecha_registro']
+        indexes = [
+            models.Index(fields=['-fecha_produccion', 'maquina']),
+            models.Index(fields=['maquina', 'fecha_produccion', 'turno']),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['maquina', 'fecha_produccion', 'turno'],
+                name='unique_produccion_maquina_fecha_turno'
+            ),
+            models.CheckConstraint(
+                check=models.Q(cantidad_producida__gte=0),
+                name='produccion_cantidad_no_negativa'
+            ),
+        ]
 
     def __str__(self):
         return f"Producción {self.maquina.codigo} - {self.fecha_produccion}"
 
+    def clean(self):
+        """Validaciones de negocio."""
+        super().clean()
+        if self.hora_fin <= self.hora_inicio:
+            raise ValidationError({
+                'hora_fin': 'La hora de fin debe ser posterior a la hora de inicio.'
+            })
+
 
 class RegistroMantenimiento(models.Model):
-    """Registro de eventos de mantenimiento."""
+    """Registro de observaciones de mantenimiento."""
     
-    fecha_mantenimiento = models.DateField()
+    fecha_mantenimiento = models.DateField(db_index=True)
     fecha_registro = models.DateTimeField(auto_now_add=True)
     registrado_por = models.ForeignKey(
         User, 
         on_delete=models.PROTECT,
         related_name='registros_mantenimiento'
     )
-    turno = models.CharField(
-        max_length=2, 
-        choices=[
-            ('M', 'Mañana'),
-            ('T', 'Tarde'),
-            ('N', 'Noche'),
-            ('R', 'Rotativo'),
-        ]
+    turno = models.ForeignKey(
+        Turno,
+        on_delete=models.PROTECT,
+        related_name='registros_mantenimiento',
+        verbose_name='Turno'
     )
     se_realizo_mantenimiento = models.BooleanField()
     maquina = models.ForeignKey(
@@ -96,30 +113,45 @@ class RegistroMantenimiento(models.Model):
     class Meta:
         verbose_name = "Registro de Mantenimiento"
         verbose_name_plural = "Registros de Mantenimiento"
-        ordering = ['-fecha_mantenimiento']
+        ordering = ['-fecha_mantenimiento', '-fecha_registro']
+        indexes = [
+            models.Index(fields=['-fecha_mantenimiento', 'maquina']),
+            models.Index(fields=['maquina', 'tipo_mantenimiento']),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(se_realizo_mantenimiento=True) | models.Q(descripcion__isnull=False),
+                name='mantenimiento_requiere_descripcion'
+            ),
+        ]
 
     def __str__(self):
         return f"Mantenimiento {self.maquina.codigo} - {self.fecha_mantenimiento}"
 
+    def clean(self):
+        """Validaciones de negocio."""
+        super().clean()
+        if self.hora_fin <= self.hora_inicio:
+            raise ValidationError({
+                'hora_fin': 'La hora de fin debe ser posterior a la hora de inicio.'
+            })
+
 
 class RegistroIncidente(models.Model):
-    """Registro de eventos de incidentes o paradas."""
+    """Registro de observaciones de incidentes o paradas."""
     
-    fecha_incidente = models.DateField()
+    fecha_incidente = models.DateField(db_index=True)
     fecha_registro = models.DateTimeField(auto_now_add=True)
     registrado_por = models.ForeignKey(
         User, 
         on_delete=models.PROTECT,
         related_name='registros_incidentes'
     )
-    turno = models.CharField(
-        max_length=2, 
-        choices=[
-            ('M', 'Mañana'),
-            ('T', 'Tarde'),
-            ('N', 'Noche'),
-            ('R', 'Rotativo'),
-        ]
+    turno = models.ForeignKey(
+        Turno,
+        on_delete=models.PROTECT,
+        related_name='registros_incidentes',
+        verbose_name='Turno'
     )
     hora_inicio = models.TimeField()
     hora_fin = models.TimeField()
@@ -144,37 +176,49 @@ class RegistroIncidente(models.Model):
     class Meta:
         verbose_name = "Registro de Incidente"
         verbose_name_plural = "Registros de Incidentes"
-        ordering = ['-fecha_incidente']
+        ordering = ['-fecha_incidente', '-fecha_registro']
+        indexes = [
+            models.Index(fields=['-fecha_incidente', 'maquina']),
+            models.Index(fields=['contexto_origen', 'fecha_incidente']),
+        ]
 
     def __str__(self):
-        return f"Incidente {self.maquina.codigo} - {self.fecha_incidente}"
+        maquina_str = self.maquina.codigo if self.maquina else 'Sin máquina'
+        return f"Incidente {maquina_str} - {self.fecha_incidente}"
+
+    def clean(self):
+        """Validaciones de negocio."""
+        super().clean()
+        if self.hora_fin <= self.hora_inicio:
+            raise ValidationError({
+                'hora_fin': 'La hora de fin debe ser posterior a la hora de inicio.'
+            })
+        if self.acciones_correctivas and not self.detalle_acciones:
+            raise ValidationError({
+                'detalle_acciones': 'Debe especificar el detalle de las acciones correctivas.'
+            })
 
 
 class ObservacionGeneral(models.Model):
     """Registro de observaciones generales."""
     
-    fecha_observacion = models.DateField()
+    fecha_observacion = models.DateField(db_index=True)
+    hora_registro = models.TimeField(default='09:00', verbose_name='Hora de Registro')
     fecha_registro = models.DateTimeField(auto_now_add=True)
     registrado_por = models.ForeignKey(
         User, 
         on_delete=models.PROTECT,
         related_name='observaciones_registradas'
     )
-    turno = models.CharField(
-        max_length=2, 
-        choices=[
-            ('M', 'Mañana'),
-            ('T', 'Tarde'),
-            ('N', 'Noche'),
-            ('R', 'Rotativo'),
-        ]
-    )
     observaciones = models.TextField()
 
     class Meta:
         verbose_name = "Observación General"
         verbose_name_plural = "Observaciones Generales"
-        ordering = ['-fecha_observacion']
+        ordering = ['-fecha_observacion', '-hora_registro']
+        indexes = [
+            models.Index(fields=['-fecha_observacion', 'hora_registro']),
+        ]
 
     def __str__(self):
-        return f"Observación General - {self.fecha_observacion}"
+        return f"Observación General - {self.fecha_observacion} {self.hora_registro}"

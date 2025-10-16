@@ -2,7 +2,7 @@
 
 from rest_framework import routers
 
-from .views import ElectronicSignatureViewSet, LogAuditoriaViewSet
+from .auditoria_views import ElectronicSignatureViewSet, LogAuditoriaViewSet
 
 router = routers.DefaultRouter()
 router.register(r'logs', LogAuditoriaViewSet, basename='auditoria')

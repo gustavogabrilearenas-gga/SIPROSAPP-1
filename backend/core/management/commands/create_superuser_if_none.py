@@ -2,6 +2,7 @@
 Comando Django para crear superusuario automáticamente si no existe
 """
 
+import os
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
 
@@ -10,9 +11,10 @@ class Command(BaseCommand):
     help = 'Crea un superusuario admin si no existe ninguno'
 
     def handle(self, *args, **options):
-        username = 'admin'
-        email = 'admin@siprosa.com.ar'
-        password = 'Admin123456'
+        # Credenciales configurables desde variables de entorno
+        username = os.getenv('DJANGO_SUPERUSER_USERNAME', 'admin')
+        email = os.getenv('DJANGO_SUPERUSER_EMAIL', 'admin@siprosa.com.ar')
+        password = os.getenv('DJANGO_SUPERUSER_PASSWORD', 'Admin123456')
         
         # Verificar si ya existe algún superusuario
         if User.objects.filter(is_superuser=True).exists():

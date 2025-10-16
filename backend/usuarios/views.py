@@ -11,7 +11,7 @@ from backend.usuarios.serializers import (
     UsuarioDetalleSerializer,
     UsuarioPerfilSerializer,
 )
-from core.permissions import IsAdmin
+from backend.core.permissions import IsAdmin
 
 
 class UsuarioViewSet(viewsets.ModelViewSet):

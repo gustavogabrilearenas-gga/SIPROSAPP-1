@@ -70,7 +70,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
-    'core',
+    'backend.core',
     'backend.usuarios.apps.UsuariosConfig',
     'backend.produccion',
     'backend.mantenimiento',
@@ -159,7 +159,7 @@ USE_TZ = True
 # STATIC FILES
 # ============================================
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_ROOT = BASE_DIR / 'backend' / 'staticfiles'
 
 # WhiteNoise configuration para servir archivos estáticos en producción
 STORAGES = {
@@ -204,17 +204,6 @@ if DEBUG:
         'PATCH',
         'POST',
         'PUT',
-    ]
-    CORS_ALLOW_HEADERS = [
-        'accept',
-        'accept-encoding',
-        'authorization',
-        'content-type',
-        'dnt',
-        'origin',
-        'user-agent',
-        'x-csrftoken',
-        'x-requested-with',
     ]
     CORS_ALLOW_HEADERS = [
         'accept',
@@ -278,7 +267,7 @@ LOGGING_HANDLERS = {}
 default_handlers = []
 
 if IS_PRODUCTION:
-    LOG_DIR = BASE_DIR / "logs"
+    LOG_DIR = BASE_DIR / "backend" / "logs"
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     LOGGING_HANDLERS["app_file"] = {
         "level": "INFO",

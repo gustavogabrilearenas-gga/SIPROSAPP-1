@@ -8,7 +8,7 @@ from django.dispatch import receiver
 from django.contrib.auth.models import User
 from threading import local
 
-from backend.auditoria.models import LogAuditoria
+from .auditoria_models import LogAuditoria
 from backend.incidencias.models import Incidente
 from backend.mantenimiento.models import OrdenTrabajo
 from backend.produccion.models import Lote, LoteEtapa

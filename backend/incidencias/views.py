@@ -4,7 +4,7 @@ from rest_framework import filters, permissions, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from core.permissions import IsAdmin
+from backend.core.permissions import IsAdmin
 from .models import Incidente, TipoIncidente
 from .serializers import IncidenteListSerializer, IncidenteSerializer, TipoIncidenteSerializer
 

@@ -9,7 +9,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 class Ubicacion(models.Model):
     """Áreas físicas de la planta"""
     
-    codigo = models.CharField(max_length=20, unique=True, verbose_name="Código")
+    codigo = models.CharField(max_length=20, unique=True, verbose_name="Código", db_index=True)
     nombre = models.CharField(max_length=100)
     descripcion = models.TextField(blank=True, verbose_name="Descripción")
     planta = models.IntegerField(default=0)
@@ -19,6 +19,9 @@ class Ubicacion(models.Model):
         verbose_name = "Ubicación"
         verbose_name_plural = "Ubicaciones"
         ordering = ['codigo']
+        indexes = [
+            models.Index(fields=['codigo', 'activa']),
+        ]
     
     def __str__(self):
         return f"{self.codigo} - {self.nombre}"
@@ -35,7 +38,7 @@ class Maquina(models.Model):
         ('SERVICIOS', 'Servicios'),
     ]
     
-    codigo = models.CharField(max_length=20, unique=True, verbose_name="Código")
+    codigo = models.CharField(max_length=20, unique=True, verbose_name="Código", db_index=True)
     nombre = models.CharField(max_length=100)
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
     fabricante = models.CharField(max_length=100, blank=True)
@@ -56,6 +59,11 @@ class Maquina(models.Model):
         verbose_name = "Máquina"
         verbose_name_plural = "Máquinas"
         ordering = ['codigo']
+        indexes = [
+            models.Index(fields=['codigo', 'activa']),
+            models.Index(fields=['tipo', 'activa']),
+            models.Index(fields=['ubicacion', 'activa']),
+        ]
     
     def __str__(self):
         return f"{self.codigo} - {self.nombre}"
@@ -80,8 +88,8 @@ class Producto(models.Model):
         ('SOBRE', 'Sobre'),
     ]
     
-    codigo = models.CharField(max_length=20, unique=True, verbose_name="Código")
-    nombre = models.CharField(max_length=200)
+    codigo = models.CharField(max_length=20, unique=True, verbose_name="Código", db_index=True)
+    nombre = models.CharField(max_length=200, db_index=True)
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
     presentacion = models.CharField(max_length=20, choices=PRESENTACION_CHOICES)
     concentracion = models.CharField(max_length=50, help_text="ej: 500mg, 10mg/ml")
@@ -94,6 +102,11 @@ class Producto(models.Model):
         verbose_name = "Producto"
         verbose_name_plural = "Productos"
         ordering = ['codigo']
+        indexes = [
+            models.Index(fields=['codigo', 'activo']),
+            models.Index(fields=['nombre', 'activo']),
+            models.Index(fields=['tipo', 'activo']),
+        ]
     
     def __str__(self):
         return f"{self.codigo} - {self.nombre} ({self.concentracion})"
@@ -106,25 +119,54 @@ class Formula(models.Model):
         ('1.0', '1.0'),
         ('1.1', '1.1'),
         ('2.0', '2.0'),
+        ('3.0', '3.0'),
     ]
     
-    codigo = models.CharField(max_length=20, unique=True)
+    codigo = models.CharField(max_length=20, unique=True, db_index=True)
     version = models.CharField(max_length=10, choices=VERSION_CHOICES)
     producto = models.ForeignKey(Producto, on_delete=models.PROTECT, related_name='formulas')
     descripcion = models.TextField(blank=True)
-    tamaño_lote = models.IntegerField(help_text="Tamaño estándar del lote")
+    tamaño_lote = models.IntegerField(
+        validators=[MinValueValidator(1)],
+        help_text="Tamaño estándar del lote"
+    )
     unidad = models.CharField(max_length=20)
-    tiempo_total = models.DecimalField(max_digits=5, decimal_places=2, help_text="Tiempo total en horas")
+    tiempo_total = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        validators=[MinValueValidator(0.01)],
+        help_text="Tiempo total en horas"
+    )
     activa = models.BooleanField(default=True)
     aprobada = models.BooleanField(default=False)
-    ingredientes = models.JSONField(help_text="Lista de ingredientes: [{material_id, cantidad, unidad}]")
-    etapas = models.JSONField(help_text="Lista de etapas: [{etapa_id, duracion_min, descripcion}]")
+    ingredientes = models.JSONField(
+        default=list,
+        help_text="Lista de ingredientes: [{material_id, cantidad, unidad}]"
+    )
+    etapas = models.JSONField(
+        default=list,
+        help_text="Lista de etapas: [{etapa_id, duracion_min, descripcion}]"
+    )
     
     class Meta:
         verbose_name = "Fórmula"
         verbose_name_plural = "Fórmulas"
         ordering = ['codigo', 'version']
         unique_together = ['codigo', 'version']
+        indexes = [
+            models.Index(fields=['producto', 'activa']),
+            models.Index(fields=['codigo', 'version']),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(tamaño_lote__gt=0),
+                name='formula_tamaño_lote_positivo'
+            ),
+            models.CheckConstraint(
+                check=models.Q(tiempo_total__gt=0),
+                name='formula_tiempo_positivo'
+            ),
+        ]
     
     def __str__(self):
         return f"{self.codigo} v{self.version} - {self.producto.nombre}"
@@ -133,10 +175,13 @@ class Formula(models.Model):
 class EtapaProduccion(models.Model):
     """Catálogo de etapas del proceso productivo"""
     
-    codigo = models.CharField(max_length=20, unique=True)
+    codigo = models.CharField(max_length=20, unique=True, db_index=True)
     nombre = models.CharField(max_length=100)
     descripcion = models.TextField(blank=True)
-    duracion_tipica = models.IntegerField(help_text="Duración típica en minutos")
+    duracion_tipica = models.IntegerField(
+        validators=[MinValueValidator(1)],
+        help_text="Duración típica en minutos"
+    )
     requiere_validacion = models.BooleanField(default=False)
     maquinas_permitidas = models.ManyToManyField(
         Maquina,
@@ -153,6 +198,15 @@ class EtapaProduccion(models.Model):
         verbose_name = "Etapa de Producción"
         verbose_name_plural = "Etapas de Producción"
         ordering = ['codigo']
+        indexes = [
+            models.Index(fields=['codigo', 'activa']),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(duracion_tipica__gt=0),
+                name='etapa_duracion_positiva'
+            ),
+        ]
     
     def __str__(self):
         return f"{self.codigo} - {self.nombre}"
@@ -165,7 +219,7 @@ class Turno(models.Model):
         ('M', 'Mañana'),
         ('T', 'Tarde'),
         ('N', 'Noche'),
-    ])
+    ], db_index=True)
     nombre = models.CharField(max_length=20)
     hora_inicio = models.TimeField()
     hora_fin = models.TimeField()

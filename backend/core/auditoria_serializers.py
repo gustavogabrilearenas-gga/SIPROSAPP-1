@@ -2,7 +2,7 @@
 
 from rest_framework import serializers
 
-from .models import ElectronicSignature, LogAuditoria
+from .auditoria_models import ElectronicSignature, LogAuditoria
 
 
 class LogAuditoriaSerializer(serializers.ModelSerializer):

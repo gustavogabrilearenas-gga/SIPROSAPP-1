@@ -1,4 +1,4 @@
-"""URLs para el módulo de eventos."""
+"""URLs para el módulo de observaciones."""
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter

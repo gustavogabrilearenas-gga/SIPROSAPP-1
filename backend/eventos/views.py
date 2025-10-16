@@ -1,4 +1,4 @@
-"""Vistas para el módulo de eventos."""
+"""Vistas para el módulo de observaciones."""
 
 from rest_framework import viewsets, filters
 from rest_framework.decorators import action
@@ -17,7 +17,7 @@ from .serializers import (
     RegistroIncidenteSerializer,
     ObservacionGeneralSerializer
 )
-from core.permissions import IsAdminOrOperario
+from backend.core.permissions import IsAdminOrOperario
 
 
 class RegistroProduccionViewSet(viewsets.ModelViewSet):

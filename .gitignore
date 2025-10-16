@@ -6,10 +6,9 @@
 # ARCHIVOS SENSIBLES (NUNCA SUBIR A GITHUB)
 # ============================================
 .env
-.env.dev
 .env.prod
-.env.local
 *.env
+!.env.dev
 
 # ============================================
 # PYTHON
@@ -55,13 +54,13 @@ db.sqlite3
 db.sqlite3-journal
 
 # Archivos estáticos recolectados
-/staticfiles/
-/static/
+backend/staticfiles/
 /media/
 
 # Logs
 *.log
-logs/*.log
+logs/
+backend/logs/
 *.log.*
 
 # Migraciones locales (opcional - descomentar si no quieres trackear migraciones)
@@ -132,26 +131,6 @@ $RECYCLE.BIN/
 # DOCKER
 # ============================================
 docker-compose.override.yml
-.dockerignore
-
-# ============================================
-# CELERY
-# ============================================
-celerybeat-schedule
-celerybeat.pid
-
-# ============================================
-# REDIS
-# ============================================
-dump.rdb
-
-# ============================================
-# TESTING
-# ============================================
-.coverage
-.pytest_cache/
-htmlcov/
-.tox/
 
 # ============================================
 # ARCHIVOS TEMPORALES

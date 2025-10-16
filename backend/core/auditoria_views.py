@@ -6,9 +6,9 @@ from rest_framework import filters, mixins, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from core.permissions import IsAdmin, IsAdminOrSupervisor
-from .models import ElectronicSignature, LogAuditoria
-from .serializers import (
+from .permissions import IsAdmin, IsAdminOrSupervisor
+from .auditoria_models import ElectronicSignature, LogAuditoria
+from .auditoria_serializers import (
     CreateSignatureSerializer,
     ElectronicSignatureSerializer,
     LogAuditoriaSerializer,

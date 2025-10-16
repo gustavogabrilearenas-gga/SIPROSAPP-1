@@ -6,7 +6,7 @@ from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from core.permissions import IsAdmin, IsAdminOrSupervisor
+from backend.core.permissions import IsAdmin, IsAdminOrSupervisor
 
 from .models import OrdenTrabajo, TipoMantenimiento
 from .serializers import (
