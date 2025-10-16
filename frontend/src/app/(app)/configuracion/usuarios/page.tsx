@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, type MouseEvent } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion } from '@/lib/motion'
+import { motion } from 'framer-motion'
 import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -25,7 +25,7 @@ import {
   Mail,
   Phone,
   Briefcase
-} from '@/lib/icons'
+} from 'lucide-react'
 import type { UsuarioDetalle } from '@/types/models'
 
 function UsuariosPageContent() {
@@ -59,8 +59,7 @@ function UsuariosPageContent() {
       setLoading(true)
       setError(null)
       const response = await api.getUsuarios()
-      // Asegurarnos que response sea del tipo PaginatedResponse<UsuarioDetalle>
-      const users = (response as { results?: UsuarioDetalle[] }).results || (response as UsuarioDetalle[])
+      const users = response.results || response
       setUsuarios(Array.isArray(users) ? users : [])
     } catch (error: any) {
       const message = error?.message || 'No se pudieron cargar los usuarios'
@@ -441,7 +440,7 @@ function UsuariosPageContent() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6"
-            onClick={(e: MouseEvent) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-xl font-bold text-gray-900 mb-4">
               Cambiar Contraseña - {selectedUsuario?.username}

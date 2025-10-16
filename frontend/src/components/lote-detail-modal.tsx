@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Package, Calendar, User, AlertCircle, TrendingUp, Clock, CheckCircle, XCircle, History, FileText } from '@/lib/icons'
-import { motion, AnimatePresence } from '@/lib/motion'
+import { X, Package, Calendar, User, AlertCircle, TrendingUp, Clock, CheckCircle, XCircle, History, FileText } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Lote, LoteEtapa, ControlCalidad, LogAuditoria } from '@/types/models'
 import { api } from '@/lib/api'

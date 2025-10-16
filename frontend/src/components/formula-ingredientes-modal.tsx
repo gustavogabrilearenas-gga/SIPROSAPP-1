@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { AnimatePresence, motion } from '@/lib/motion'
-import { X, Package, AlertTriangle, Loader2 } from '@/lib/icons'
+import { AnimatePresence, motion } from 'framer-motion'
+import { X, Package, AlertTriangle, Loader2 } from 'lucide-react'
 import { api, handleApiError } from '@/lib/api'
 import { showError } from '@/components/common/toast-utils'
 

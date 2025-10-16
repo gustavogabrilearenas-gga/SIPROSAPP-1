@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { motion } from '@/lib/motion'
-import { X, Save, FileText } from '@/lib/icons'
+import { motion } from 'framer-motion'
+import { X, Save, FileText } from 'lucide-react'
 import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'

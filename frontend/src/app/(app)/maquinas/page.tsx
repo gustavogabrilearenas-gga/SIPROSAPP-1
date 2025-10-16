@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion } from '@/lib/motion'
+import { motion } from 'framer-motion'
 import { useAuth } from '@/stores/auth-store'
 import { ProtectedRoute } from '@/components/protected-route'
 import {
@@ -25,7 +25,7 @@ import {
   CheckCircle,
   AlertTriangle,
   XCircle,
-} from '@/lib/icons'
+} from 'lucide-react'
 import { api } from '@/lib/api'
 import MaquinaFormModal from '@/components/maquina-form-modal'
 import DataState from '@/components/common/data-state'

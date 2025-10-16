@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { motion } from '@/lib/motion'
+import { motion } from 'framer-motion'
 import {
   Package,
   Plus,
@@ -15,7 +15,7 @@ import {
   PauseCircle,
   CheckCircle2,
   Ban,
-} from '@/lib/icons'
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'

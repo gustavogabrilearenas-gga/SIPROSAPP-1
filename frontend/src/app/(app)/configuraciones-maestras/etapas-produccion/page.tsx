@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion } from '@/lib/motion'
+import { motion } from 'framer-motion'
 import { useAuth } from '@/stores/auth-store'
 import { ProtectedRoute } from '@/components/protected-route'
 import {
@@ -22,8 +22,8 @@ import {
   Settings,
   CheckCircle,
   Clock,
-} from '@/lib/icons'
-import { api, type PaginatedResponse } from '@/lib/api'
+} from 'lucide-react'
+import { api } from '@/lib/api'
 import { toast } from '@/hooks/use-toast'
 import EtapaProduccionFormModal from '@/components/etapa-produccion-form-modal'
 
@@ -55,11 +55,8 @@ export default function EtapasProduccionPage() {
   const fetchEtapas = async () => {
     try {
       setLoading(true)
-      const response = await api.get<PaginatedResponse<EtapaProduccion> | EtapaProduccion[]>(
-        '/etapas-produccion/',
-      )
-      const data = Array.isArray(response) ? response : response.results ?? []
-      setEtapas(data)
+      const response = await api.get('/etapas-produccion/')
+      setEtapas(response.results || response)
     } catch (error: any) {
       toast({
         title: 'Error al cargar etapas',

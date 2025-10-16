@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion } from '@/lib/motion'
-import { Lock, User, AlertCircle, Loader2 } from '@/lib/icons'
+import { motion } from 'framer-motion'
+import { Lock, User, AlertCircle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAuth } from '@/stores/auth-store'

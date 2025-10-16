@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone', // Optimizes for containerized environments
   async rewrites() {
     return [
       {
@@ -8,11 +9,11 @@ const nextConfig = {
       },
     ]
   },
-  // Development optimizations
+  // Production optimizations
   poweredByHeader: false,
   compress: true,
-  reactStrictMode: false, // Disable in development
-  swcMinify: false, // Disable in development
+  reactStrictMode: true,
+  swcMinify: true,
   productionBrowserSourceMaps: false,
   // Optimize module loading
   experimental: {

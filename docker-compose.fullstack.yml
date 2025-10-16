@@ -50,23 +50,8 @@ services:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
       # Next.js del lado del servidor resuelve el backend vía la red interna de Docker
       - NEXT_PUBLIC_API_URL_SERVER=http://api:8000
-      # Optimizaciones
-      - NEXT_PUBLIC_ENABLE_CACHE=true
-      - WATCHPACK_POLLING=true
-      - NEXT_TELEMETRY_DISABLED=1
-      - NODE_OPTIONS="--max-old-space-size=4096"
     depends_on:
       - api
-    networks:
-      - siprosapp-network
-    restart: unless-stopped
-
-  # Redis para caching
-  redis:
-    image: redis:alpine
-    container_name: siprosapp-redis
-    ports:
-      - "6379:6379"
     networks:
       - siprosapp-network
     restart: unless-stopped
@@ -76,28 +61,20 @@ services:
     image: postgres:15-alpine
     container_name: siprosapp-postgres
     restart: unless-stopped
-    command: postgres -c shared_buffers=128MB -c work_mem=8MB
     environment:
       POSTGRES_DB: siprosa_mes
       POSTGRES_USER: siprosa_user
       POSTGRES_PASSWORD: siprosa_pass_123
-      PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "5432:5432"
     volumes:
-      - postgres-data:/var/lib/postgresql/data/pgdata
+      - postgres-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U siprosa_user -d siprosa_mes"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-        reservations:
-          memory: 256M
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
       - siprosapp-network
 

@@ -8,7 +8,7 @@ import {
   Siren,
   Users,
   Wrench,
-} from '@/lib/icons';
+} from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/stores/auth-store';
 

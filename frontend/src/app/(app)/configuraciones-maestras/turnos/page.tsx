@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion } from '@/lib/motion'
+import { motion } from 'framer-motion'
 import { useAuth } from '@/stores/auth-store'
 import { ProtectedRoute } from '@/components/protected-route'
 import {
@@ -24,7 +24,7 @@ import {
   Sunset,
   Package,
   type LucideIcon,
-} from '@/lib/icons'
+} from 'lucide-react'
 import { api } from '@/lib/api'
 import TurnoFormModal from '@/components/turnos/TurnoFormModal'
 import DataState from '@/components/common/data-state'

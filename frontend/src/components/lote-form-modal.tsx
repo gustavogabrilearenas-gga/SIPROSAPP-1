@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from '@/lib/motion'
-import { X, Save, Loader2, AlertCircle } from '@/lib/icons'
+import { motion, AnimatePresence } from 'framer-motion'
+import { X, Save, Loader2, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { api } from '@/lib/api'

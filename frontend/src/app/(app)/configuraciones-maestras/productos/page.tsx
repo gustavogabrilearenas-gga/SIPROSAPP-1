@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion } from '@/lib/motion'
+import { motion } from 'framer-motion'
 import { useAuth } from '@/stores/auth-store'
 import {
   Card,
@@ -19,7 +19,7 @@ import {
   Search,
   Edit,
   FileText,
-} from '@/lib/icons'
+} from 'lucide-react'
 import { api } from '@/lib/api'
 import { featureFlags } from '@/lib/feature-flags'
 import ProductoFormModal from '@/components/producto-form-modal'

@@ -70,8 +70,6 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
-    'django_redis',
-    'debug_toolbar',
     'core',
     'backend.usuarios.apps.UsuariosConfig',
     'backend.produccion',
@@ -85,7 +83,6 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',  # WhiteNoise debe ir después de SecurityMiddleware
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'debug_toolbar.middleware.DebugToolbarMiddleware',  # Django Debug Toolbar
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -315,52 +312,6 @@ LOGGING = {
         },
     },
 }
-
-# ============================================
-# CACHING CONFIGURATION
-# ============================================
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://redis:6379/1",
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            "SOCKET_CONNECT_TIMEOUT": 5,
-            "SOCKET_TIMEOUT": 5,
-            "COMPRESSOR": "django_redis.compressors.zlib.ZlibCompressor",
-            "CONNECTION_POOL_CLASS": "redis.connection.BlockingConnectionPool",
-            "CONNECTION_POOL_CLASS_KWARGS": {
-                "max_connections": 50,
-                "timeout": 20,
-            }
-        }
-    }
-}
-
-# Cache time to live is 15 minutes
-CACHE_TTL = 60 * 15
-
-# Cache session backend
-SESSION_ENGINE = "django.contrib.sessions.backends.cache"
-SESSION_CACHE_ALIAS = "default"
-
-# Cache for templates
-# Configuración de templates
-TEMPLATES[0]['OPTIONS'].update({
-    'loaders': [
-        ('django.template.loaders.cached.Loader', [
-            'django.template.loaders.filesystem.Loader',
-            'django.template.loaders.app_directories.Loader',
-        ]),
-    ],
-    'debug': DEBUG,
-})
-TEMPLATES[0]['APP_DIRS'] = False
-
-# Django Debug Toolbar
-INTERNAL_IPS = [
-    "127.0.0.1",
-]
 
 # ============================================
 # DJANGO REST FRAMEWORK

@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, User, Save, Eye, EyeOff } from '@/lib/icons'
-import { motion, AnimatePresence } from '@/lib/motion'
+import { X, User, Save, Eye, EyeOff } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { UsuarioDetalle } from '@/types/models'
 import { api } from '@/lib/api'
 import { toast } from '@/hooks/use-toast'
