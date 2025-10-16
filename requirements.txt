@@ -25,3 +25,13 @@ typing-extensions==4.15.0
 
 # Manejo de imágenes
 Pillow==11.1.0
+
+# Optimización y Caching
+django-redis==5.4.0
+redis==5.0.1
+hiredis==2.2.3
+django-debug-toolbar==4.2.0
+django-cache-memoize==0.1.10
+
+# Background Tasks
+celery==5.3.4
