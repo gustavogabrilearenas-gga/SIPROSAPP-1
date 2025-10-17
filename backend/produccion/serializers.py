@@ -3,6 +3,7 @@
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.utils import timezone
 from rest_framework import serializers
 
 from backend.core.permissions import is_admin, is_calidad, is_operario, is_supervisor
@@ -424,21 +425,18 @@ class LoteEtapaSerializer(serializers.ModelSerializer):
         if not getattr(user, "is_authenticated", False):
             return
 
-        es_admin = is_admin(user)
         es_supervisor = is_supervisor(user)
         es_calidad = is_calidad(user)
 
-        if is_operario(user) and not (es_admin or es_supervisor):
-            for field_name in ["aprobada_por_calidad", "fecha_aprobacion_calidad"]:
-                field = self.fields.get(field_name)
-                if field is not None:
-                    field.read_only = True
+        puede_gestionar_aprobacion = es_supervisor or es_calidad
 
-        if not (es_admin or es_supervisor or es_calidad):
+        if not puede_gestionar_aprobacion:
             for field_name in ["aprobada_por_calidad", "fecha_aprobacion_calidad"]:
-                field = self.fields.get(field_name)
-                if field is not None:
-                    field.read_only = True
+                self.fields.pop(field_name, None)
+        else:
+            fecha_field = self.fields.get("fecha_aprobacion_calidad")
+            if fecha_field is not None:
+                fecha_field.read_only = True
 
     def _calcular_cantidades(self):
         """Calcula cantidad_merma y porcentaje_rendimiento antes de guardar."""
@@ -489,6 +487,60 @@ class LoteEtapaSerializer(serializers.ModelSerializer):
                 }
             )
         return super().validate(attrs)
+
+    def _actualizar_aprobacion_calidad(self, instance, aprobacion):
+        if aprobacion is serializers.empty:
+            return instance
+
+        request = self.context.get("request")
+        user = getattr(request, "user", None) if request else None
+        puede_aprobar = bool(
+            user
+            and getattr(user, "is_authenticated", False)
+            and (is_supervisor(user) or is_calidad(user))
+        )
+
+        if aprobacion is None:
+            campos_a_actualizar = []
+            if instance.aprobada_por_calidad_id is not None:
+                instance.aprobada_por_calidad = None
+                campos_a_actualizar.append("aprobada_por_calidad")
+            if instance.fecha_aprobacion_calidad is not None:
+                instance.fecha_aprobacion_calidad = None
+                campos_a_actualizar.append("fecha_aprobacion_calidad")
+            if campos_a_actualizar:
+                instance.save(update_fields=campos_a_actualizar)
+            return instance
+
+        if not puede_aprobar:
+            return instance
+
+        aprobador = user if puede_aprobar else aprobacion
+
+        campos_a_actualizar = []
+        if instance.aprobada_por_calidad_id != getattr(aprobador, "id", None):
+            instance.aprobada_por_calidad = aprobador
+            campos_a_actualizar.append("aprobada_por_calidad")
+
+        instance.fecha_aprobacion_calidad = timezone.now()
+        campos_a_actualizar.append("fecha_aprobacion_calidad")
+
+        if campos_a_actualizar:
+            instance.save(update_fields=list(dict.fromkeys(campos_a_actualizar)))
+
+        return instance
+
+    def create(self, validated_data):
+        aprobacion = validated_data.pop("aprobada_por_calidad", serializers.empty)
+        validated_data.pop("fecha_aprobacion_calidad", None)
+        instance = super().create(validated_data)
+        return self._actualizar_aprobacion_calidad(instance, aprobacion)
+
+    def update(self, instance, validated_data):
+        aprobacion = validated_data.pop("aprobada_por_calidad", serializers.empty)
+        validated_data.pop("fecha_aprobacion_calidad", None)
+        instance = super().update(instance, validated_data)
+        return self._actualizar_aprobacion_calidad(instance, aprobacion)
 
 
 
