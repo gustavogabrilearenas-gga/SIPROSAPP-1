@@ -172,6 +172,12 @@ class OrdenTrabajo(models.Model):
         verbose_name = "Orden de Trabajo"
         verbose_name_plural = "Órdenes de Trabajo"
         ordering = ['-fecha_creacion']
+        indexes = [
+            models.Index(fields=['estado', 'prioridad'], name='ot_estado_prioridad_idx'),
+            models.Index(fields=['maquina', 'estado'], name='ot_maquina_estado_idx'),
+            models.Index(fields=['tipo', 'estado'], name='ot_tipo_estado_idx'),
+            models.Index(fields=['fecha_planificada'], name='ot_fecha_plan_idx'),
+        ]
 
     def __str__(self):
         return f"{self.codigo} - {self.titulo}"

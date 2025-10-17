@@ -81,7 +81,8 @@ class MaquinaViewSet(viewsets.ModelViewSet):
 
         maquina = self.get_object()
         lotes = (
-            Lote.objects.filter(etapas__maquina=maquina)
+            Lote.objects.select_related('producto', 'supervisor')
+            .filter(etapas__maquina=maquina)
             .distinct()
             .order_by('-fecha_creacion')[:10]
         )
@@ -152,7 +153,11 @@ class FormulaViewSet(viewsets.ModelViewSet):
 class EtapaProduccionViewSet(viewsets.ModelViewSet):
     """Gestión de etapas de producción."""
 
-    queryset = EtapaProduccion.objects.all().order_by('codigo')
+    queryset = (
+        EtapaProduccion.objects.prefetch_related('maquinas_permitidas')
+        .all()
+        .order_by('codigo')
+    )
     serializer_class = EtapaProduccionSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['codigo', 'nombre']

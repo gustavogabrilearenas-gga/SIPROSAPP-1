@@ -60,6 +60,12 @@ class Lote(models.Model):
         verbose_name = "Lote de Producción"
         verbose_name_plural = "Lotes de Producción"
         ordering = ['-fecha_creacion']
+        indexes = [
+            models.Index(fields=['estado', 'visible'], name='lote_estado_visible_idx'),
+            models.Index(fields=['producto', 'estado'], name='lote_prod_estado_idx'),
+            models.Index(fields=['turno', 'estado'], name='lote_turno_estado_idx'),
+            models.Index(fields=['fecha_real_inicio'], name='lote_fecha_inicio_idx'),
+        ]
 
     def __str__(self):
         return f"{self.codigo_lote} - {self.producto.nombre}"
