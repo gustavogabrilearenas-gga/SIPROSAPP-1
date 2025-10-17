@@ -1,8 +1,18 @@
 """Vistas del dominio de Producción"""
 
 import logging
+from decimal import Decimal
 
-from django.db.models import Count
+from django.db.models import (
+    Count,
+    DecimalField,
+    OuterRef,
+    Q,
+    Subquery,
+    Sum,
+    Value,
+)
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
@@ -57,6 +67,36 @@ class RegistroProduccionViewSet(viewsets.ReadOnlyModelViewSet):
         "producto",
         "turno",
     ]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        suma_cantidades = (
+            LoteEtapa.objects.filter(
+                maquina_id=OuterRef("maquina_id"),
+                lote__turno_id=OuterRef("turno_id"),
+            )
+            .filter(fecha_inicio__date__lte=OuterRef("fecha_produccion"))
+            .filter(
+                Q(fecha_fin__date__gte=OuterRef("fecha_produccion"))
+                | (
+                    Q(fecha_fin__isnull=True)
+                    & Q(fecha_inicio__date=OuterRef("fecha_produccion"))
+                )
+            )
+            .values("maquina_id")
+            .annotate(total=Sum("cantidad_salida"))
+            .values("total")
+        )
+
+        cantidad_field = DecimalField(max_digits=10, decimal_places=2)
+
+        return queryset.annotate(
+            cantidad_producida=Coalesce(
+                Subquery(suma_cantidades, output_field=cantidad_field),
+                Value(Decimal("0"), output_field=cantidad_field),
+            )
+        )
 
 
 class LoteViewSet(viewsets.ModelViewSet):

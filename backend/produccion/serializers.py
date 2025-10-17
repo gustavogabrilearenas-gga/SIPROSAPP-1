@@ -1,5 +1,7 @@
 """Serializers del dominio de Producción"""
 
+from decimal import Decimal
+
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
@@ -125,6 +127,7 @@ class LoteListSerializer(serializers.ModelSerializer):
             "supervisor",
             "supervisor_nombre",
         ]
+        read_only_fields = tuple(fields)
 
 
 class LoteSerializer(serializers.ModelSerializer):
@@ -331,6 +334,47 @@ class LoteEtapaSerializer(serializers.ModelSerializer):
                 field = self.fields.get(field_name)
                 if field is not None:
                     field.read_only = True
+
+    def _calcular_cantidades(self):
+        """Calcula cantidad_merma y porcentaje_rendimiento antes de guardar."""
+
+        if not hasattr(self, "validated_data"):
+            return
+
+        datos = self.validated_data
+
+        entrada = datos.get("cantidad_entrada")
+        salida = datos.get("cantidad_salida")
+
+        if entrada is None and self.instance is not None:
+            entrada = self.instance.cantidad_entrada
+        if salida is None and self.instance is not None:
+            salida = self.instance.cantidad_salida
+
+        if entrada is None or salida is None:
+            datos["cantidad_merma"] = Decimal("0")
+            datos["porcentaje_rendimiento"] = None
+            return
+
+        entrada_decimal = Decimal(str(entrada))
+        salida_decimal = Decimal(str(salida))
+
+        merma = entrada_decimal - salida_decimal
+        if merma < Decimal("0"):
+            merma = Decimal("0")
+
+        if entrada_decimal > Decimal("0"):
+            rendimiento = (salida_decimal / entrada_decimal) * Decimal("100")
+            rendimiento = rendimiento.quantize(Decimal("0.01"))
+        else:
+            rendimiento = None
+
+        datos["cantidad_merma"] = merma.quantize(Decimal("0.01"))
+        datos["porcentaje_rendimiento"] = rendimiento
+
+    def save(self, **kwargs):
+        self._calcular_cantidades()
+        return super().save(**kwargs)
 
 
 
