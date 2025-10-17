@@ -1,22 +1,25 @@
-"""
-Vistas de autenticación para SIPROSA MES
-"""
+"""Vistas relacionadas con autenticación y usuarios."""
 
+from django.contrib.auth import authenticate
+from django.contrib.auth.models import User
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.contrib.auth import authenticate
-from django.contrib.auth.models import User
-from django.views.decorators.csrf import csrf_exempt
-from django.utils import timezone
+
+from backend.core.throttles import LoginRateThrottle, RegisterRateThrottle
 from backend.usuarios.serializers import UserSerializer
 
 
 @csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@throttle_classes([LoginRateThrottle])
 def login_view(request):
     """
     Endpoint de login
@@ -152,6 +155,7 @@ def refresh_token_view(request):
 @csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@throttle_classes([RegisterRateThrottle])
 def register_view(request):
     """
     Registro de nuevo usuario (OPCIONAL - solo para demo)
@@ -163,20 +167,34 @@ def register_view(request):
     email = request.data.get('email', '')
     first_name = request.data.get('first_name', '')
     last_name = request.data.get('last_name', '')
-    
+
     if not username or not password:
         return Response(
             {'error': 'Usuario y contraseña son requeridos'},
             status=status.HTTP_400_BAD_REQUEST
         )
-    
+
     # Verificar si el usuario ya existe
-    if User.objects.filter(username=username).exists():
+    if User.objects.filter(username__iexact=username).exists():
         return Response(
             {'error': 'El usuario ya existe'},
             status=status.HTTP_400_BAD_REQUEST
         )
-    
+
+    if email and User.objects.filter(email__iexact=email).exists():
+        return Response(
+            {'error': 'El email ya está registrado'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        validate_password(password)
+    except DjangoValidationError as exc:
+        return Response(
+            {'errors': {'password': list(exc.messages)}},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     # Crear usuario
     user = User.objects.create_user(
         username=username,
