@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-RUN_MIGRATIONS=${RUN_MIGRATIONS:-true}
+RUN_MIGRATIONS=${RUN_MIGRATIONS:-false}
 CREATE_SUPERUSER=${CREATE_SUPERUSER:-true}
 
 printf '⏳ Esperando a PostgreSQL...\n'
@@ -12,11 +12,10 @@ done
 printf '✅ PostgreSQL está listo\n'
 
 if [ "$RUN_MIGRATIONS" = "true" ]; then
-  printf '🔄 Aplicando migraciones...\n'
-  python manage.py migrate --noinput
-else
-  printf '⏭️ RUN_MIGRATIONS=false: omitiendo migrate\n'
+  printf '🚫 Las migraciones de Django están deshabilitadas por política del proyecto. Ajusta la base de datos manualmente.\n'
 fi
+
+printf '⏭️ Las migraciones siempre se omiten; se espera que la base de datos esté sincronizada manualmente.\n'
 
 if [ "$CREATE_SUPERUSER" = "true" ]; then
   printf '👤 Verificando/creando superusuario por defecto...\n'
