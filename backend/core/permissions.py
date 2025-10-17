@@ -30,6 +30,10 @@ def is_operario(user) -> bool:
     return _is_in(user, "Operario")
 
 
+def is_calidad(user) -> bool:
+    return _is_in(user, "Calidad")
+
+
 class IsAdmin(BasePermission):
     def has_permission(self, request, view):
         return is_admin(request.user)
@@ -55,3 +59,32 @@ class IsAdminOrOperario(BasePermission):
     def has_permission(self, request, view):
         u = request.user
         return is_admin(u) or is_operario(u)
+
+
+class IsCalidad(BasePermission):
+    def has_permission(self, request, view):
+        return is_calidad(request.user)
+
+
+class IsSupervisorOrCalidad(BasePermission):
+    def has_permission(self, request, view):
+        u = request.user
+        return is_supervisor(u) or is_calidad(u)
+
+
+class IsAdminSupervisorOrCalidad(BasePermission):
+    def has_permission(self, request, view):
+        u = request.user
+        return is_admin(u) or is_supervisor(u) or is_calidad(u)
+
+
+class IsAdminSupervisorOrOperario(BasePermission):
+    def has_permission(self, request, view):
+        u = request.user
+        return is_admin(u) or is_supervisor(u) or is_operario(u)
+
+
+class IsAdminSupervisorOperarioOrCalidad(BasePermission):
+    def has_permission(self, request, view):
+        u = request.user
+        return is_admin(u) or is_supervisor(u) or is_operario(u) or is_calidad(u)

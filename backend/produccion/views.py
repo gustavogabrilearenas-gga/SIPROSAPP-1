@@ -19,16 +19,14 @@ from backend.produccion.serializers import (
     LoteListSerializer,
     LoteSerializer,
 )
-from backend.core.permissions import IsAdmin, IsAdminOrSupervisor
-
-
-class IsAdminOrOperario(permissions.BasePermission):
-    def has_permission(self, request, view):
-        user = request.user
-        return user and (
-            user.is_staff
-            or user.groups.filter(name__in=["operario", "supervisor"]).exists()
-        )
+from backend.core.permissions import (
+    IsAdmin,
+    IsAdminOrOperario,
+    IsAdminOrSupervisor,
+    IsAdminSupervisorOperarioOrCalidad,
+    IsAdminSupervisorOrCalidad,
+    IsAdminSupervisorOrOperario,
+)
 
 
 class RegistroProduccionViewSet(viewsets.ReadOnlyModelViewSet):
@@ -176,7 +174,7 @@ class LoteViewSet(viewsets.ModelViewSet):
             ip = request.META.get('REMOTE_ADDR')
         return ip
     
-    @action(detail=True, methods=['post'], permission_classes=[IsAdminOrOperario])
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminSupervisorOrOperario])
     def iniciar(self, request, pk=None):
         """
         Endpoint: /api/produccion/lotes/{id}/iniciar/
@@ -210,7 +208,7 @@ class LoteViewSet(viewsets.ModelViewSet):
             'lote': serializer.data
         })
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAdminOrOperario])
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminSupervisorOrOperario])
     def completar(self, request, pk=None):
         """
         Endpoint: /api/produccion/lotes/{id}/completar/
@@ -264,7 +262,7 @@ class LoteViewSet(viewsets.ModelViewSet):
             'lote': serializer.data
         })
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAdminOrOperario])
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminSupervisorOrOperario])
     def pausar(self, request, pk=None):
         """
         Endpoint: /api/produccion/lotes/{id}/pausar/
@@ -509,7 +507,7 @@ class LoteViewSet(viewsets.ModelViewSet):
         
         return Response(resumen)
     
-    @action(detail=True, methods=['post'], permission_classes=[IsAdminOrSupervisor])
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminSupervisorOrCalidad])
     def liberar(self, request, pk=None):
         """
         Endpoint: /api/lotes/{id}/liberar/
@@ -602,7 +600,7 @@ class LoteViewSet(viewsets.ModelViewSet):
             'firma': ElectronicSignatureSerializer(firma).data
         })
     
-    @action(detail=True, methods=['post'], permission_classes=[IsAdminOrSupervisor])
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminSupervisorOrCalidad])
     def rechazar(self, request, pk=None):
         """
         Endpoint: /api/lotes/{id}/rechazar/
@@ -722,15 +720,27 @@ class LoteEtapaViewSet(viewsets.ModelViewSet):
         return queryset
     
     def get_permissions(self):
-        if self.request.method in permissions.SAFE_METHODS:
-            perm_classes = [IsAdminOrSupervisor]
-        elif self.request.method == 'POST':
-            perm_classes = [IsAdminOrOperario]  # Registrar etapa: Admin u Operario
+        action = getattr(self, "action", None)
+
+        if action:
+            bound_action = getattr(self, action, None)
+            custom_permissions = getattr(bound_action, "permission_classes", None)
+            if custom_permissions is not None:
+                return [permission() for permission in custom_permissions]
+
+        if action in ["list", "retrieve"]:
+            perm_classes = [IsAdminSupervisorOperarioOrCalidad]
+        elif action == "create":
+            perm_classes = [IsAdminSupervisorOrOperario]
+        elif action in ["update", "partial_update"]:
+            perm_classes = [IsAdminSupervisorOperarioOrCalidad]
+        elif action == "destroy":
+            perm_classes = [IsAdmin]
         else:
             perm_classes = [IsAdmin]
-        return [p() for p in perm_classes]
+        return [permission() for permission in perm_classes]
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAdminOrOperario])
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminSupervisorOrOperario])
     def iniciar(self, request, pk=None):
         """
         Endpoint: /api/lotes-etapas/{id}/iniciar/
@@ -766,7 +776,7 @@ class LoteEtapaViewSet(viewsets.ModelViewSet):
             'lote_etapa': serializer.data
         })
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAdminOrOperario])
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminSupervisorOrOperario])
     def completar(self, request, pk=None):
         """
         Endpoint: /api/lotes-etapas/{id}/completar/
@@ -815,7 +825,7 @@ class LoteEtapaViewSet(viewsets.ModelViewSet):
             'lote_etapa': serializer.data
         })
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAdminOrOperario])
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminSupervisorOrOperario])
     def pausar(self, request, pk=None):
         """
         Endpoint: /api/lotes-etapas/{id}/pausar/

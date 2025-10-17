@@ -3,6 +3,8 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
+from backend.core.permissions import is_admin, is_calidad, is_operario, is_supervisor
+
 from backend.produccion.models import Lote, LoteEtapa, RegistroProduccion
 
 
@@ -189,6 +191,44 @@ class LoteSerializer(serializers.ModelSerializer):
             "unidad",
         ]
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get("request")
+        if not request:
+            return
+
+        user = request.user
+        if not getattr(user, "is_authenticated", False):
+            return
+
+        es_admin = is_admin(user)
+        es_supervisor = is_supervisor(user)
+
+        if is_operario(user) and not (es_admin or es_supervisor):
+            campos_bloqueados = {
+                "estado",
+                "unidad",
+                "fecha_planificada_inicio",
+                "fecha_planificada_fin",
+                "fecha_real_inicio",
+                "fecha_real_fin",
+                "cantidad_planificada",
+                "cantidad_producida",
+                "cantidad_rechazada",
+                "rendimiento",
+                "visible",
+                "prioridad",
+                "supervisor",
+                "cancelado_por",
+                "fecha_cancelacion",
+                "motivo_cancelacion",
+            }
+
+            for field_name in campos_bloqueados:
+                field = self.fields.get(field_name)
+                if field is not None:
+                    field.read_only = True
+
     def validate(self, data):
         """Validaciones de negocio"""
         if data.get("fecha_real_fin") and data.get("fecha_real_inicio"):
@@ -263,9 +303,34 @@ class LoteEtapaSerializer(serializers.ModelSerializer):
             "fecha_inicio",
             "fecha_fin",
             "requiere_aprobacion_calidad",
-            "aprobada_por_calidad",
-            "fecha_aprobacion_calidad",
         ]
+
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get("request")
+        if not request:
+            return
+
+        user = request.user
+        if not getattr(user, "is_authenticated", False):
+            return
+
+        es_admin = is_admin(user)
+        es_supervisor = is_supervisor(user)
+        es_calidad = is_calidad(user)
+
+        if is_operario(user) and not (es_admin or es_supervisor):
+            for field_name in ["aprobada_por_calidad", "fecha_aprobacion_calidad"]:
+                field = self.fields.get(field_name)
+                if field is not None:
+                    field.read_only = True
+
+        if not (es_admin or es_supervisor or es_calidad):
+            for field_name in ["aprobada_por_calidad", "fecha_aprobacion_calidad"]:
+                field = self.fields.get(field_name)
+                if field is not None:
+                    field.read_only = True
 
 
 
