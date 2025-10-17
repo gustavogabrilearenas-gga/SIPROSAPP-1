@@ -245,7 +245,7 @@ class LoteEtapa(TimeWindowMixin):
         help_text="Lista de parámetros: [{nombre, valor, unidad, conforme}]"
     )
     observaciones = models.TextField(blank=True)
-    requiere_aprobacion_calidad = models.BooleanField(default=False)
+    requiere_aprobacion_calidad = models.BooleanField(default=False, editable=False)
     aprobada_por_calidad = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
