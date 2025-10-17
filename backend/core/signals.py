@@ -1,19 +1,20 @@
-"""
-Señales Django para auditoría automática
-Sistema de trazabilidad completa de cambios en SIPROSA MES
+"""Señales Django para auditoría automática.
+
+Sistema de trazabilidad completa de cambios en SIPROSA MES.
 """
 
-from django.db.models.signals import post_save, pre_save, post_delete
-from django.dispatch import receiver
-from django.contrib.auth.models import User
+import json
 from threading import local
 
-from .auditoria_models import LogAuditoria
+from django.contrib.auth.models import User
+from django.db.models.signals import post_delete, post_save, pre_save
+from django.dispatch import receiver
+
+from backend.auditoria.models import LogAuditoria
 from backend.incidencias.models import Incidente
 from backend.mantenimiento.models import OrdenTrabajo
 from backend.produccion.models import Lote, LoteEtapa
 from backend.usuarios.models import UserProfile
-import json
 
 
 # Variable por hilo para almacenar el estado anterior del objeto antes de modificarlo

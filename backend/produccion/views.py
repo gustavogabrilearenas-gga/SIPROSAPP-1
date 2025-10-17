@@ -1,25 +1,24 @@
 """Vistas del dominio de Producción"""
 
+import logging
+
 from django.db.models import Count
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
-import logging
 
 logger = logging.getLogger(__name__)
-from django.utils.dateparse import parse_datetime
 from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from backend.auditoria.models import ElectronicSignature, LogAuditoria
+from backend.auditoria.serializers import ElectronicSignatureSerializer
 from backend.produccion.models import Lote, LoteEtapa
 from backend.produccion.serializers import (
     LoteEtapaSerializer,
     LoteListSerializer,
     LoteSerializer,
 )
-
-from backend.core.auditoria_models import ElectronicSignature, LogAuditoria
-from backend.core.auditoria_serializers import ElectronicSignatureSerializer
 from backend.core.permissions import IsAdmin, IsAdminOrOperario, IsAdminOrSupervisor
 
 

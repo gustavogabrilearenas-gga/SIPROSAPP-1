@@ -1,19 +1,29 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
-echo "⏳ Esperando a PostgreSQL..."
-until python manage.py check --database default > /dev/null 2>&1; do
-  echo "PostgreSQL no está listo - esperando..."
+RUN_MIGRATIONS=${RUN_MIGRATIONS:-true}
+CREATE_SUPERUSER=${CREATE_SUPERUSER:-true}
+
+printf '⏳ Esperando a PostgreSQL...\n'
+until python manage.py check --database default >/dev/null 2>&1; do
+  printf 'PostgreSQL no está listo - esperando...\n'
   sleep 2
 done
-echo "✅ PostgreSQL está listo"
+printf '✅ PostgreSQL está listo\n'
 
-echo "🔄 Aplicando migraciones..."
-python manage.py migrate --noinput
+if [ "$RUN_MIGRATIONS" = "true" ]; then
+  printf '🔄 Aplicando migraciones...\n'
+  python manage.py migrate --noinput
+else
+  printf '⏭️ RUN_MIGRATIONS=false: omitiendo migrate\n'
+fi
 
-echo "👤 Verificando/creando superusuario por defecto..."
-python manage.py create_superuser_if_none
+if [ "$CREATE_SUPERUSER" = "true" ]; then
+  printf '👤 Verificando/creando superusuario por defecto...\n'
+  python manage.py create_superuser_if_none
+else
+  printf '⏭️ CREATE_SUPERUSER=false: omitiendo creación de superusuario\n'
+fi
 
-echo "🚀 Iniciando servidor Django..."
+printf '🚀 Iniciando servidor Django...\n'
 exec "$@"
-

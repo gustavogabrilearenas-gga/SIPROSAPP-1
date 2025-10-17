@@ -1,4 +1,4 @@
-"""Vistas del dominio de auditoría"""
+"""ViewSets para exponer el dominio de auditoría."""
 
 from datetime import datetime
 
@@ -6,17 +6,20 @@ from rest_framework import filters, mixins, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from .permissions import IsAdmin, IsAdminOrSupervisor
-from .auditoria_models import ElectronicSignature, LogAuditoria
-from .auditoria_serializers import (
+from backend.core.permissions import IsAdmin, IsAdminOrSupervisor
+
+from .models import ElectronicSignature, LogAuditoria
+from .serializers import (
     CreateSignatureSerializer,
     ElectronicSignatureSerializer,
     LogAuditoriaSerializer,
 )
 
 
-class LogAuditoriaViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
-    """Consulta de logs de auditoría con filtros"""
+class LogAuditoriaViewSet(
+    mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet
+):
+    """Consulta de logs de auditoría con filtros y paginado controlado."""
 
     serializer_class = LogAuditoriaSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -25,7 +28,7 @@ class LogAuditoriaViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, view
     def get_queryset(self):
         return LogAuditoria.objects.select_related('usuario').all()
 
-    def list(self, request, *args, **kwargs):
+    def list(self, request, *args, **kwargs):  # noqa: D401 - descripción personalizada
         queryset = self.get_queryset()
 
         modelo = request.query_params.get('modelo')
@@ -61,26 +64,30 @@ class LogAuditoriaViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, view
         logs = list(queryset[:100])
 
         serializer = self.get_serializer(logs, many=True)
-        return Response({
-            'total': total,
-            'filtros': {
-                'modelo': modelo,
-                'objeto_id': objeto_id,
-                'desde': desde,
-                'hasta': hasta,
-                'usuario': usuario_id,
-                'accion': accion,
-            },
-            'logs': serializer.data,
-        })
+        return Response(
+            {
+                'total': total,
+                'filtros': {
+                    'modelo': modelo,
+                    'objeto_id': objeto_id,
+                    'desde': desde,
+                    'hasta': hasta,
+                    'usuario': usuario_id,
+                    'accion': accion,
+                },
+                'logs': serializer.data,
+            }
+        )
 
 
 class ElectronicSignatureViewSet(viewsets.ModelViewSet):
-    """ViewSet para gestionar Firmas Electrónicas"""
+    """Gestión de firmas electrónicas e invalidación controlada."""
 
-    queryset = ElectronicSignature.objects.select_related(
-        'user', 'invalidated_by'
-    ).all().order_by('-timestamp')
+    queryset = (
+        ElectronicSignature.objects.select_related('user', 'invalidated_by')
+        .all()
+        .order_by('-timestamp')
+    )
     serializer_class = ElectronicSignatureSerializer
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [filters.OrderingFilter]
@@ -99,8 +106,7 @@ class ElectronicSignatureViewSet(viewsets.ModelViewSet):
 
         is_valid = self.request.query_params.get('is_valid')
         if is_valid is not None:
-            is_valid = is_valid.lower() == 'true'
-            queryset = queryset.filter(is_valid=is_valid)
+            queryset = queryset.filter(is_valid=is_valid.lower() == 'true')
 
         return queryset
 
@@ -110,36 +116,37 @@ class ElectronicSignatureViewSet(viewsets.ModelViewSet):
         return ElectronicSignatureSerializer
 
     def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
-            perm_classes = [permissions.IsAuthenticated]
-        elif self.action == 'create':
+        if self.action in ['list', 'retrieve', 'create']:
             perm_classes = [permissions.IsAuthenticated]
         else:
             perm_classes = [IsAdmin]
-        return [p() for p in perm_classes]
+        return [perm() for perm in perm_classes]
 
     @action(detail=True, methods=['post'], permission_classes=[IsAdminOrSupervisor])
     def invalidar(self, request, pk=None):
-        """Endpoint: /api/firmas/{id}/invalidar/"""
+        """Endpoint para invalidar firmas electrónicas."""
+
         firma = self.get_object()
 
         if not firma.is_valid:
             return Response(
                 {'error': 'Esta firma ya está invalidada'},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         reason = request.data.get('reason', '')
         if not reason:
             return Response(
                 {'error': 'Debe proporcionar un motivo de invalidación'},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         firma.invalidate(user=request.user, reason=reason)
 
         serializer = ElectronicSignatureSerializer(firma)
-        return Response({
-            'message': 'Firma invalidada exitosamente',
-            'firma': serializer.data,
-        })
+        return Response(
+            {
+                'message': 'Firma invalidada exitosamente',
+                'firma': serializer.data,
+            }
+        )
