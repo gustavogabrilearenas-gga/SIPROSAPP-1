@@ -9,8 +9,18 @@ from backend.produccion.views import (
 )
 
 router = DefaultRouter()
-router.register(r"registros", RegistroProduccionViewSet, basename="registro-produccion")
-router.register(r"lotes", LoteViewSet, basename="lote")
-router.register(r"lotes-etapas", LoteEtapaViewSet, basename="loteetapa")
+router.register(
+    r"planificacion-lotes", LoteViewSet, basename="planificacion-lote"
+)
+router.register(
+    r"ejecucion-etapas-operario",
+    LoteEtapaViewSet,
+    basename="ejecucion-etapa-operario",
+)
+router.register(
+    r"resumen-produccion-automatico",
+    RegistroProduccionViewSet,
+    basename="resumen-produccion",
+)
 
 urlpatterns = router.urls

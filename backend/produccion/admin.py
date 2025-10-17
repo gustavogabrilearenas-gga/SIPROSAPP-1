@@ -7,6 +7,10 @@ from backend.core.permissions import is_admin, is_calidad, is_operario, is_super
 from backend.produccion.models import Lote, LoteEtapa, RegistroProduccion
 
 
+def _is_admin_or_supervisor(user):
+    return is_admin(user) or is_supervisor(user)
+
+
 class LoteEtapaInline(admin.TabularInline):
     model = LoteEtapa
     extra = 0
@@ -74,6 +78,26 @@ class LoteAdmin(admin.ModelAdmin):
             )
         return tuple(dict.fromkeys(exclude)) or None
 
+    def has_view_permission(self, request, obj=None):
+        return _is_admin_or_supervisor(request.user)
+
+    def has_add_permission(self, request):
+        return _is_admin_or_supervisor(request.user)
+
+    def has_change_permission(self, request, obj=None):
+        return _is_admin_or_supervisor(request.user)
+
+    def has_delete_permission(self, request, obj=None):
+        return is_admin(request.user)
+
+    def has_module_permission(self, request):
+        return self.has_view_permission(request)
+
+    def get_model_perms(self, request):
+        if not self.has_module_permission(request):
+            return {}
+        return super().get_model_perms(request)
+
 
 @admin.register(LoteEtapa)
 class LoteEtapaAdmin(admin.ModelAdmin):
@@ -128,6 +152,25 @@ class LoteEtapaAdmin(admin.ModelAdmin):
         exclude = [field for field in exclude if field in valid_fields]
         return tuple(dict.fromkeys(exclude)) or None
 
+    def has_view_permission(self, request, obj=None):
+        user = request.user
+        return any(
+            (
+                is_admin(user),
+                is_supervisor(user),
+                is_calidad(user),
+                is_operario(user),
+            )
+        )
+
+    def has_module_permission(self, request):
+        return self.has_view_permission(request)
+
+    def get_model_perms(self, request):
+        if not self.has_module_permission(request):
+            return {}
+        return super().get_model_perms(request)
+
 
 @admin.register(RegistroProduccion)
 class RegistroProduccionAdmin(admin.ModelAdmin):
@@ -155,7 +198,8 @@ class RegistroProduccionAdmin(admin.ModelAdmin):
     ordering = ("-fecha_produccion", "-fecha_registro")
 
     def has_view_permission(self, request, obj=None):
-        return getattr(request.user, "is_authenticated", False)
+        user = request.user
+        return getattr(user, "is_authenticated", False) and _is_admin_or_supervisor(user)
 
     def has_add_permission(self, request):
         return is_admin(request.user)
@@ -165,4 +209,12 @@ class RegistroProduccionAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return is_admin(request.user)
+
+    def has_module_permission(self, request):
+        return self.has_view_permission(request)
+
+    def get_model_perms(self, request):
+        if not self.has_module_permission(request):
+            return {}
+        return super().get_model_perms(request)
 

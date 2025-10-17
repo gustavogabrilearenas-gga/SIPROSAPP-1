@@ -492,7 +492,7 @@ class RegistroProduccionViewSetTests(RegistroProduccionDBTestCase):
             hora_fin=time(18, 0),
         )
 
-        url = reverse("registro-produccion-list")
+        url = reverse("resumen-produccion-list")
         response = self.client.get(
             url,
             {
@@ -520,7 +520,7 @@ class RegistroProduccionViewSetTests(RegistroProduccionDBTestCase):
             registrado_por=self.operario,
         )
 
-        url = reverse("registro-produccion-list")
+        url = reverse("resumen-produccion-list")
         response = self.client.get(
             url,
             {
@@ -544,7 +544,7 @@ class RegistroProduccionViewSetTests(RegistroProduccionDBTestCase):
         self.assertEqual(lote.cantidad_producida, 100)
 
     def test_operario_no_puede_crear_registro(self):
-        url = reverse("registro-produccion-list")
+        url = reverse("resumen-produccion-list")
         payload = self.serializer_payload(
             fecha_produccion=date(2024, 11, 5),
             hora_inicio=time(6, 0),

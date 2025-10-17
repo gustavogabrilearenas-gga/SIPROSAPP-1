@@ -57,8 +57,8 @@ class RegistroProduccion(models.Model):
     class Meta:
         managed = False
         db_table = "eventos_registroproduccion"
-        verbose_name = "Registro de Producción"
-        verbose_name_plural = "Registros de Producción"
+        verbose_name = "Resumen · Producción (Automático)"
+        verbose_name_plural = "Resumen · Producción (Automático)"
         ordering = ["-fecha_produccion", "-fecha_registro"]
         indexes = [
             models.Index(fields=["-fecha_produccion", "maquina_id"]),
@@ -145,8 +145,8 @@ class Lote(models.Model):
     visible = models.BooleanField(default=True, verbose_name="Visible en listado")
 
     class Meta:
-        verbose_name = "Lote de Producción"
-        verbose_name_plural = "Lotes de Producción"
+        verbose_name = "Planificación · Lote"
+        verbose_name_plural = "Planificación · Lotes"
         ordering = ['-fecha_creacion']
         indexes = [
             models.Index(fields=['estado', 'visible'], name='lote_estado_visible_idx'),
@@ -256,8 +256,8 @@ class LoteEtapa(TimeWindowMixin):
     fecha_aprobacion_calidad = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        verbose_name = "Etapa de Lote"
-        verbose_name_plural = "Etapas de Lotes"
+        verbose_name = "Ejecución · Etapa (Operario)"
+        verbose_name_plural = "Ejecución · Etapas (Operario)"
         ordering = ['lote', 'orden']
         unique_together = ['lote', 'orden']
 

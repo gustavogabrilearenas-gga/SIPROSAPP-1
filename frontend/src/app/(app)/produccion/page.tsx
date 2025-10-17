@@ -60,7 +60,7 @@ function LotesContent() {
       const params: Record<string, any> = { page: requestedPage }
       if (filtroEstado !== 'todos') params.estado = filtroEstado
       if (mostrarOcultos) params.mostrar_ocultos = 'true'
-      const response = await api.get('/produccion/lotes/', { params }) as { results: LoteListItem[]; count: number }
+      const response = await api.get('/produccion/planificacion-lotes/', { params }) as { results: LoteListItem[]; count: number }
       setLotes(response.results)
       setCount(response.count)
       setPage(requestedPage)
@@ -123,16 +123,16 @@ function LotesContent() {
       let response: { message?: string } | null = null
       switch (action) {
         case 'iniciar':
-          response = await api.post(`/produccion/lotes/${lote.id}/iniciar/`)
+          response = await api.post(`/produccion/planificacion-lotes/${lote.id}/iniciar/`)
           break
         case 'pausar':
-          response = await api.post(`/produccion/lotes/${lote.id}/pausar/`, { motivo: motivo ?? '' })
+          response = await api.post(`/produccion/planificacion-lotes/${lote.id}/pausar/`, { motivo: motivo ?? '' })
           break
         case 'completar':
-          response = await api.post(`/produccion/lotes/${lote.id}/completar/`)
+          response = await api.post(`/produccion/planificacion-lotes/${lote.id}/completar/`)
           break
         case 'cancelar':
-          response = await api.post(`/produccion/lotes/${lote.id}/cancelar/`, { motivo: motivo ?? '' })
+          response = await api.post(`/produccion/planificacion-lotes/${lote.id}/cancelar/`, { motivo: motivo ?? '' })
           break
         default:
           response = null

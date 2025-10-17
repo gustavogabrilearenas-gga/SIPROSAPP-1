@@ -38,7 +38,6 @@ from backend.produccion.serializers import (
 )
 from backend.core.permissions import (
     IsAdmin,
-    IsAdminOrOperario,
     IsAdminOrSupervisor,
     IsAdminSupervisorOperarioOrCalidad,
     IsAdminSupervisorOrCalidad,
@@ -60,7 +59,7 @@ class RegistroProduccionViewSet(viewsets.ReadOnlyModelViewSet):
         .order_by("-fecha_produccion", "-fecha_registro")
     )
     serializer_class = RegistroProduccionSerializer
-    permission_classes = [IsAdminSupervisorOperarioOrCalidad]
+    permission_classes = [IsAdminOrSupervisor]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = [
         "maquina__codigo",
@@ -234,13 +233,13 @@ class LoteViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.request.method in permissions.SAFE_METHODS:
-            # Ver lotes: Admin, Supervisor, Operario o Calidad
-            perm_classes = [IsAdminSupervisorOperarioOrCalidad]
+            # Ver lotes: sólo Admin o Supervisor
+            perm_classes = [IsAdminOrSupervisor]
         elif self.request.method == 'POST':
-            # Crear lote: Admin, Supervisor o Operario
+            # Crear lote: Admin o Supervisor
             perm_classes = [IsAdminOrSupervisor]
         elif self.request.method in ['PUT', 'PATCH']:
-            # Editar lote: Admin, Supervisor o Operario (para cambiar estados, etc.)
+            # Editar lote: Admin o Supervisor
             perm_classes = [IsAdminOrSupervisor]
         else:
             # Eliminar: Solo Admin (por seguridad)
@@ -273,10 +272,10 @@ class LoteViewSet(viewsets.ModelViewSet):
             ip = request.META.get('REMOTE_ADDR')
         return ip
     
-    @action(detail=True, methods=['post'], permission_classes=[IsAdminSupervisorOrOperario])
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminOrSupervisor])
     def iniciar(self, request, pk=None):
         """
-        Endpoint: /api/produccion/lotes/{id}/iniciar/
+        Endpoint: /api/produccion/planificacion-lotes/{id}/iniciar/
         Inicia un lote (cambia estado a EN_PROCESO)
         """
         lote = self.get_object()
@@ -307,10 +306,10 @@ class LoteViewSet(viewsets.ModelViewSet):
             'lote': serializer.data
         })
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAdminSupervisorOrOperario])
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminOrSupervisor])
     def completar(self, request, pk=None):
         """
-        Endpoint: /api/produccion/lotes/{id}/completar/
+        Endpoint: /api/produccion/planificacion-lotes/{id}/completar/
         Completa un lote (cambia estado a FINALIZADO)
         """
         lote = self.get_object()
@@ -361,10 +360,10 @@ class LoteViewSet(viewsets.ModelViewSet):
             'lote': serializer.data
         })
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAdminSupervisorOrOperario])
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminOrSupervisor])
     def pausar(self, request, pk=None):
         """
-        Endpoint: /api/produccion/lotes/{id}/pausar/
+        Endpoint: /api/produccion/planificacion-lotes/{id}/pausar/
         Pausa un lote (cambia estado a PAUSADO)
         """
         lote = self.get_object()
@@ -407,7 +406,7 @@ class LoteViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[IsAdminOrSupervisor])
     def cancelar(self, request, pk=None):
         """
-        Endpoint: /api/lotes/{id}/cancelar/
+        Endpoint: /api/produccion/planificacion-lotes/{id}/cancelar/
         Cancela un lote (solo si est� en estado PLANIFICADO)
         """
         lote = self.get_object()
@@ -469,7 +468,7 @@ class LoteViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def logs_auditoria(self, request, pk=None):
         """
-        Endpoint: /api/lotes/{id}/logs_auditoria/
+        Endpoint: /api/produccion/planificacion-lotes/{id}/logs_auditoria/
         Obtiene todos los logs de auditoria de un lote espec�fico
         """
         lote = self.get_object()
@@ -496,7 +495,7 @@ class LoteViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAdminUser])
     def ocultar(self, request, pk=None):
         """
-        Endpoint: /api/lotes/{id}/ocultar/
+        Endpoint: /api/produccion/planificacion-lotes/{id}/ocultar/
         Oculta un lote del listado general (solo admin)
         """
         lote = self.get_object()
@@ -539,7 +538,7 @@ class LoteViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAdminUser])
     def mostrar(self, request, pk=None):
         """
-        Endpoint: /api/lotes/{id}/mostrar/
+        Endpoint: /api/produccion/planificacion-lotes/{id}/mostrar/
         Muestra un lote oculto en el listado general (solo admin)
         """
         lote = self.get_object()
@@ -572,14 +571,14 @@ class LoteViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'])
     def en_proceso(self, request):
-        """Endpoint: /api/lotes/en_proceso/"""
+        """Endpoint: /api/produccion/planificacion-lotes/en_proceso/"""
         lotes = self.get_queryset().filter(estado='EN_PROCESO')
         serializer = self.get_serializer(lotes, many=True)
         return Response(serializer.data)
     
     @action(detail=False, methods=['get'])
     def resumen_hoy(self, request):
-        """Endpoint: /api/lotes/resumen_hoy/"""
+        """Endpoint: /api/produccion/planificacion-lotes/resumen_hoy/"""
         hoy = timezone.now().date()
         lotes_hoy = self.get_queryset().filter(
             fecha_real_inicio__date=hoy
@@ -609,7 +608,7 @@ class LoteViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[IsAdminSupervisorOrCalidad])
     def liberar(self, request, pk=None):
         """
-        Endpoint: /api/lotes/{id}/liberar/
+        Endpoint: /api/produccion/planificacion-lotes/{id}/liberar/
         Libera un lote (calidad aprueba) - requiere firma electrónica
         """
         lote = self.get_object()
@@ -702,7 +701,7 @@ class LoteViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[IsAdminSupervisorOrCalidad])
     def rechazar(self, request, pk=None):
         """
-        Endpoint: /api/lotes/{id}/rechazar/
+        Endpoint: /api/produccion/planificacion-lotes/{id}/rechazar/
         Rechaza un lote (calidad no aprueba) - requiere firma electrónica
         """
         lote = self.get_object()
@@ -842,7 +841,7 @@ class LoteEtapaViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[IsAdminSupervisorOrOperario])
     def iniciar(self, request, pk=None):
         """
-        Endpoint: /api/lotes-etapas/{id}/iniciar/
+        Endpoint: /api/produccion/ejecucion-etapas-operario/{id}/iniciar/
         Inicia una etapa de lote (cambia estado a EN_PROCESO)
         """
         lote_etapa = self.get_object()
@@ -913,7 +912,7 @@ class LoteEtapaViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[IsAdminSupervisorOrOperario])
     def completar(self, request, pk=None):
         """
-        Endpoint: /api/lotes-etapas/{id}/completar/
+        Endpoint: /api/produccion/ejecucion-etapas-operario/{id}/completar/
         Completa una etapa de lote (cambia estado a COMPLETADO)
         """
         lote_etapa = self.get_object()
@@ -962,7 +961,7 @@ class LoteEtapaViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[IsAdminSupervisorOrOperario])
     def pausar(self, request, pk=None):
         """
-        Endpoint: /api/lotes-etapas/{id}/pausar/
+        Endpoint: /api/produccion/ejecucion-etapas-operario/{id}/pausar/
         Pausa una etapa de lote (cambia estado a PAUSADO)
         """
         lote_etapa = self.get_object()

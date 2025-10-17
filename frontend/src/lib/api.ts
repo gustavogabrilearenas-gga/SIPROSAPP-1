@@ -742,35 +742,35 @@ const api = {
   },
 
   async getLotes(params?: Record<string, unknown>) {
-    return get('/produccion/lotes/', { params })
+    return get('/produccion/planificacion-lotes/', { params })
   },
 
   async getLote(id: number | string) {
-    return get(`/produccion/lotes/${id}/`)
+    return get(`/produccion/planificacion-lotes/${id}/`)
   },
 
   async createLote(data: Record<string, unknown>) {
-    return post('/produccion/lotes/', data)
+    return post('/produccion/planificacion-lotes/', data)
   },
 
   async updateLote(id: number | string, data: Record<string, unknown>) {
-    return put(`/produccion/lotes/${id}/`, data)
+    return put(`/produccion/planificacion-lotes/${id}/`, data)
   },
 
   async getLotesEtapas(params?: Record<string, unknown>) {
-    return get('/produccion/lotes-etapas/', { params })
+    return get('/produccion/ejecucion-etapas-operario/', { params })
   },
 
   async iniciarLoteEtapa(id: number | string, payload?: Record<string, unknown>) {
-    return post(`/produccion/lotes-etapas/${id}/iniciar/`, payload)
+    return post(`/produccion/ejecucion-etapas-operario/${id}/iniciar/`, payload)
   },
 
   async pausarLoteEtapa(id: number | string, payload: Record<string, unknown>) {
-    return post(`/produccion/lotes-etapas/${id}/pausar/`, payload)
+    return post(`/produccion/ejecucion-etapas-operario/${id}/pausar/`, payload)
   },
 
   async completarLoteEtapa(id: number | string, payload?: Record<string, unknown>) {
-    return post(`/produccion/lotes-etapas/${id}/completar/`, payload)
+    return post(`/produccion/ejecucion-etapas-operario/${id}/completar/`, payload)
   },
 
   async getControlesCalidad(params?: Record<string, unknown>) {
@@ -893,46 +893,46 @@ const api = {
 export const getLotes = async (
   params?: LoteListParams,
 ): Promise<PaginatedResponse<LoteListItem>> =>
-  withHandledRequest(() => get<PaginatedResponse<LoteListItem>>('produccion/lotes/', { params }))
+  withHandledRequest(() => get<PaginatedResponse<LoteListItem>>('produccion/planificacion-lotes/', { params }))
 
 export const createLote = async (payload: CreateLotePayload): Promise<Lote> =>
-  withHandledRequest(() => post<Lote>('produccion/lotes/', payload))
+  withHandledRequest(() => post<Lote>('produccion/planificacion-lotes/', payload))
 
 export const cancelarLote = async (
   id: number | string,
   payload: CancelLotePayload,
 ): Promise<LoteActionResponse> =>
-  withHandledRequest(() => post<LoteActionResponse>(`produccion/lotes/${id}/cancelar/`, payload))
+  withHandledRequest(() => post<LoteActionResponse>(`produccion/planificacion-lotes/${id}/cancelar/`, payload))
 
 export const iniciarLote = async (
   id: number | string,
   payload?: IniciarLotePayload,
 ): Promise<LoteActionResponse> =>
-  withHandledRequest(() => post<LoteActionResponse>(`produccion/lotes/${id}/iniciar/`, payload))
+  withHandledRequest(() => post<LoteActionResponse>(`produccion/planificacion-lotes/${id}/iniciar/`, payload))
 
 export const completarLote = async (
   id: number | string,
   payload?: CompletarLotePayload,
 ): Promise<LoteActionResponse> =>
-  withHandledRequest(() => post<LoteActionResponse>(`produccion/lotes/${id}/completar/`, payload))
+  withHandledRequest(() => post<LoteActionResponse>(`produccion/planificacion-lotes/${id}/completar/`, payload))
 
 export const pausarLote = async (
   id: number | string,
   payload: PausarLotePayload,
 ): Promise<LoteActionResponse> =>
-  withHandledRequest(() => post<LoteActionResponse>(`produccion/lotes/${id}/pausar/`, payload))
+  withHandledRequest(() => post<LoteActionResponse>(`produccion/planificacion-lotes/${id}/pausar/`, payload))
 
 export const liberarLote = async (
   id: number | string,
   payload: LiberarLotePayload,
 ): Promise<LoteActionResponse> =>
-  withHandledRequest(() => post<LoteActionResponse>(`produccion/lotes/${id}/liberar/`, payload))
+  withHandledRequest(() => post<LoteActionResponse>(`produccion/planificacion-lotes/${id}/liberar/`, payload))
 
 export const rechazarLote = async (
   id: number | string,
   payload: RechazarLotePayload,
 ): Promise<LoteActionResponse> =>
-  withHandledRequest(() => post<LoteActionResponse>(`produccion/lotes/${id}/rechazar/`, payload))
+  withHandledRequest(() => post<LoteActionResponse>(`produccion/planificacion-lotes/${id}/rechazar/`, payload))
 
 export const getOrdenesTrabajo = async (
   params?: OrdenTrabajoListParams,
