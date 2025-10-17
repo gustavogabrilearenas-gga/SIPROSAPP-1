@@ -1,9 +1,50 @@
 """Serializers del dominio de Producción"""
 
-from django.utils import timezone
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
-from backend.produccion.models import Lote, LoteEtapa
+from backend.produccion.models import Lote, LoteEtapa, RegistroProduccion
+
+
+class RegistroProduccionSerializer(serializers.ModelSerializer):
+    """Serializer para registros diarios de producción."""
+
+    registrado_por_nombre = serializers.CharField(source='registrado_por.get_full_name', read_only=True)
+    maquina_nombre = serializers.CharField(source='maquina.nombre', read_only=True)
+    producto_nombre = serializers.CharField(source='producto.nombre', read_only=True)
+    turno_nombre = serializers.CharField(source='turno.nombre', read_only=True)
+    turno_display = serializers.CharField(source='turno.get_codigo_display', read_only=True)
+    unidad_display = serializers.CharField(source='get_unidad_medida_display', read_only=True)
+
+    class Meta:
+        model = RegistroProduccion
+        fields = '__all__'
+        read_only_fields = ['fecha_registro', 'registrado_por']
+
+    def validate(self, data):
+        """Validaciones cruzadas a nivel de serializer."""
+        if data.get('hora_fin') and data.get('hora_inicio'):
+            if data['hora_fin'] <= data['hora_inicio']:
+                raise serializers.ValidationError({
+                    'hora_fin': 'La hora de fin debe ser posterior a la hora de inicio.'
+                })
+
+        if data.get('cantidad_producida') and data['cantidad_producida'] < 0:
+            raise serializers.ValidationError({
+                'cantidad_producida': 'La cantidad no puede ser negativa.'
+            })
+
+        return data
+
+    def create(self, validated_data):
+        """Crea el registro aplicando validaciones del modelo."""
+        instance = RegistroProduccion(**validated_data)
+        try:
+            instance.full_clean()
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(exc.message_dict)
+        instance.save()
+        return instance
 
 
 class LoteListSerializer(serializers.ModelSerializer):

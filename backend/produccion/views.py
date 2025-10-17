@@ -13,13 +13,32 @@ from rest_framework.response import Response
 
 from backend.auditoria.models import ElectronicSignature, LogAuditoria
 from backend.auditoria.serializers import ElectronicSignatureSerializer
-from backend.produccion.models import Lote, LoteEtapa
+from backend.produccion.models import Lote, LoteEtapa, RegistroProduccion
 from backend.produccion.serializers import (
+    RegistroProduccionSerializer,
     LoteEtapaSerializer,
     LoteListSerializer,
     LoteSerializer,
 )
 from backend.core.permissions import IsAdmin, IsAdminOrOperario, IsAdminOrSupervisor
+
+
+class RegistroProduccionViewSet(viewsets.ModelViewSet):
+    """ViewSet para gestionar registros de producción."""
+
+    queryset = RegistroProduccion.objects.select_related(
+        'registrado_por',
+        'maquina',
+        'producto',
+    ).all().order_by('-fecha_produccion')
+    serializer_class = RegistroProduccionSerializer
+    permission_classes = [IsAdminOrOperario]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['maquina__codigo', 'producto__nombre', 'registrado_por__username']
+    ordering_fields = ['fecha_produccion', 'fecha_registro', 'maquina', 'producto']
+
+    def perform_create(self, serializer):
+        serializer.save(registrado_por=self.request.user)
 
 
 class LoteViewSet(viewsets.ModelViewSet):

@@ -6,35 +6,16 @@ from rest_framework.response import Response
 from django.utils import timezone
 
 from .models import (
-    RegistroProduccion,
     RegistroMantenimiento,
     RegistroIncidente,
     ObservacionGeneral
 )
 from .serializers import (
-    RegistroProduccionSerializer,
     RegistroMantenimientoSerializer,
     RegistroIncidenteSerializer,
     ObservacionGeneralSerializer
 )
 from backend.core.permissions import IsAdminOrOperario
-
-
-class RegistroProduccionViewSet(viewsets.ModelViewSet):
-    """ViewSet para gestionar registros de producción."""
-    queryset = RegistroProduccion.objects.select_related(
-        'registrado_por',
-        'maquina',
-        'producto'
-    ).all().order_by('-fecha_produccion')
-    serializer_class = RegistroProduccionSerializer
-    permission_classes = [IsAdminOrOperario]
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['maquina__codigo', 'producto__nombre', 'registrado_por__username']
-    ordering_fields = ['fecha_produccion', 'fecha_registro', 'maquina', 'producto']
-
-    def perform_create(self, serializer):
-        serializer.save(registrado_por=self.request.user)
 
 
 class RegistroMantenimientoViewSet(viewsets.ModelViewSet):
