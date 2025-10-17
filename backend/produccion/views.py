@@ -59,7 +59,7 @@ class RegistroProduccionViewSet(viewsets.ReadOnlyModelViewSet):
         .order_by("-fecha_produccion", "-fecha_registro")
     )
     serializer_class = RegistroProduccionSerializer
-    permission_classes = [IsAdminOrOperario]
+    permission_classes = [IsAdminSupervisorOperarioOrCalidad]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = [
         "maquina__codigo",
@@ -214,8 +214,8 @@ class LoteViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.request.method in permissions.SAFE_METHODS:
-            # Ver lotes: Admin, Supervisor o Operario
-            perm_classes = [permissions.IsAuthenticated]
+            # Ver lotes: Admin, Supervisor, Operario o Calidad
+            perm_classes = [IsAdminSupervisorOperarioOrCalidad]
         elif self.request.method == 'POST':
             # Crear lote: Admin, Supervisor o Operario
             perm_classes = [IsAdminOrSupervisor]
