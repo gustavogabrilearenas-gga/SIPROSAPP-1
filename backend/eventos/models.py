@@ -3,77 +3,7 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
-from backend.catalogos.models import Maquina, Producto, Turno
-
-
-class RegistroProduccion(models.Model):
-    """Registro de observaciones de producción."""
-    
-    fecha_produccion = models.DateField(db_index=True)
-    fecha_registro = models.DateTimeField(auto_now_add=True)
-    registrado_por = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
-        related_name='registros_produccion'
-    )
-    turno = models.ForeignKey(
-        Turno,
-        on_delete=models.PROTECT,
-        related_name='registros_produccion',
-        verbose_name='Turno'
-    )
-    hubo_produccion = models.BooleanField()
-    maquina = models.ForeignKey(
-        Maquina,
-        on_delete=models.PROTECT,
-        related_name='registros_produccion'
-    )
-    producto = models.ForeignKey(
-        Producto,
-        on_delete=models.PROTECT,
-        related_name='registros_produccion'
-    )
-    UNIDAD_CHOICES = [
-        ('COMPRIMIDOS', 'Comprimidos'),
-        ('KG', 'Kilogramos'),
-        ('LITROS', 'Litros'),
-        ('BLISTERS', 'Blisters'),
-    ]
-    unidad_medida = models.CharField(max_length=20, choices=UNIDAD_CHOICES)
-    cantidad_producida = models.DecimalField(max_digits=10, decimal_places=2)
-    hora_inicio = models.TimeField()
-    hora_fin = models.TimeField()
-    observaciones = models.TextField(blank=True)
-
-    class Meta:
-        verbose_name = "Registro de Producción"
-        verbose_name_plural = "Registros de Producción"
-        ordering = ['-fecha_produccion', '-fecha_registro']
-        indexes = [
-            models.Index(fields=['-fecha_produccion', 'maquina']),
-            models.Index(fields=['maquina', 'fecha_produccion', 'turno']),
-        ]
-        constraints = [
-            models.UniqueConstraint(
-                fields=['maquina', 'fecha_produccion', 'turno'],
-                name='unique_produccion_maquina_fecha_turno'
-            ),
-            models.CheckConstraint(
-                check=models.Q(cantidad_producida__gte=0),
-                name='produccion_cantidad_no_negativa'
-            ),
-        ]
-
-    def __str__(self):
-        return f"Producción {self.maquina.codigo} - {self.fecha_produccion}"
-
-    def clean(self):
-        """Validaciones de negocio."""
-        super().clean()
-        if self.hora_fin <= self.hora_inicio:
-            raise ValidationError({
-                'hora_fin': 'La hora de fin debe ser posterior a la hora de inicio.'
-            })
+from backend.catalogos.models import Maquina, Turno
 
 
 class RegistroMantenimiento(models.Model):

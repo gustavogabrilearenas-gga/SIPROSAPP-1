@@ -2,8 +2,7 @@
 
 from django.contrib import admin
 
-from backend.produccion.models import Lote, LoteEtapa
-from backend.eventos.models import RegistroProduccion as OriginalRegistroProduccion
+from backend.produccion.models import Lote, LoteEtapa, RegistroProduccion
 
 
 class LoteEtapaInline(admin.TabularInline):
@@ -33,14 +32,6 @@ class LoteEtapaAdmin(admin.ModelAdmin):
     list_filter = ['estado', 'etapa', 'maquina']
     search_fields = ['lote__codigo_lote']
     readonly_fields = ['duracion_minutos', 'porcentaje_rendimiento']
-
-
-class RegistroProduccion(OriginalRegistroProduccion):
-    class Meta:
-        proxy = True
-        app_label = 'produccion'
-        verbose_name = OriginalRegistroProduccion._meta.verbose_name
-        verbose_name_plural = OriginalRegistroProduccion._meta.verbose_name_plural
 
 
 @admin.register(RegistroProduccion)

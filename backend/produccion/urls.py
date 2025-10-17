@@ -4,11 +4,13 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from backend.produccion.views import (
+    RegistroProduccionViewSet,
     LoteEtapaViewSet,
     LoteViewSet,
 )
 
 router = DefaultRouter()
+router.register(r'registros-produccion', RegistroProduccionViewSet, basename='registroproduccion')
 router.register(r'lotes', LoteViewSet, basename='lote')
 router.register(r'lotes-etapas', LoteEtapaViewSet, basename='loteetapa')
 
