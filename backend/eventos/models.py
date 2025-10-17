@@ -1,4 +1,4 @@
-"""Modelos para el registro de observaciones de producción, mantenimiento e incidentes."""
+"""Modelos para el registro de observaciones de mantenimiento, incidentes y generales."""
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -97,7 +97,7 @@ class RegistroIncidente(models.Model):
     detalle_acciones = models.TextField(blank=True)
     observaciones = models.TextField(blank=True)
     CONTEXTO_CHOICES = [
-        ('PRODUCCION', 'Producción'),
+        ('OPERACIONES', 'Operaciones'),
         ('MANTENIMIENTO', 'Mantenimiento'),
         ('GENERAL', 'General'),
     ]
