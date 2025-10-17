@@ -4,6 +4,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from backend.catalogos.models import Maquina, Turno
+from backend.core.choices import ContextoIncidente, TipoMantenimiento
 
 
 class RegistroMantenimiento(models.Model):
@@ -28,12 +29,10 @@ class RegistroMantenimiento(models.Model):
         on_delete=models.PROTECT,
         related_name='registros_mantenimiento'
     )
-    TIPO_CHOICES = [
-        ('CORRECTIVO', 'Correctivo'),
-        ('AUTONOMO', 'Autónomo'),
-        ('PREVENTIVO', 'Preventivo'),
-    ]
-    tipo_mantenimiento = models.CharField(max_length=20, choices=TIPO_CHOICES)
+    tipo_mantenimiento = models.CharField(
+        max_length=20,
+        choices=TipoMantenimiento.choices,
+    )
     descripcion = models.TextField()
     hora_inicio = models.TimeField()
     hora_fin = models.TimeField()
@@ -96,12 +95,10 @@ class RegistroIncidente(models.Model):
     acciones_correctivas = models.BooleanField(default=False)
     detalle_acciones = models.TextField(blank=True)
     observaciones = models.TextField(blank=True)
-    CONTEXTO_CHOICES = [
-        ('OPERACIONES', 'Operaciones'),
-        ('MANTENIMIENTO', 'Mantenimiento'),
-        ('GENERAL', 'General'),
-    ]
-    contexto_origen = models.CharField(max_length=20, choices=CONTEXTO_CHOICES)
+    contexto_origen = models.CharField(
+        max_length=20,
+        choices=ContextoIncidente.choices,
+    )
 
     class Meta:
         verbose_name = "Registro de Incidente"

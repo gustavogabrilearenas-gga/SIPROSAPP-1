@@ -1,3 +1,5 @@
+"""Enums compartidos en toda la plataforma."""
+
 from django.db import models
 
 
@@ -24,3 +26,22 @@ class EstadoEtapa(models.TextChoices):
     PAUSADO = "PAUSADO", "Pausado"
     COMPLETADO = "COMPLETADO", "Completado"
     RECHAZADO = "RECHAZADO", "Rechazado"
+
+
+class UnidadProduccion(models.TextChoices):
+    COMPRIMIDOS = "COMPRIMIDOS", "Comprimidos"
+    KG = "KG", "Kilogramos"
+    LITROS = "LITROS", "Litros"
+    BLISTERS = "BLISTERS", "Blisters"
+
+
+class TipoMantenimiento(models.TextChoices):
+    CORRECTIVO = "CORRECTIVO", "Correctivo"
+    AUTONOMO = "AUTONOMO", "Autónomo"
+    PREVENTIVO = "PREVENTIVO", "Preventivo"
+
+
+class ContextoIncidente(models.TextChoices):
+    OPERACIONES = "OPERACIONES", "Operaciones"
+    MANTENIMIENTO = "MANTENIMIENTO", "Mantenimiento"
+    GENERAL = "GENERAL", "General"

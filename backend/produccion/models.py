@@ -6,7 +6,12 @@ from django.core.validators import MinValueValidator
 from django.db import models
 
 from backend.catalogos.models import Producto, Formula, EtapaProduccion, Maquina, Turno
-from backend.core.choices import EstadoEtapa, EstadoLote, Prioridad
+from backend.core.choices import (
+    EstadoEtapa,
+    EstadoLote,
+    Prioridad,
+    UnidadProduccion,
+)
 from backend.core.mixins import TimeWindowMixin
 
 
@@ -37,13 +42,10 @@ class RegistroProduccion(models.Model):
         related_name="registros_produccion",
     )
 
-    UNIDAD_CHOICES = [
-        ("COMPRIMIDOS", "Comprimidos"),
-        ("KG", "Kilogramos"),
-        ("LITROS", "Litros"),
-        ("BLISTERS", "Blisters"),
-    ]
-    unidad_medida = models.CharField(max_length=20, choices=UNIDAD_CHOICES)
+    unidad_medida = models.CharField(
+        max_length=20,
+        choices=UnidadProduccion.choices,
+    )
     cantidad_producida = models.DecimalField(max_digits=10, decimal_places=2)
     hora_inicio = models.TimeField()
     hora_fin = models.TimeField()
