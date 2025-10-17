@@ -46,7 +46,6 @@ function LotesContent() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isFormModalOpen, setIsFormModalOpen] = useState(false)
   const [selectedLoteForEdit, setSelectedLoteForEdit] = useState<LoteListItem | null>(null)
-  const [completeOnOpen, setCompleteOnOpen] = useState(false)
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [transitioningLoteId, setTransitioningLoteId] = useState<number | null>(null)
 
@@ -98,12 +97,10 @@ function LotesContent() {
   const closeFormModal = () => {
     setIsFormModalOpen(false)
     setSelectedLoteForEdit(null)
-    setCompleteOnOpen(false)
   }
 
   const handleFormSuccess = () => {
     fetchLotes(page) // Recargar la lista
-    setCompleteOnOpen(false)
   }
 
   const handleLoteAction = async (lote: LoteListItem, action: LoteActionType) => {
@@ -132,12 +129,7 @@ function LotesContent() {
           response = await api.post(`/produccion/lotes/${lote.id}/pausar/`, { motivo: motivo ?? '' })
           break
         case 'completar':
-          // Open the edit form pre-filled so the user can set real dates before completing
-          setSelectedLoteForEdit(lote)
-          setCompleteOnOpen(true)
-          setIsFormModalOpen(true)
-          // don't call the API here; the form will call completar on save
-          response = null
+          response = await api.post(`/produccion/lotes/${lote.id}/completar/`)
           break
         case 'cancelar':
           response = await api.post(`/produccion/lotes/${lote.id}/cancelar/`, { motivo: motivo ?? '' })
@@ -567,7 +559,6 @@ function LotesContent() {
         onClose={closeFormModal}
         onSuccess={handleFormSuccess}
         lote={selectedLoteForEdit as any}
-        completeAfterSave={completeOnOpen}
       />
     </div>
   )
