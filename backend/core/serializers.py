@@ -83,13 +83,12 @@ class EtapaProduccionSerializer(serializers.ModelSerializer):
 class TurnoSerializer(serializers.ModelSerializer):
     """Serializer de turnos"""
     nombre_display = serializers.CharField(source='nombre', read_only=True)
-    lotes_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Turno
         fields = [
             'id', 'codigo', 'nombre', 'nombre_display', 'hora_inicio', 'hora_fin',
-            'activo', 'lotes_count'
+            'activo'
         ]
         read_only_fields = ['id']
 

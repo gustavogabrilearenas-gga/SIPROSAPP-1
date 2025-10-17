@@ -73,18 +73,12 @@ INSTALLED_APPS = [
     'backend.core',
     'backend.auditoria.apps.AuditoriaConfig',
     'backend.usuarios.apps.UsuariosConfig',
-    'backend.produccion',
-    'backend.mantenimiento',
-    'backend.incidencias',
     'backend.eventos.apps.EventosConfig',
     'backend.catalogos.apps.CatalogosConfig',
 ]
 
 MIGRATION_MODULES = {
-    "produccion": None,
     "eventos": None,
-    "mantenimiento": None,
-    "incidencias": None,
     "catalogos": None,
     "core": None,
 }
