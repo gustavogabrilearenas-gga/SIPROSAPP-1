@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Wrench, Calendar, User, AlertTriangle, Clock, CheckCircle, History, DollarSign } from 'lucide-react'
+import { X, Wrench, Calendar, User, AlertTriangle, Clock, CheckCircle, DollarSign } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { OrdenTrabajo, LogAuditoria } from '@/types/models'
+import { OrdenTrabajo } from '@/types/models'
 import { api } from '@/lib/api'
 import { Badge } from '@/components/ui/badge'
 import { showError, showSuccess } from '@/components/common/toast-utils'
@@ -19,10 +19,8 @@ interface OrdenTrabajoDetailModalProps {
 
 export default function OrdenTrabajoDetailModal({ isOpen, onClose, ordenId, onRefresh, onEdit }: OrdenTrabajoDetailModalProps) {
   const [orden, setOrden] = useState<OrdenTrabajo | null>(null)
-  const [logs, setLogs] = useState<LogAuditoria[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'general' | 'auditoria'>('general')
   const [actionLoading, setActionLoading] = useState(false)
 
   useEffect(() => {
@@ -38,10 +36,6 @@ export default function OrdenTrabajoDetailModal({ isOpen, onClose, ordenId, onRe
       // Cargar datos de la orden
       const ordenData = await api.getOrdenTrabajo(ordenId)
       setOrden(ordenData)
-
-  // Cargar logs de auditoría (usar nombre de modelo del backend)
-  const logsData = await api.getLogsAuditoria({ modelo: 'OrdenTrabajo', objeto_id: ordenId.toString() })
-      setLogs(Array.isArray(logsData?.logs) ? logsData.logs : [])
     } catch (err: any) {
       const message = err?.response?.data?.detail || 'Error al cargar los datos de la orden'
       setError(message)
@@ -342,42 +336,6 @@ export default function OrdenTrabajoDetailModal({ isOpen, onClose, ordenId, onRe
     </div>
   )
 
-  const renderAuditoriaTab = () => (
-    <div className="space-y-4">
-      {logs.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">
-          <History className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <p>No hay logs de auditoría para esta orden</p>
-        </div>
-      ) : (
-        logs.map((log) => (
-          <div key={log.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between mb-2">
-              <div>
-                <h4 className="font-semibold">{log.accion_display}</h4>
-                <p className="text-sm text-gray-600">{log.usuario_nombre}</p>
-              </div>
-              <span className="text-xs text-gray-500">{formatFecha(log.fecha)}</span>
-            </div>
-
-            {log.cambios && Object.keys(log.cambios).length > 0 && (
-              <div className="mt-2 bg-gray-50 p-2 rounded text-xs">
-                <p className="font-medium mb-1">Cambios:</p>
-                <pre className="text-gray-700 overflow-x-auto">{JSON.stringify(log.cambios, null, 2)}</pre>
-              </div>
-            )}
-
-            {log.ip_address && (
-              <div className="mt-2 text-xs text-gray-500">
-                IP: {log.ip_address}
-              </div>
-            )}
-          </div>
-        ))
-      )}
-    </div>
-  )
-
   if (!isOpen) return null
 
   return (
@@ -443,28 +401,10 @@ export default function OrdenTrabajoDetailModal({ isOpen, onClose, ordenId, onRe
           {/* Tabs */}
           <div className="border-b border-gray-200 bg-gray-50">
             <div className="flex">
-              <button
-                onClick={() => setActiveTab('general')}
-                className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors ${
-                  activeTab === 'general'
-                    ? 'text-blue-600 border-b-2 border-blue-600 bg-white'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                }`}
-              >
+              <div className="flex items-center gap-2 px-6 py-4 font-medium text-blue-600 border-b-2 border-blue-600 bg-white">
                 <Wrench className="w-4 h-4" />
                 General
-              </button>
-              <button
-                onClick={() => setActiveTab('auditoria')}
-                className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors ${
-                  activeTab === 'auditoria'
-                    ? 'text-blue-600 border-b-2 border-blue-600 bg-white'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                }`}
-              >
-                <History className="w-4 h-4" />
-                Auditoría
-              </button>
+              </div>
             </div>
           </div>
 
@@ -481,8 +421,7 @@ export default function OrdenTrabajoDetailModal({ isOpen, onClose, ordenId, onRe
               </div>
             ) : (
               <>
-                {activeTab === 'general' && renderGeneralTab()}
-                {activeTab === 'auditoria' && renderAuditoriaTab()}
+                {renderGeneralTab()}
               </>
             )}
           </div>

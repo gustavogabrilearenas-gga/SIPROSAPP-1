@@ -454,42 +454,6 @@ export interface NotificacionListItem {
 }
 
 // ============================================
-// FIRMAS ELECTRÓNICAS
-// ============================================
-
-export interface ElectronicSignature {
-  id: number
-  user: number
-  user_nombre?: string
-  action: 'APPROVE' | 'REVIEW' | 'RELEASE' | 'REJECT' | 'AUTHORIZE' | 'VERIFY'
-  action_display?: string
-  meaning: string
-  meaning_display?: string
-  timestamp: string
-  content_type: string
-  object_id: number
-  object_str: string
-  reason?: string
-  ip_address?: string
-  signature_hash?: string
-  is_valid: boolean
-  invalidation_reason?: string
-  invalidated_at?: string | null
-  invalidated_by?: number | null
-}
-
-export interface CreateSignatureRequest {
-  action: 'APPROVE' | 'REVIEW' | 'RELEASE' | 'REJECT' | 'AUTHORIZE' | 'VERIFY'
-  meaning: string
-  content_type: string
-  object_id: number
-  object_str: string
-  reason?: string
-  password: string
-  data_to_sign?: Record<string, any>
-}
-
-// ============================================
 // KPIs Y DASHBOARD
 // ============================================
 
@@ -571,36 +535,4 @@ export interface SearchResponse {
     ordenes_trabajo: number
     incidentes: number
   }
-}
-
-// ============================================
-// AUDITORÍA
-// ============================================
-
-export interface LogAuditoria {
-  id: number
-  usuario: number
-  usuario_nombre?: string
-  accion: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT' | 'VIEW'
-  accion_display: string
-  modelo: string
-  objeto_id: number
-  objeto_str: string
-  cambios?: Record<string, any>
-  ip_address?: string
-  user_agent?: string
-  fecha: string
-}
-
-export interface AuditoriaResponse {
-  total: number
-  filtros: {
-    modelo?: string
-    objeto_id?: string
-    desde?: string
-    hasta?: string
-    usuario?: string
-    accion?: string
-  }
-  logs: LogAuditoria[]
 }

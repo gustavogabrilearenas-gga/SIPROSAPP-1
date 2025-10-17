@@ -78,21 +78,17 @@ def logout_view(request):
     Endpoint de logout
     POST /api/auth/logout/
     """
-    try:
-        # Obtener el refresh token del body
-        refresh_token = request.data.get('refresh')
-        
-        if refresh_token:
-            token = RefreshToken(refresh_token)
-            token.blacklist()
-        
-        return Response({
-            'message': 'Logout exitoso'
-        }, status=status.HTTP_200_OK)
-    except Exception as e:
-        return Response({
-            'error': 'Token inválido'
-        }, status=status.HTTP_400_BAD_REQUEST)
+    # Obtener el refresh token del body (opcional, mantenido por compatibilidad)
+    refresh_token = request.data.get('refresh')
+
+    if refresh_token:
+        # Se ignora el procesamiento del token ya que el sistema de blacklist
+        # fue eliminado.
+        pass
+
+    return Response({
+        'message': 'Logout exitoso'
+    }, status=status.HTTP_200_OK)
 
 
 @api_view(['GET'])

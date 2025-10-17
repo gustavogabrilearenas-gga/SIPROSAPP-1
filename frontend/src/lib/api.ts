@@ -777,10 +777,6 @@ const api = {
     return get('/produccion/controles-calidad/', { params })
   },
 
-  async getLogsAuditoria(params?: Record<string, unknown>) {
-    return get('/auditoria/logs/', { params })
-  },
-
   async getFormulas(params?: Record<string, unknown>) {
     return get('/formulas/', { params })
   },

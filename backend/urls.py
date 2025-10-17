@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import include, path
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -9,7 +9,6 @@ from backend.core.views import health_check, home
 urlpatterns = [
     path('', home, name='home'),  # Página principal redirige al admin
     path('admin/', admin.site.urls),
-    path('api/auditoria/', include('backend.auditoria.urls')),
     path('api/eventos/', include('backend.eventos.urls')),
     path('api/catalogos/', include('backend.catalogos.urls')),
     path('api/', include("backend.core.urls")),  # 👈 importante

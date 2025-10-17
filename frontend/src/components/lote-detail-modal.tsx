@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Package, Calendar, User, AlertCircle, TrendingUp, Clock, CheckCircle, XCircle, History, FileText } from 'lucide-react'
+import { X, Package, Calendar, User, AlertCircle, TrendingUp, Clock, CheckCircle, XCircle, FileText } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { Lote, LoteEtapa, ControlCalidad, LogAuditoria } from '@/types/models'
+import { Lote, LoteEtapa, ControlCalidad } from '@/types/models'
 import { api } from '@/lib/api'
 import { Badge } from '@/components/ui/badge'
 
@@ -20,10 +20,9 @@ export default function LoteDetailModal({ isOpen, onClose, loteId, onEdit, onUpd
   const [lote, setLote] = useState<Lote | null>(null)
   const [etapas, setEtapas] = useState<LoteEtapa[]>([])
   const [controles, setControles] = useState<ControlCalidad[]>([])
-  const [logs, setLogs] = useState<LogAuditoria[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'general' | 'etapas' | 'calidad' | 'auditoria'>('general')
+  const [activeTab, setActiveTab] = useState<'general' | 'etapas' | 'calidad'>('general')
 
   useEffect(() => {
     if (isOpen && loteId) {
@@ -46,10 +45,6 @@ export default function LoteDetailModal({ isOpen, onClose, loteId, onEdit, onUpd
       // Cargar controles de calidad
       const controlesData = await api.getControlesCalidad({ lote_etapa: loteId })
       setControles(Array.isArray(controlesData?.results) ? controlesData.results : [])
-
-  // Cargar logs de auditoría (usar el nombre de modelo tal como se guarda en backend)
-  const logsData = await api.getLogsAuditoria({ modelo: 'Lote', objeto_id: String(loteId) })
-      setLogs(Array.isArray(logsData?.logs) ? logsData.logs : [])
     } catch (err: any) {
       console.error('Error loading lote data:', err)
       setError(err.response?.data?.detail || 'Error al cargar los datos del lote')
@@ -356,42 +351,6 @@ export default function LoteDetailModal({ isOpen, onClose, loteId, onEdit, onUpd
     </div>
   )
 
-  const renderAuditoriaTab = () => (
-    <div className="space-y-4">
-      {logs.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">
-          <History className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <p>No hay logs de auditoría para este lote</p>
-        </div>
-      ) : (
-        logs.map((log) => (
-          <div key={log.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between mb-2">
-              <div>
-                <h4 className="font-semibold">{log.accion_display}</h4>
-                <p className="text-sm text-gray-600">{log.usuario_nombre}</p>
-              </div>
-              <span className="text-xs text-gray-500">{formatFecha(log.fecha)}</span>
-            </div>
-
-            {log.cambios && Object.keys(log.cambios).length > 0 && (
-              <div className="mt-2 bg-gray-50 p-2 rounded text-xs">
-                <p className="font-medium mb-1">Cambios:</p>
-                <pre className="text-gray-700 overflow-x-auto">{JSON.stringify(log.cambios, null, 2)}</pre>
-              </div>
-            )}
-
-            {log.ip_address && (
-              <div className="mt-2 text-xs text-gray-500">
-                IP: {log.ip_address}
-              </div>
-            )}
-          </div>
-        ))
-      )}
-    </div>
-  )
-
   if (!isOpen) return null
 
   return (
@@ -455,7 +414,6 @@ export default function LoteDetailModal({ isOpen, onClose, loteId, onEdit, onUpd
                 { id: 'general', label: 'General', icon: Package },
                 { id: 'etapas', label: 'Etapas', icon: TrendingUp },
                 { id: 'calidad', label: 'Calidad', icon: CheckCircle },
-                { id: 'auditoria', label: 'Auditoría', icon: History },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -489,7 +447,6 @@ export default function LoteDetailModal({ isOpen, onClose, loteId, onEdit, onUpd
                 {activeTab === 'general' && renderGeneralTab()}
                 {activeTab === 'etapas' && renderEtapasTab()}
                 {activeTab === 'calidad' && renderCalidadTab()}
-                {activeTab === 'auditoria' && renderAuditoriaTab()}
               </>
             )}
           </div>
