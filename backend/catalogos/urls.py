@@ -1,8 +1,8 @@
-"""
-URLs para los endpoints de catálogos
-"""
+"""URLs para los endpoints de catálogos."""
+
+from django.urls import include, path
 from rest_framework.routers import DefaultRouter
-from django.urls import path, include
+
 from .views import (
     UbicacionViewSet,
     MaquinaViewSet,
@@ -17,7 +17,7 @@ router.register('ubicaciones', UbicacionViewSet)
 router.register('maquinas', MaquinaViewSet)
 router.register('productos', ProductoViewSet)
 router.register('formulas', FormulaViewSet)
-router.register('etapas', EtapaProduccionViewSet)
+router.register('etapas-produccion', EtapaProduccionViewSet)
 router.register('turnos', TurnoViewSet)
 
 urlpatterns = [

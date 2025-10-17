@@ -3,7 +3,8 @@ Configuración del Django Admin para SIPROSA MES
 """
 
 from django.contrib import admin
-from .auditoria_models import LogAuditoria, ElectronicSignature
+
+from backend.auditoria.models import ElectronicSignature, LogAuditoria
 
 
 @admin.register(LogAuditoria)

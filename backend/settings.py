@@ -71,6 +71,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'backend.core',
+    'backend.auditoria.apps.AuditoriaConfig',
     'backend.usuarios.apps.UsuariosConfig',
     'backend.produccion',
     'backend.mantenimiento',

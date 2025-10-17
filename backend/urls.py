@@ -12,7 +12,7 @@ urlpatterns = [
     path('api/produccion/', include('backend.produccion.urls')),
     path('api/mantenimiento/', include('backend.mantenimiento.urls')),
     path('api/incidencias/', include('backend.incidencias.urls')),
-    path('api/auditoria/', include('backend.core.auditoria_urls')),
+    path('api/auditoria/', include('backend.auditoria.urls')),
     path('api/eventos/', include('backend.eventos.urls')),
     path('api/catalogos/', include('backend.catalogos.urls')),
     path('api/', include("backend.core.urls")),  # 👈 importante
