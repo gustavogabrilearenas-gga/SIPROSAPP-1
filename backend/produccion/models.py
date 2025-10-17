@@ -5,6 +5,8 @@ from django.core.validators import MinValueValidator
 from django.db import models
 
 from backend.catalogos.models import Producto, Formula, EtapaProduccion, Maquina, Turno
+from backend.core.choices import EstadoEtapa, EstadoLote, Prioridad
+from backend.core.mixins import TimeWindowMixin
 
 
 class RegistroProduccion(models.Model):
@@ -69,23 +71,6 @@ class RegistroProduccion(models.Model):
 class Lote(models.Model):
     """Orden de producción (Batch Record)"""
 
-    ESTADO_CHOICES = [
-        ('PLANIFICADO', 'Planificado'),
-        ('EN_PROCESO', 'En Proceso'),
-        ('PAUSADO', 'Pausado'),
-        ('FINALIZADO', 'Finalizado'),
-        ('CANCELADO', 'Cancelado'),
-        ('RECHAZADO', 'Rechazado'),
-        ('LIBERADO', 'Liberado'),
-    ]
-
-    PRIORIDAD_CHOICES = [
-        ('BAJA', 'Baja'),
-        ('NORMAL', 'Normal'),
-        ('ALTA', 'Alta'),
-        ('URGENTE', 'Urgente'),
-    ]
-
     codigo_lote = models.CharField(max_length=50, unique=True, verbose_name="Código de Lote")
     producto = models.ForeignKey(Producto, on_delete=models.PROTECT, related_name='lotes')
     formula = models.ForeignKey(Formula, on_delete=models.PROTECT, related_name='lotes')
@@ -93,8 +78,16 @@ class Lote(models.Model):
     cantidad_producida = models.IntegerField(default=0)
     cantidad_rechazada = models.IntegerField(default=0)
     unidad = models.CharField(max_length=20)
-    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='PLANIFICADO')
-    prioridad = models.CharField(max_length=10, choices=PRIORIDAD_CHOICES, default='NORMAL')
+    estado = models.CharField(
+        max_length=20,
+        choices=EstadoLote.choices,
+        default=EstadoLote.PLANIFICADO,
+    )
+    prioridad = models.CharField(
+        max_length=10,
+        choices=Prioridad.choices,
+        default=Prioridad.NORMAL,
+    )
     fecha_planificada_inicio = models.DateTimeField()
     fecha_real_inicio = models.DateTimeField(null=True, blank=True)
     fecha_planificada_fin = models.DateTimeField()
@@ -145,25 +138,18 @@ class Lote(models.Model):
         return 0
 
 
-class LoteEtapa(models.Model):
+class LoteEtapa(TimeWindowMixin):
     """Etapas ejecutadas en un lote específico"""
-
-    ESTADO_CHOICES = [
-        ('PENDIENTE', 'Pendiente'),
-        ('EN_PROCESO', 'En Proceso'),
-        ('PAUSADO', 'Pausado'),
-        ('COMPLETADO', 'Completado'),
-        ('RECHAZADO', 'Rechazado'),
-    ]
 
     lote = models.ForeignKey(Lote, on_delete=models.CASCADE, related_name='etapas')
     etapa = models.ForeignKey(EtapaProduccion, on_delete=models.PROTECT)
     orden = models.IntegerField()
     maquina = models.ForeignKey(Maquina, on_delete=models.PROTECT, related_name='etapas_ejecutadas')
-    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='PENDIENTE')
-    fecha_inicio = models.DateTimeField(null=True, blank=True)
-    fecha_fin = models.DateTimeField(null=True, blank=True)
-    duracion_minutos = models.IntegerField(null=True, blank=True, editable=False)
+    estado = models.CharField(
+        max_length=20,
+        choices=EstadoEtapa.choices,
+        default=EstadoEtapa.PENDIENTE,
+    )
     operario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -204,14 +190,17 @@ class LoteEtapa(models.Model):
         return f"{self.lote.codigo_lote} - {self.etapa.nombre}"
 
     def save(self, *args, **kwargs):
-        # Calcular duración automáticamente
-        if self.fecha_inicio and self.fecha_fin:
-            delta = self.fecha_fin - self.fecha_inicio
-            self.duracion_minutos = int(delta.total_seconds() / 60)
-
-        # Calcular rendimiento
-        if self.cantidad_entrada and self.cantidad_salida and self.cantidad_entrada > 0:
-            self.porcentaje_rendimiento = round((self.cantidad_salida / self.cantidad_entrada) * 100, 2)
+        if (
+            self.cantidad_entrada
+            and self.cantidad_salida
+            and self.cantidad_entrada > 0
+        ):
+            self.porcentaje_rendimiento = round(
+                (self.cantidad_salida / self.cantidad_entrada) * 100,
+                2,
+            )
+        else:
+            self.porcentaje_rendimiento = None
 
         super().save(*args, **kwargs)
 
