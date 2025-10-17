@@ -109,7 +109,7 @@ class LoteSerializerStateTests(TestCase):
         )
 
     def serializer_context(self, user):
-        request = self.factory.post("/api/lotes/")
+        request = self.factory.post("/api/produccion/planificacion-lotes/")
         request.user = user
         return {"request": request}
 
@@ -131,7 +131,7 @@ class LoteSerializerStateTests(TestCase):
         self.assertIn("estado", serializer.errors)
 
     def test_lote_serializer_rejects_estado_on_update(self):
-        request = self.factory.patch("/api/lotes/1/")
+        request = self.factory.patch("/api/produccion/planificacion-lotes/1/")
         request.user = self.supervisor
         serializer = LoteSerializer(
             self.lote,
@@ -143,7 +143,7 @@ class LoteSerializerStateTests(TestCase):
         self.assertIn("estado", serializer.errors)
 
     def test_lote_etapa_serializer_rejects_estado_on_create(self):
-        request = self.factory.post("/api/lotes-etapas/")
+        request = self.factory.post("/api/produccion/ejecucion-etapas-operario/")
         request.user = self.operario
         data = {
             "lote": self.lote.pk,
@@ -165,7 +165,7 @@ class LoteSerializerStateTests(TestCase):
             maquina=self.maquina,
             operario=self.operario,
         )
-        request = self.factory.patch("/api/lotes-etapas/1/")
+        request = self.factory.patch("/api/produccion/ejecucion-etapas-operario/1/")
         request.user = self.supervisor
         serializer = LoteEtapaSerializer(
             lote_etapa,
@@ -183,7 +183,7 @@ class LoteSerializerStateTests(TestCase):
         ]
         self.etapa.save()
 
-        request = self.factory.post("/api/lotes-etapas/")
+        request = self.factory.post("/api/produccion/ejecucion-etapas-operario/")
         request.user = self.operario
         data = {
             "lote": self.lote.pk,
@@ -207,7 +207,7 @@ class LoteSerializerStateTests(TestCase):
         self.etapa.parametros = [{"nombre": "Temperatura", "unidad": "°C"}]
         self.etapa.save()
 
-        request = self.factory.post("/api/lotes-etapas/")
+        request = self.factory.post("/api/produccion/ejecucion-etapas-operario/")
         request.user = self.operario
         data = {
             "lote": self.lote.pk,
@@ -247,7 +247,7 @@ class LoteSerializerStateTests(TestCase):
             operario=self.operario,
         )
 
-        request = self.factory.patch("/api/lotes-etapas/1/")
+        request = self.factory.patch("/api/produccion/ejecucion-etapas-operario/1/")
         request.user = self.operario
 
         serializer = LoteEtapaSerializer(
@@ -277,7 +277,7 @@ class LoteSerializerStateTests(TestCase):
             operario=self.operario,
         )
 
-        request = self.factory.patch("/api/lotes-etapas/1/")
+        request = self.factory.patch("/api/produccion/ejecucion-etapas-operario/1/")
         request.user = self.supervisor
 
         serializer = LoteEtapaSerializer(
@@ -403,13 +403,14 @@ class LoteEtapaWorkflowTests(TestCase):
     def iniciar_y_completar(self, etapa, *, entrada, salida, inicio, fin):
         with patch("django.utils.timezone.now", return_value=inicio):
             response = self.client.post(
-                reverse("loteetapa-iniciar", args=[etapa.pk]), format="json"
+                reverse("ejecucion-etapa-operario-iniciar", args=[etapa.pk]),
+                format="json",
             )
         self.assertEqual(response.status_code, 200, response.content)
 
         with patch("django.utils.timezone.now", return_value=fin):
             response = self.client.post(
-                reverse("loteetapa-completar", args=[etapa.pk]),
+                reverse("ejecucion-etapa-operario-completar", args=[etapa.pk]),
                 {"cantidad_entrada": entrada, "cantidad_salida": salida},
                 format="json",
             )
