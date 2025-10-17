@@ -165,14 +165,19 @@ class Lote(models.Model):
             return round((self.cantidad_producida / self.cantidad_planificada) * 100, 2)
         return 0
 
-    def actualizar_metricas_desde_etapas(self):
-        """Sincroniza cantidades y tiempos reales a partir de las etapas registradas."""
+    def obtener_agregados_etapas(self):
+        """Obtiene valores agregados de las etapas asociadas al lote."""
 
-        agregados = self.etapas.aggregate(
+        return self.etapas.aggregate(
             total_salida=Sum("cantidad_salida"),
             fecha_inicio=Min("fecha_inicio"),
             fecha_fin=Max("fecha_fin"),
         )
+
+    def actualizar_metricas_desde_etapas(self):
+        """Sincroniza cantidades y tiempos reales a partir de las etapas registradas."""
+
+        agregados = self.obtener_agregados_etapas()
 
         total_salida = agregados.get("total_salida")
 
