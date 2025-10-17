@@ -3,7 +3,7 @@
 import hashlib
 import json
 
-from django.contrib.auth.models import User
+from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
@@ -21,7 +21,7 @@ class LogAuditoria(models.Model):
     ]
 
     usuario = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         related_name='acciones_auditoria',
@@ -80,7 +80,7 @@ class ElectronicSignature(models.Model):
     ]
 
     user = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name='electronic_signatures',
         help_text='User who signed',
@@ -156,7 +156,7 @@ class ElectronicSignature(models.Model):
         help_text='When this signature was invalidated',
     )
     invalidated_by = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -226,7 +226,7 @@ class ElectronicSignature(models.Model):
 
         return calculated_hash == self.signature_hash
 
-    def invalidate(self, user: User, reason: str):
+    def invalidate(self, user, reason: str):
         """Invalida la firma electrónica indicando usuario y motivo."""
 
         self.is_valid = False

@@ -1,9 +1,14 @@
-from django.contrib.auth.models import Group, User
+from django.apps import apps
+from django.conf import settings
+from django.contrib.auth.models import Group
 from django.urls import reverse
 from django.test import TestCase
 from rest_framework.test import APIClient
 
 from backend.catalogos.models import Maquina, Ubicacion
+
+
+UserModel = apps.get_model(settings.AUTH_USER_MODEL)
 
 
 class MaquinaViewSetTests(TestCase):
@@ -12,10 +17,10 @@ class MaquinaViewSetTests(TestCase):
         self.supervisor_group, _ = Group.objects.get_or_create(name="Supervisor")
         self.admin_group, _ = Group.objects.get_or_create(name="Administrador")
 
-        self.supervisor = User.objects.create_user("sup", password="pass")
+        self.supervisor = UserModel.objects.create_user("sup", password="pass")
         self.supervisor.groups.add(self.supervisor_group)
 
-        self.admin = User.objects.create_user("admin", password="pass")
+        self.admin = UserModel.objects.create_user("admin", password="pass")
         self.admin.groups.add(self.admin_group)
 
         self.ubicacion = Ubicacion.objects.create(

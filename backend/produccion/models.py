@@ -1,6 +1,6 @@
 """Modelos del dominio de Producción"""
 
-from django.contrib.auth.models import User
+from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
 
@@ -41,12 +41,20 @@ class Lote(models.Model):
     fecha_planificada_fin = models.DateTimeField()
     fecha_real_fin = models.DateTimeField(null=True, blank=True)
     turno = models.ForeignKey(Turno, on_delete=models.PROTECT, related_name='lotes')
-    supervisor = models.ForeignKey(User, on_delete=models.PROTECT, related_name='lotes_supervisados')
+    supervisor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='lotes_supervisados',
+    )
     observaciones = models.TextField(blank=True)
-    creado_por = models.ForeignKey(User, on_delete=models.PROTECT, related_name='lotes_creados')
+    creado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='lotes_creados',
+    )
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     cancelado_por = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -97,7 +105,11 @@ class LoteEtapa(models.Model):
     fecha_inicio = models.DateTimeField(null=True, blank=True)
     fecha_fin = models.DateTimeField(null=True, blank=True)
     duracion_minutos = models.IntegerField(null=True, blank=True, editable=False)
-    operario = models.ForeignKey(User, on_delete=models.PROTECT, related_name='etapas_operadas')
+    operario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='etapas_operadas',
+    )
     cantidad_entrada = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     cantidad_salida = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     cantidad_merma = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -115,7 +127,7 @@ class LoteEtapa(models.Model):
     observaciones = models.TextField(blank=True)
     requiere_aprobacion_calidad = models.BooleanField(default=False)
     aprobada_por_calidad = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

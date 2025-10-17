@@ -1,11 +1,15 @@
 """Serializers del dominio de usuarios."""
 
-from django.contrib.auth.models import User
+from django.apps import apps
+from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
 from .models import UserProfile
+
+
+UserModel = apps.get_model(settings.AUTH_USER_MODEL)
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -14,7 +18,7 @@ class UserSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
 
     class Meta:
-        model = User
+        model = UserModel
         fields = [
             "id",
             "username",
@@ -71,7 +75,7 @@ class UsuarioDetalleSerializer(serializers.ModelSerializer):
     fecha_ingreso = serializers.DateField(required=False, allow_null=True)
 
     class Meta:
-        model = User
+        model = UserModel
         fields = [
             "id",
             "username",
@@ -157,7 +161,7 @@ class UsuarioDetalleSerializer(serializers.ModelSerializer):
         }
 
         password = validated_data.pop("password", None)
-        user = User.objects.create(**validated_data)
+        user = UserModel.objects.create(**validated_data)
 
         if password:
             user.set_password(password)
@@ -228,7 +232,7 @@ class UsuarioPerfilSerializer(serializers.ModelSerializer):
     telefono = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
-        model = User
+        model = UserModel
         fields = [
             "id",
             "username",
@@ -315,7 +319,7 @@ class CrearUsuarioSerializer(serializers.ModelSerializer):
     fecha_ingreso = serializers.DateField(required=False, allow_null=True)
 
     class Meta:
-        model = User
+        model = UserModel
         fields = [
             "username",
             "email",
@@ -371,7 +375,7 @@ class CrearUsuarioSerializer(serializers.ModelSerializer):
         }
 
         password = validated_data.pop("password")
-        user = User.objects.create(**validated_data)
+        user = UserModel.objects.create(**validated_data)
         user.set_password(password)
         user.save()
 
