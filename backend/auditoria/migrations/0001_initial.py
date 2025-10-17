@@ -5,6 +5,200 @@ from django.conf import settings
 from django.db import migrations, models
 
 
+def create_electronic_signature(apps, schema_editor):
+    """Crea la tabla de firmas electrónicas si aún no existe."""
+
+    if 'core_electronicsignature' in schema_editor.connection.introspection.table_names():
+        return
+
+    class _ElectronicSignature(models.Model):
+        action = models.CharField(
+            max_length=20,
+            choices=[
+                ('APPROVE', 'Approve'),
+                ('REVIEW', 'Review'),
+                ('RELEASE', 'Release'),
+                ('REJECT', 'Reject'),
+                ('AUTHORIZE', 'Authorize'),
+                ('VERIFY', 'Verify'),
+            ],
+            help_text='Action being signed',
+        )
+        meaning = models.CharField(
+            max_length=20,
+            choices=[
+                ('APPROVED_BY', 'Approved by'),
+                ('REVIEWED_BY', 'Reviewed by'),
+                ('RELEASED_BY', 'Released by'),
+                ('REJECTED_BY', 'Rejected by'),
+                ('AUTHORIZED_BY', 'Authorized by'),
+                ('VERIFIED_BY', 'Verified by'),
+            ],
+            help_text='Meaning of the signature',
+        )
+        timestamp = models.DateTimeField(
+            auto_now_add=True,
+            help_text='When the signature was applied',
+        )
+        content_type = models.CharField(
+            max_length=100,
+            help_text="Type of object being signed (e.g., 'Lote', 'OrdenTrabajo')",
+        )
+        object_id = models.IntegerField(
+            help_text='ID of the object being signed',
+        )
+        object_str = models.CharField(
+            max_length=200,
+            help_text='String representation of the object',
+        )
+        reason = models.TextField(
+            help_text='Reason for signing (required by 21 CFR Part 11)',
+        )
+        comments = models.TextField(
+            blank=True,
+            help_text='Additional comments',
+        )
+        password_hash = models.CharField(
+            max_length=128,
+            default='',
+            blank=True,
+            help_text='Hash of password used to authenticate (for audit purposes)',
+        )
+        ip_address = models.GenericIPAddressField(
+            null=True,
+            blank=True,
+            help_text='IP address from which signature was applied',
+        )
+        user_agent = models.CharField(
+            max_length=500,
+            blank=True,
+            help_text='Browser/client user agent',
+        )
+        data_hash = models.CharField(
+            max_length=64,
+            default='',
+            blank=True,
+            help_text='SHA-256 hash of the signed data at the time of signing',
+        )
+        signature_hash = models.CharField(
+            max_length=64,
+            default='',
+            blank=True,
+            editable=False,
+            help_text='Hash of the signature itself (for integrity verification)',
+        )
+        is_valid = models.BooleanField(
+            default=True,
+            help_text='Whether this signature is still valid',
+        )
+        invalidated_at = models.DateTimeField(
+            null=True,
+            blank=True,
+            help_text='When this signature was invalidated',
+        )
+        invalidated_by = models.ForeignKey(
+            'auth.User',
+            null=True,
+            blank=True,
+            on_delete=django.db.models.deletion.SET_NULL,
+            related_name='signatures_invalidated',
+            help_text='User who invalidated this signature',
+        )
+        invalidation_reason = models.TextField(
+            blank=True,
+            help_text='Reason for invalidation',
+        )
+        user = models.ForeignKey(
+            'auth.User',
+            on_delete=django.db.models.deletion.PROTECT,
+            related_name='electronic_signatures',
+            help_text='User who signed',
+        )
+
+        class Meta:
+            app_label = 'auditoria'
+            db_table = 'core_electronicsignature'
+            managed = False
+            indexes = [
+                models.Index(
+                    fields=['content_type', 'object_id'],
+                    name='core_electr_content_cfcd25_idx',
+                ),
+                models.Index(
+                    fields=['user', '-timestamp'],
+                    name='core_electr_user_id_9bd307_idx',
+                ),
+                models.Index(
+                    fields=['is_valid'],
+                    name='core_electr_is_vali_074163_idx',
+                ),
+            ]
+
+    schema_editor.create_model(_ElectronicSignature)
+
+
+def create_log_auditoria(apps, schema_editor):
+    """Crea la tabla de logs de auditoría si aún no existe."""
+
+    if 'core_logauditoria' in schema_editor.connection.introspection.table_names():
+        return
+
+    class _LogAuditoria(models.Model):
+        accion = models.CharField(
+            max_length=10,
+            choices=[
+                ('CREAR', 'Crear'),
+                ('MODIFICAR', 'Modificar'),
+                ('ELIMINAR', 'Eliminar'),
+                ('CANCELAR', 'Cancelar'),
+                ('VER', 'Ver'),
+                ('EXPORTAR', 'Exportar'),
+            ],
+        )
+        modelo = models.CharField(
+            max_length=100,
+            help_text='Nombre del modelo afectado',
+        )
+        objeto_id = models.IntegerField()
+        objeto_str = models.CharField(max_length=200)
+        cambios = models.JSONField(
+            default=dict,
+            help_text='Estructura: {campo: {antes: X, despues: Y}}',
+        )
+        ip_address = models.GenericIPAddressField(
+            null=True,
+            blank=True,
+        )
+        user_agent = models.CharField(
+            max_length=500,
+            blank=True,
+        )
+        fecha = models.DateTimeField(auto_now_add=True)
+        usuario = models.ForeignKey(
+            'auth.User',
+            null=True,
+            on_delete=django.db.models.deletion.SET_NULL,
+            related_name='acciones_auditoria',
+        )
+
+        class Meta:
+            app_label = 'auditoria'
+            db_table = 'core_logauditoria'
+            managed = False
+            indexes = [
+                models.Index(
+                    fields=['usuario', '-fecha'],
+                    name='core_logaud_usuario_778fba_idx',
+                ),
+                models.Index(
+                    fields=['modelo', 'objeto_id'],
+                    name='core_logaud_modelo_df8aac_idx',
+                ),
+            ]
+
+    schema_editor.create_model(_LogAuditoria)
+
+
 class Migration(migrations.Migration):
 
     initial = True
@@ -14,253 +208,292 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.CreateModel(
-            name='ElectronicSignature',
-            fields=[
-                (
-                    'id',
-                    models.BigAutoField(
-                        auto_created=True,
-                        primary_key=True,
-                        serialize=False,
-                        verbose_name='ID',
-                    ),
-                ),
-                (
-                    'action',
-                    models.CharField(
-                        choices=[
-                            ('APPROVE', 'Approve'),
-                            ('REVIEW', 'Review'),
-                            ('RELEASE', 'Release'),
-                            ('REJECT', 'Reject'),
-                            ('AUTHORIZE', 'Authorize'),
-                            ('VERIFY', 'Verify'),
+        migrations.SeparateDatabaseAndState(
+            state_operations=[
+                migrations.CreateModel(
+                    name='ElectronicSignature',
+                    fields=[
+                        (
+                            'id',
+                            models.BigAutoField(
+                                auto_created=True,
+                                primary_key=True,
+                                serialize=False,
+                                verbose_name='ID',
+                            ),
+                        ),
+                        (
+                            'action',
+                            models.CharField(
+                                choices=[
+                                    ('APPROVE', 'Approve'),
+                                    ('REVIEW', 'Review'),
+                                    ('RELEASE', 'Release'),
+                                    ('REJECT', 'Reject'),
+                                    ('AUTHORIZE', 'Authorize'),
+                                    ('VERIFY', 'Verify'),
+                                ],
+                                help_text='Action being signed',
+                                max_length=20,
+                            ),
+                        ),
+                        (
+                            'meaning',
+                            models.CharField(
+                                choices=[
+                                    ('APPROVED_BY', 'Approved by'),
+                                    ('REVIEWED_BY', 'Reviewed by'),
+                                    ('RELEASED_BY', 'Released by'),
+                                    ('REJECTED_BY', 'Rejected by'),
+                                    ('AUTHORIZED_BY', 'Authorized by'),
+                                    ('VERIFIED_BY', 'Verified by'),
+                                ],
+                                help_text='Meaning of the signature',
+                                max_length=20,
+                            ),
+                        ),
+                        (
+                            'timestamp',
+                            models.DateTimeField(
+                                auto_now_add=True,
+                                help_text='When the signature was applied',
+                            ),
+                        ),
+                        (
+                            'content_type',
+                            models.CharField(
+                                help_text="Type of object being signed (e.g., 'Lote', 'OrdenTrabajo')",
+                                max_length=100,
+                            ),
+                        ),
+                        (
+                            'object_id',
+                            models.IntegerField(
+                                help_text='ID of the object being signed',
+                            ),
+                        ),
+                        (
+                            'object_str',
+                            models.CharField(
+                                help_text='String representation of the object',
+                                max_length=200,
+                            ),
+                        ),
+                        (
+                            'reason',
+                            models.TextField(
+                                help_text='Reason for signing (required by 21 CFR Part 11)',
+                            ),
+                        ),
+                        (
+                            'comments',
+                            models.TextField(
+                                blank=True,
+                                help_text='Additional comments',
+                            ),
+                        ),
+                        (
+                            'password_hash',
+                            models.CharField(
+                                blank=True,
+                                default='',
+                                help_text='Hash of password used to authenticate (for audit purposes)',
+                                max_length=128,
+                            ),
+                        ),
+                        (
+                            'ip_address',
+                            models.GenericIPAddressField(
+                                blank=True,
+                                help_text='IP address from which signature was applied',
+                                null=True,
+                            ),
+                        ),
+                        (
+                            'user_agent',
+                            models.CharField(
+                                blank=True,
+                                help_text='Browser/client user agent',
+                                max_length=500,
+                            ),
+                        ),
+                        (
+                            'data_hash',
+                            models.CharField(
+                                blank=True,
+                                default='',
+                                help_text='SHA-256 hash of the signed data at the time of signing',
+                                max_length=64,
+                            ),
+                        ),
+                        (
+                            'signature_hash',
+                            models.CharField(
+                                blank=True,
+                                default='',
+                                editable=False,
+                                help_text='Hash of the signature itself (for integrity verification)',
+                                max_length=64,
+                            ),
+                        ),
+                        (
+                            'is_valid',
+                            models.BooleanField(
+                                default=True,
+                                help_text='Whether this signature is still valid',
+                            ),
+                        ),
+                        (
+                            'invalidated_at',
+                            models.DateTimeField(
+                                blank=True,
+                                help_text='When this signature was invalidated',
+                                null=True,
+                            ),
+                        ),
+                        (
+                            'invalidation_reason',
+                            models.TextField(
+                                blank=True,
+                                help_text='Reason for invalidation',
+                            ),
+                        ),
+                        (
+                            'invalidated_by',
+                            models.ForeignKey(
+                                blank=True,
+                                help_text='User who invalidated this signature',
+                                null=True,
+                                on_delete=django.db.models.deletion.SET_NULL,
+                                related_name='signatures_invalidated',
+                                to=settings.AUTH_USER_MODEL,
+                            ),
+                        ),
+                        (
+                            'user',
+                            models.ForeignKey(
+                                help_text='User who signed',
+                                on_delete=django.db.models.deletion.PROTECT,
+                                related_name='electronic_signatures',
+                                to=settings.AUTH_USER_MODEL,
+                            ),
+                        ),
+                    ],
+                    options={
+                        'verbose_name': 'Electronic Signature',
+                        'verbose_name_plural': 'Electronic Signatures',
+                        'ordering': ['-timestamp'],
+                        'db_table': 'core_electronicsignature',
+                        'indexes': [
+                            models.Index(
+                                fields=['content_type', 'object_id'],
+                                name='core_electr_content_cfcd25_idx',
+                            ),
+                            models.Index(
+                                fields=['user', '-timestamp'],
+                                name='core_electr_user_id_9bd307_idx',
+                            ),
+                            models.Index(
+                                fields=['is_valid'],
+                                name='core_electr_is_vali_074163_idx',
+                            ),
                         ],
-                        help_text='Action being signed',
-                        max_length=20,
-                    ),
+                    },
                 ),
-                (
-                    'meaning',
-                    models.CharField(
-                        choices=[
-                            ('APPROVED_BY', 'Approved by'),
-                            ('REVIEWED_BY', 'Reviewed by'),
-                            ('RELEASED_BY', 'Released by'),
-                            ('REJECTED_BY', 'Rejected by'),
-                            ('AUTHORIZED_BY', 'Authorized by'),
-                            ('VERIFIED_BY', 'Verified by'),
+                migrations.CreateModel(
+                    name='LogAuditoria',
+                    fields=[
+                        (
+                            'id',
+                            models.BigAutoField(
+                                auto_created=True,
+                                primary_key=True,
+                                serialize=False,
+                                verbose_name='ID',
+                            ),
+                        ),
+                        (
+                            'accion',
+                            models.CharField(
+                                choices=[
+                                    ('CREAR', 'Crear'),
+                                    ('MODIFICAR', 'Modificar'),
+                                    ('ELIMINAR', 'Eliminar'),
+                                    ('CANCELAR', 'Cancelar'),
+                                    ('VER', 'Ver'),
+                                    ('EXPORTAR', 'Exportar'),
+                                ],
+                                max_length=10,
+                            ),
+                        ),
+                        (
+                            'modelo',
+                            models.CharField(
+                                help_text='Nombre del modelo afectado',
+                                max_length=100,
+                            ),
+                        ),
+                        ('objeto_id', models.IntegerField()),
+                        ('objeto_str', models.CharField(max_length=200)),
+                        (
+                            'cambios',
+                            models.JSONField(
+                                default=dict,
+                                help_text='Estructura: {campo: {antes: X, despues: Y}}',
+                            ),
+                        ),
+                        (
+                            'ip_address',
+                            models.GenericIPAddressField(
+                                blank=True,
+                                null=True,
+                            ),
+                        ),
+                        (
+                            'user_agent',
+                            models.CharField(
+                                blank=True,
+                                max_length=500,
+                            ),
+                        ),
+                        ('fecha', models.DateTimeField(auto_now_add=True)),
+                        (
+                            'usuario',
+                            models.ForeignKey(
+                                null=True,
+                                on_delete=django.db.models.deletion.SET_NULL,
+                                related_name='acciones_auditoria',
+                                to=settings.AUTH_USER_MODEL,
+                            ),
+                        ),
+                    ],
+                    options={
+                        'verbose_name': 'Log de Auditoría',
+                        'verbose_name_plural': 'Logs de Auditoría',
+                        'ordering': ['-fecha'],
+                        'db_table': 'core_logauditoria',
+                        'indexes': [
+                            models.Index(
+                                fields=['usuario', '-fecha'],
+                                name='core_logaud_usuario_778fba_idx',
+                            ),
+                            models.Index(
+                                fields=['modelo', 'objeto_id'],
+                                name='core_logaud_modelo_df8aac_idx',
+                            ),
                         ],
-                        help_text='Meaning of the signature',
-                        max_length=20,
-                    ),
-                ),
-                (
-                    'timestamp',
-                    models.DateTimeField(
-                        auto_now_add=True, help_text='When the signature was applied'
-                    ),
-                ),
-                (
-                    'content_type',
-                    models.CharField(
-                        help_text="Type of object being signed (e.g., 'Lote', 'OrdenTrabajo')",
-                        max_length=100,
-                    ),
-                ),
-                (
-                    'object_id',
-                    models.IntegerField(help_text='ID of the object being signed'),
-                ),
-                (
-                    'object_str',
-                    models.CharField(
-                        help_text='String representation of the object',
-                        max_length=200,
-                    ),
-                ),
-                (
-                    'reason',
-                    models.TextField(
-                        help_text='Reason for signing (required by 21 CFR Part 11)'
-                    ),
-                ),
-                (
-                    'comments',
-                    models.TextField(blank=True, help_text='Additional comments'),
-                ),
-                (
-                    'password_hash',
-                    models.CharField(
-                        blank=True,
-                        default='',
-                        help_text='Hash of password used to authenticate (for audit purposes)',
-                        max_length=128,
-                    ),
-                ),
-                (
-                    'ip_address',
-                    models.GenericIPAddressField(
-                        blank=True,
-                        help_text='IP address from which signature was applied',
-                        null=True,
-                    ),
-                ),
-                (
-                    'user_agent',
-                    models.CharField(
-                        blank=True, help_text='Browser/client user agent', max_length=500
-                    ),
-                ),
-                (
-                    'data_hash',
-                    models.CharField(
-                        blank=True,
-                        default='',
-                        help_text='SHA-256 hash of the signed data at the time of signing',
-                        max_length=64,
-                    ),
-                ),
-                (
-                    'signature_hash',
-                    models.CharField(
-                        blank=True,
-                        default='',
-                        editable=False,
-                        help_text='Hash of the signature itself (for integrity verification)',
-                        max_length=64,
-                    ),
-                ),
-                (
-                    'is_valid',
-                    models.BooleanField(
-                        default=True, help_text='Whether this signature is still valid'
-                    ),
-                ),
-                (
-                    'invalidated_at',
-                    models.DateTimeField(
-                        blank=True,
-                        help_text='When this signature was invalidated',
-                        null=True,
-                    ),
-                ),
-                (
-                    'invalidation_reason',
-                    models.TextField(blank=True, help_text='Reason for invalidation'),
-                ),
-                (
-                    'invalidated_by',
-                    models.ForeignKey(
-                        blank=True,
-                        help_text='User who invalidated this signature',
-                        null=True,
-                        on_delete=django.db.models.deletion.SET_NULL,
-                        related_name='signatures_invalidated',
-                        to=settings.AUTH_USER_MODEL,
-                    ),
-                ),
-                (
-                    'user',
-                    models.ForeignKey(
-                        help_text='User who signed',
-                        on_delete=django.db.models.deletion.PROTECT,
-                        related_name='electronic_signatures',
-                        to=settings.AUTH_USER_MODEL,
-                    ),
+                    },
                 ),
             ],
-            options={
-                'verbose_name': 'Electronic Signature',
-                'verbose_name_plural': 'Electronic Signatures',
-                'ordering': ['-timestamp'],
-                'db_table': 'core_electronicsignature',
-                'indexes': [
-                    models.Index(
-                        fields=['content_type', 'object_id'],
-                        name='core_electr_content_cfcd25_idx',
-                    ),
-                    models.Index(
-                        fields=['user', '-timestamp'],
-                        name='core_electr_user_id_9bd307_idx',
-                    ),
-                    models.Index(
-                        fields=['is_valid'],
-                        name='core_electr_is_vali_074163_idx',
-                    ),
-                ],
-            },
-        ),
-        migrations.CreateModel(
-            name='LogAuditoria',
-            fields=[
-                (
-                    'id',
-                    models.BigAutoField(
-                        auto_created=True,
-                        primary_key=True,
-                        serialize=False,
-                        verbose_name='ID',
-                    ),
+            database_operations=[
+                migrations.RunPython(
+                    create_electronic_signature,
+                    reverse_code=migrations.RunPython.noop,
                 ),
-                (
-                    'accion',
-                    models.CharField(
-                        choices=[
-                            ('CREAR', 'Crear'),
-                            ('MODIFICAR', 'Modificar'),
-                            ('ELIMINAR', 'Eliminar'),
-                            ('CANCELAR', 'Cancelar'),
-                            ('VER', 'Ver'),
-                            ('EXPORTAR', 'Exportar'),
-                        ],
-                        max_length=10,
-                    ),
-                ),
-                (
-                    'modelo',
-                    models.CharField(
-                        help_text='Nombre del modelo afectado', max_length=100
-                    ),
-                ),
-                ('objeto_id', models.IntegerField()),
-                ('objeto_str', models.CharField(max_length=200)),
-                (
-                    'cambios',
-                    models.JSONField(
-                        default=dict,
-                        help_text='Estructura: {campo: {antes: X, despues: Y}}',
-                    ),
-                ),
-                ('ip_address', models.GenericIPAddressField(blank=True, null=True)),
-                ('user_agent', models.CharField(blank=True, max_length=500)),
-                ('fecha', models.DateTimeField(auto_now_add=True)),
-                (
-                    'usuario',
-                    models.ForeignKey(
-                        null=True,
-                        on_delete=django.db.models.deletion.SET_NULL,
-                        related_name='acciones_auditoria',
-                        to=settings.AUTH_USER_MODEL,
-                    ),
+                migrations.RunPython(
+                    create_log_auditoria,
+                    reverse_code=migrations.RunPython.noop,
                 ),
             ],
-            options={
-                'verbose_name': 'Log de Auditoría',
-                'verbose_name_plural': 'Logs de Auditoría',
-                'ordering': ['-fecha'],
-                'db_table': 'core_logauditoria',
-                'indexes': [
-                    models.Index(
-                        fields=['usuario', '-fecha'],
-                        name='core_logaud_usuario_778fba_idx',
-                    ),
-                    models.Index(
-                        fields=['modelo', 'objeto_id'],
-                        name='core_logaud_modelo_df8aac_idx',
-                    ),
-                ],
-            },
         ),
     ]
