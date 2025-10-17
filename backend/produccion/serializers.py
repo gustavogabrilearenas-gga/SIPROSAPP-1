@@ -10,6 +10,23 @@ from backend.core.permissions import is_admin, is_calidad, is_operario, is_super
 from backend.produccion.models import Lote, LoteEtapa, RegistroProduccion
 
 
+def _obtener_fechas_reales_lote(lote):
+    """Obtiene y cachea las fechas reales calculadas del lote."""
+
+    cache_attr = "_fechas_reales_cache"
+    if not hasattr(lote, cache_attr):
+        agregados = lote.obtener_agregados_etapas()
+        setattr(
+            lote,
+            cache_attr,
+            {
+                "fecha_inicio": agregados.get("fecha_inicio"),
+                "fecha_fin": agregados.get("fecha_fin"),
+            },
+        )
+    return getattr(lote, cache_attr)
+
+
 class RegistroProduccionSerializer(serializers.ModelSerializer):
     """Serializer para registros diarios de producción."""
 
@@ -23,7 +40,7 @@ class RegistroProduccionSerializer(serializers.ModelSerializer):
     class Meta:
         model = RegistroProduccion
         fields = "__all__"
-        read_only_fields = ["fecha_registro", "registrado_por"]
+        read_only_fields = ["fecha_registro", "registrado_por", "hora_inicio", "hora_fin"]
         extra_kwargs = {
             "cantidad_producida": {"min_value": 0},
         }
@@ -101,6 +118,8 @@ class LoteListSerializer(serializers.ModelSerializer):
     supervisor_nombre = serializers.CharField(source="supervisor.get_full_name", read_only=True)
     rendimiento_porcentaje = serializers.ReadOnlyField()
     rendimiento = serializers.ReadOnlyField(source="rendimiento_porcentaje")
+    fecha_real_inicio = serializers.SerializerMethodField()
+    fecha_real_fin = serializers.SerializerMethodField()
 
     class Meta:
         model = Lote
@@ -129,6 +148,12 @@ class LoteListSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = tuple(fields)
 
+    def get_fecha_real_inicio(self, obj):
+        return _obtener_fechas_reales_lote(obj)["fecha_inicio"]
+
+    def get_fecha_real_fin(self, obj):
+        return _obtener_fechas_reales_lote(obj)["fecha_fin"]
+
 
 class LoteSerializer(serializers.ModelSerializer):
     """Serializer completo de lotes"""
@@ -144,6 +169,8 @@ class LoteSerializer(serializers.ModelSerializer):
         source="cancelado_por.get_full_name", read_only=True, allow_null=True
     )
     rendimiento = serializers.ReadOnlyField(source="rendimiento_porcentaje")
+    fecha_real_inicio = serializers.SerializerMethodField()
+    fecha_real_fin = serializers.SerializerMethodField()
 
     class Meta:
         model = Lote
@@ -193,6 +220,12 @@ class LoteSerializer(serializers.ModelSerializer):
             "estado",
             "unidad",
         ]
+
+    def get_fecha_real_inicio(self, obj):
+        return _obtener_fechas_reales_lote(obj)["fecha_inicio"]
+
+    def get_fecha_real_fin(self, obj):
+        return _obtener_fechas_reales_lote(obj)["fecha_fin"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

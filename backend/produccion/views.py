@@ -5,14 +5,19 @@ from decimal import Decimal
 
 from django.db.models import (
     Count,
+    DateTimeField,
     DecimalField,
+    F,
+    Max,
+    Min,
     OuterRef,
     Q,
     Subquery,
     Sum,
+    TimeField,
     Value,
 )
-from django.db.models.functions import Coalesce
+from django.db.models.functions import Coalesce, Cast
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
@@ -91,11 +96,44 @@ class RegistroProduccionViewSet(viewsets.ReadOnlyModelViewSet):
 
         cantidad_field = DecimalField(max_digits=10, decimal_places=2)
 
+        etapas_mismo_dia = LoteEtapa.objects.filter(
+            maquina_id=OuterRef("maquina_id"),
+            lote__turno_id=OuterRef("turno_id"),
+            fecha_inicio__date=OuterRef("fecha_produccion"),
+        )
+
+        hora_inicio_subquery = (
+            etapas_mismo_dia.filter(fecha_inicio__isnull=False)
+            .order_by()
+            .values("maquina_id")
+            .annotate(valor=Min("fecha_inicio"))
+            .values("valor")[:1]
+        )
+
+        hora_fin_subquery = (
+            etapas_mismo_dia.filter(fecha_fin__isnull=False)
+            .order_by()
+            .values("maquina_id")
+            .annotate(valor=Max("fecha_fin"))
+            .values("valor")[:1]
+        )
+
+        hora_inicio_expr = Cast(
+            Subquery(hora_inicio_subquery, output_field=DateTimeField()),
+            output_field=TimeField(),
+        )
+        hora_fin_expr = Cast(
+            Subquery(hora_fin_subquery, output_field=DateTimeField()),
+            output_field=TimeField(),
+        )
+
         return queryset.annotate(
             cantidad_producida=Coalesce(
                 Subquery(suma_cantidades, output_field=cantidad_field),
                 Value(Decimal("0"), output_field=cantidad_field),
-            )
+            ),
+            hora_inicio=Coalesce(hora_inicio_expr, F("hora_inicio")),
+            hora_fin=Coalesce(hora_fin_expr, F("hora_fin")),
         )
 
 
