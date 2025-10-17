@@ -68,14 +68,6 @@ class MaquinaViewSetTests(TestCase):
         returned_codes = {item["codigo"] for item in payload["results"]}
         self.assertEqual(returned_codes, {self.maquina_inactiva.codigo})
 
-    def test_supervisor_can_access_detail_action(self):
-        self._authenticate(self.supervisor)
-        url = reverse("maquina-lotes-recientes", args=[self.maquina_activa.pk])
-        response = self.client.get(url)
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIsInstance(response.json(), list)
-
     def test_performance_select_related_limits_queries(self):
         # Cargar varias máquinas adicionales para detectar problemas de N+1
         for index in range(3, 8):

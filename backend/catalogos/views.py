@@ -1,13 +1,9 @@
 """ViewSets de catálogos maestros."""
 
-from django.db.models import Count, Q
+from django.db.models import Count
 from rest_framework import filters, permissions, viewsets
-from rest_framework.decorators import action
-from rest_framework.response import Response
 
 from backend.core.permissions import IsAdmin, IsAdminOrSupervisor
-from backend.produccion.models import Lote
-from backend.produccion.serializers import LoteListSerializer
 
 from .models import (
     Ubicacion,
@@ -74,20 +70,6 @@ class MaquinaViewSet(viewsets.ModelViewSet):
         else:
             perm_classes = [IsAdmin]
         return [perm() for perm in perm_classes]
-
-    @action(detail=True, methods=['get'])
-    def lotes_recientes(self, request, pk=None):
-        """Devuelve los últimos lotes asociados a la máquina."""
-
-        maquina = self.get_object()
-        lotes = (
-            Lote.objects.select_related('producto', 'supervisor')
-            .filter(etapas__maquina=maquina)
-            .distinct()
-            .order_by('-fecha_creacion')[:10]
-        )
-        serializer = LoteListSerializer(lotes, many=True)
-        return Response(serializer.data)
 
 
 class ProductoViewSet(viewsets.ModelViewSet):
@@ -172,11 +154,9 @@ class EtapaProduccionViewSet(viewsets.ModelViewSet):
 
 
 class TurnoViewSet(viewsets.ModelViewSet):
-    """Gestión de turnos con conteo de lotes."""
+    """Gestión de turnos."""
 
-    queryset = Turno.objects.annotate(
-        lotes_count=Count('lotes', filter=Q(lotes__visible=True), distinct=True)
-    ).order_by('codigo')
+    queryset = Turno.objects.all().order_by('codigo')
     serializer_class = TurnoSerializer
 
     def get_permissions(self):
