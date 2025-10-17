@@ -216,6 +216,27 @@ class LoteListSerializer(serializers.ModelSerializer):
     def get_unidad(self, obj):
         return _obtener_unidad_producto(getattr(obj, "producto", None)) or getattr(obj, "unidad", None)
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get("request")
+        if not request:
+            return
+
+        user = request.user
+        if not getattr(user, "is_authenticated", False):
+            return
+
+        es_admin = is_admin(user)
+        es_supervisor = is_supervisor(user)
+
+        if is_operario(user) and not (es_admin or es_supervisor):
+            for field_name in [
+                "cantidad_planificada",
+                "fecha_planificada_inicio",
+                "fecha_planificada_fin",
+            ]:
+                self.fields.pop(field_name, None)
+
 
 class LoteSerializer(serializers.ModelSerializer):
     """Serializer completo de lotes"""
@@ -327,6 +348,14 @@ class LoteSerializer(serializers.ModelSerializer):
             }
 
             for field_name in campos_bloqueados:
+                if field_name in {
+                    "cantidad_planificada",
+                    "fecha_planificada_inicio",
+                    "fecha_planificada_fin",
+                }:
+                    self.fields.pop(field_name, None)
+                    continue
+
                 field = self.fields.get(field_name)
                 if field is not None:
                     field.read_only = True
