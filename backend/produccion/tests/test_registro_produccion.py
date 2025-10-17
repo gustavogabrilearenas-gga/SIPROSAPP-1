@@ -156,10 +156,79 @@ class RegistroProduccionDBTestCase(TransactionTestCase):
             f"operario_{suffix}", password="pass1234"
         )
 
+        self.supervisor = UserModel.objects.create_user(
+            f"supervisor_{suffix}", password="pass1234"
+        )
+        self.creador = UserModel.objects.create_user(
+            f"creador_{suffix}", password="pass1234"
+        )
+
+        self.etapa_catalogo = EtapaProduccion.objects.create(
+            codigo=f"ETP-{base_code}-1",
+            nombre="Granulado",
+            descripcion="",
+            duracion_tipica=60,
+            requiere_validacion=False,
+            parametros=[],
+        )
+
+        self._lote_counter = 0
+        self.crear_etapa_produccion()
+
 
     def tearDown(self):
         RegistroProduccion.objects.all().delete()
         super().tearDown()
+
+
+    def crear_etapa_produccion(
+        self,
+        *,
+        fecha=date(2024, 10, 20),
+        maquina=None,
+        turno=None,
+        producto=None,
+        cantidad_salida=Decimal("120.50"),
+        hora_inicio=time(7, 0),
+        hora_fin=time(12, 0),
+    ):
+        maquina = maquina or self.maquina
+        turno = turno or self.turno_m
+        producto = producto or self.producto
+        formula = self.formula if producto == self.producto else self.formula_b
+
+        self._lote_counter += 1
+        codigo_lote = f"LOT-{self._lote_counter}-{fecha.strftime('%Y%m%d')}"
+
+        fecha_inicio_dt = timezone.make_aware(datetime.combine(fecha, hora_inicio))
+        fecha_fin_dt = timezone.make_aware(datetime.combine(fecha, hora_fin))
+
+        lote = Lote.objects.create(
+            codigo_lote=codigo_lote,
+            producto=producto,
+            formula=formula,
+            cantidad_planificada=200,
+            unidad=UnidadProduccion.COMPRIMIDOS,
+            fecha_planificada_inicio=fecha_inicio_dt,
+            fecha_planificada_fin=fecha_fin_dt,
+            turno=turno,
+            supervisor=self.supervisor,
+            observaciones="",
+            creado_por=self.creador,
+        )
+
+        return LoteEtapa.objects.create(
+            lote=lote,
+            etapa=self.etapa_catalogo,
+            orden=1,
+            maquina=maquina,
+            operario=self.usuario,
+            estado="COMPLETADO",
+            fecha_inicio=fecha_inicio_dt,
+            fecha_fin=fecha_fin_dt,
+            cantidad_entrada=cantidad_salida,
+            cantidad_salida=cantidad_salida,
+        )
 
 
     def serializer_payload(self, **overrides):
@@ -169,9 +238,6 @@ class RegistroProduccionDBTestCase(TransactionTestCase):
             "hubo_produccion": True,
             "maquina": self.maquina.pk,
             "producto": self.producto.pk,
-            "cantidad_producida": Decimal("120.50"),
-            "hora_inicio": time(7, 0),
-            "hora_fin": time(12, 0),
             "observaciones": "Producción normal",
         }
         data.update(overrides)
@@ -208,16 +274,16 @@ class RegistroProduccionSerializerTests(RegistroProduccionDBTestCase):
         self.assertEqual(registro.registrado_por, self.usuario)
         self.assertEqual(registro.maquina, self.maquina)
         self.assertEqual(registro.unidad_medida, UnidadProduccion.COMPRIMIDOS)
+        self.assertEqual(registro.cantidad_producida, Decimal("120.50"))
+        self.assertEqual(registro.hora_inicio, time(7, 0))
+        self.assertEqual(registro.hora_fin, time(12, 0))
 
-    def test_ignora_unidad_enviada_por_el_cliente(self):
+    def test_rechaza_unidad_enviada_por_el_cliente(self):
         serializer = RegistroProduccionSerializer(
             data=self.serializer_payload(unidad_medida="KG")
         )
-        self.assertTrue(serializer.is_valid(), serializer.errors)
-
-        registro = serializer.save(registrado_por=self.usuario)
-
-        self.assertEqual(registro.unidad_medida, UnidadProduccion.COMPRIMIDOS)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("unidad_medida", serializer.errors)
 
     def test_representacion_utiliza_unidad_del_producto(self):
         registro = self.crear_registro(unidad_medida=UnidadProduccion.KG)
@@ -233,32 +299,81 @@ class RegistroProduccionSerializerTests(RegistroProduccionDBTestCase):
         self.assertFalse(serializer.is_valid())
         self.assertIn("turno", serializer.errors)
 
-    def test_rechaza_cantidad_negativa(self):
+    def test_rechaza_cantidad_enviada_por_el_cliente(self):
         serializer = RegistroProduccionSerializer(
-            data=self.serializer_payload(cantidad_producida=Decimal("-1"))
+            data=self.serializer_payload(cantidad_producida=Decimal("1"))
         )
         self.assertFalse(serializer.is_valid())
         self.assertIn("cantidad_producida", serializer.errors)
 
-    def test_rechaza_hora_fin_anterior_a_inicio(self):
+    def test_rechaza_horas_enviadas_por_el_cliente(self):
         serializer = RegistroProduccionSerializer(
-            data=self.serializer_payload(hora_fin=time(6, 30))
+            data=self.serializer_payload(hora_inicio=time(6, 30))
         )
         self.assertFalse(serializer.is_valid())
-        self.assertIn("hora_fin", serializer.errors)
+        self.assertIn("hora_inicio", serializer.errors)
 
-    def test_actualizacion_parcial_sin_cambiar_identificadores_es_valida(self):
+    def test_rechaza_creacion_sin_etapas_relacionadas(self):
+        serializer = RegistroProduccionSerializer(
+            data=self.serializer_payload(fecha_produccion=date(2024, 10, 25))
+        )
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("cantidad_producida", serializer.errors)
+
+    def test_actualizacion_parcial_actualiza_observaciones(self):
+        registro = self.crear_registro()
+        serializer = RegistroProduccionSerializer(
+            instance=registro,
+            data={"observaciones": "Actualizado"},
+            partial=True,
+        )
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        actualizado = serializer.save()
+        self.assertEqual(actualizado.observaciones, "Actualizado")
+        self.assertEqual(actualizado.cantidad_producida, Decimal("120.50"))
+
+    def test_actualizacion_recalcula_metricas_para_fecha_distinta(self):
+        nueva_fecha = date(2024, 10, 21)
+        self.crear_etapa_produccion(
+            fecha=nueva_fecha,
+            cantidad_salida=Decimal("80.00"),
+            hora_inicio=time(9, 0),
+            hora_fin=time(13, 0),
+        )
+        registro = self.crear_registro()
+
+        serializer = RegistroProduccionSerializer(
+            instance=registro,
+            data={"fecha_produccion": nueva_fecha},
+            partial=True,
+        )
+
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        actualizado = serializer.save()
+        self.assertEqual(actualizado.cantidad_producida, Decimal("80.00"))
+        self.assertEqual(actualizado.hora_inicio, time(9, 0))
+        self.assertEqual(actualizado.hora_fin, time(13, 0))
+
+    def test_actualizacion_rechaza_modificar_cantidad(self):
         registro = self.crear_registro()
         serializer = RegistroProduccionSerializer(
             instance=registro,
             data={"cantidad_producida": Decimal("150.00")},
             partial=True,
         )
-        self.assertTrue(serializer.is_valid(), serializer.errors)
-        actualizado = serializer.save()
-        self.assertEqual(actualizado.cantidad_producida, Decimal("150.00"))
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("cantidad_producida", serializer.errors)
 
     def test_actualizacion_detecta_conflicto_con_otro_registro(self):
+        self.crear_etapa_produccion(
+            fecha=date(2024, 10, 21),
+            maquina=self.maquina_b,
+            turno=self.turno_t,
+            producto=self.producto_b,
+            cantidad_salida=Decimal("150.00"),
+            hora_inicio=time(15, 0),
+            hora_fin=time(21, 0),
+        )
         self.crear_registro(
             maquina=self.maquina_b,
             turno=self.turno_t,
