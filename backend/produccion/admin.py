@@ -36,8 +36,26 @@ class LoteEtapaAdmin(admin.ModelAdmin):
 
 @admin.register(RegistroProduccion)
 class RegistroProduccionAdmin(admin.ModelAdmin):
-    list_display = ['fecha_produccion', 'registrado_por', 'turno', 'maquina', 'producto', 'cantidad_producida']
-    list_filter = ['fecha_produccion', 'turno', 'maquina', 'producto', 'unidad_medida']
-    search_fields = ['maquina__codigo', 'producto__nombre', 'registrado_por__username']
-    date_hierarchy = 'fecha_produccion'
+    list_display = (
+        "fecha_produccion",
+        "maquina",
+        "producto",
+        "turno",
+        "cantidad_producida",
+        "unidad_medida",
+        "registrado_por",
+    )
+    list_filter = (
+        "fecha_produccion",
+        "maquina",
+        "producto",
+        "turno",
+        "unidad_medida",
+    )
+    search_fields = (
+        "maquina__codigo",
+        "producto__nombre",
+        "registrado_por__username",
+    )
+    ordering = ("-fecha_produccion", "-fecha_registro")
 
