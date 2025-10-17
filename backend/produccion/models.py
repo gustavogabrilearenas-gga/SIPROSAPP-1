@@ -2,8 +2,11 @@
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from decimal import Decimal, ROUND_HALF_UP
+
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.db.models import Max, Min, Sum
 
 from backend.catalogos.models import Producto, Formula, EtapaProduccion, Maquina, Turno
 from backend.core.choices import (
@@ -162,6 +165,48 @@ class Lote(models.Model):
             return round((self.cantidad_producida / self.cantidad_planificada) * 100, 2)
         return 0
 
+    def actualizar_metricas_desde_etapas(self):
+        """Sincroniza cantidades y tiempos reales a partir de las etapas registradas."""
+
+        agregados = self.etapas.aggregate(
+            total_salida=Sum("cantidad_salida"),
+            fecha_inicio=Min("fecha_inicio"),
+            fecha_fin=Max("fecha_fin"),
+        )
+
+        total_salida = agregados.get("total_salida")
+
+        if total_salida is None:
+            cantidad_producida = 0
+        elif isinstance(total_salida, Decimal):
+            cantidad_producida = int(
+                total_salida.to_integral_value(rounding=ROUND_HALF_UP)
+            )
+        else:
+            cantidad_producida = int(total_salida)
+
+        nueva_fecha_inicio = agregados.get("fecha_inicio")
+        nueva_fecha_fin = agregados.get("fecha_fin")
+
+        if (
+            self.cantidad_producida == cantidad_producida
+            and self.fecha_real_inicio == nueva_fecha_inicio
+            and self.fecha_real_fin == nueva_fecha_fin
+        ):
+            return
+
+        self.cantidad_producida = cantidad_producida
+        self.fecha_real_inicio = nueva_fecha_inicio
+        self.fecha_real_fin = nueva_fecha_fin
+
+        self.save(
+            update_fields=[
+                "cantidad_producida",
+                "fecha_real_inicio",
+                "fecha_real_fin",
+            ]
+        )
+
 
 class LoteEtapa(TimeWindowMixin):
     """Etapas ejecutadas en un lote específico"""
@@ -215,19 +260,42 @@ class LoteEtapa(TimeWindowMixin):
         return f"{self.lote.codigo_lote} - {self.etapa.nombre}"
 
     def save(self, *args, **kwargs):
-        if (
-            self.cantidad_entrada
-            and self.cantidad_salida
-            and self.cantidad_entrada > 0
-        ):
-            self.porcentaje_rendimiento = round(
-                (self.cantidad_salida / self.cantidad_entrada) * 100,
-                2,
-            )
+        if self.etapa_id and self.etapa and self.requiere_aprobacion_calidad != self.etapa.requiere_validacion:
+            self.requiere_aprobacion_calidad = self.etapa.requiere_validacion
+
+        entrada = (
+            Decimal(str(self.cantidad_entrada))
+            if self.cantidad_entrada is not None
+            else None
+        )
+        salida = (
+            Decimal(str(self.cantidad_salida))
+            if self.cantidad_salida is not None
+            else None
+        )
+
+        if entrada is not None and salida is not None:
+            if entrada > 0:
+                self.porcentaje_rendimiento = round((salida / entrada) * 100, 2)
+            else:
+                self.porcentaje_rendimiento = None
+            self.cantidad_merma = entrada - salida
         else:
             self.porcentaje_rendimiento = None
+            # Mantener merma en cero cuando faltan cantidades
+            self.cantidad_merma = Decimal("0")
 
         super().save(*args, **kwargs)
+
+        # Sincronizar métricas del lote luego de guardar la etapa
+        if self.lote_id:
+            self.lote.actualizar_metricas_desde_etapas()
+
+    def delete(self, *args, **kwargs):
+        lote = self.lote if self.lote_id else None
+        super().delete(*args, **kwargs)
+        if lote:
+            lote.actualizar_metricas_desde_etapas()
 
 
 

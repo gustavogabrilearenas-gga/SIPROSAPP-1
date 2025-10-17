@@ -4,7 +4,6 @@ import logging
 
 from django.db.models import Count
 from django.utils import timezone
-from django.utils.dateparse import parse_datetime
 
 logger = logging.getLogger(__name__)
 from rest_framework import filters, permissions, status, viewsets
@@ -32,7 +31,7 @@ class IsAdminOrOperario(permissions.BasePermission):
         )
 
 
-class RegistroProduccionViewSet(viewsets.ModelViewSet):
+class RegistroProduccionViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet para gestionar registros de producción."""
 
     queryset = (
@@ -60,9 +59,6 @@ class RegistroProduccionViewSet(viewsets.ModelViewSet):
         "producto",
         "turno",
     ]
-
-    def perform_create(self, serializer):
-        serializer.save(registrado_por=self.request.user)
 
 
 class LoteViewSet(viewsets.ModelViewSet):
@@ -200,7 +196,6 @@ class LoteViewSet(viewsets.ModelViewSet):
 
         # Iniciar el lote
         lote.estado = 'EN_PROCESO'
-        lote.fecha_real_inicio = timezone.now()
 
         # Adjuntar información para auditoria
         lote._usuario_actual = request.user
@@ -253,30 +248,6 @@ class LoteViewSet(viewsets.ModelViewSet):
                 },
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY
             )
-
-        # Completar el lote
-        # Allow client to provide an explicit fecha_real_fin (ISO format). If invalid or not provided, use server now().
-        fecha_real_fin_input = request.data.get('fecha_real_fin', None)
-        if fecha_real_fin_input:
-            # parse_datetime can handle ISO 8601 strings like 'YYYY-MM-DDTHH:MM:SS' optionally with timezone
-            parsed = parse_datetime(fecha_real_fin_input)
-            if parsed is None:
-                logger.warning(
-                    'Invalid fecha_real_fin provided to completar: lote_id=%s value=%s',
-                    lote.id,
-                    fecha_real_fin_input,
-                )
-                return Response(
-                    {'error': 'Formato de fecha inválido para fecha_real_fin. Use ISO8601: YYYY-MM-DDTHH:MM:SS'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            # If parsed datetime is naive, make it timezone-aware using current timezone
-            if timezone.is_naive(parsed):
-                parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
-
-            lote.fecha_real_fin = parsed
-        else:
-            lote.fecha_real_fin = timezone.now()
 
         lote.estado = 'FINALIZADO'
 
@@ -816,23 +787,20 @@ class LoteEtapaViewSet(viewsets.ModelViewSet):
 
 
         # Obtener datos adicionales
+        cantidad_entrada = request.data.get('cantidad_entrada')
         cantidad_salida = request.data.get('cantidad_salida')
-        cantidad_merma = request.data.get('cantidad_merma', 0)
         observaciones = request.data.get('observaciones', '')
-        requiere_aprobacion_calidad = request.data.get('requiere_aprobacion_calidad', False)
 
         # Completar la etapa
         lote_etapa.estado = 'COMPLETADO'
         lote_etapa.fecha_fin = timezone.now()
 
+        if cantidad_entrada is not None:
+            lote_etapa.cantidad_entrada = cantidad_entrada
         if cantidad_salida is not None:
             lote_etapa.cantidad_salida = cantidad_salida
-        if cantidad_merma is not None:
-            lote_etapa.cantidad_merma = cantidad_merma
         if observaciones:
             lote_etapa.observaciones = observaciones
-        if requiere_aprobacion_calidad is not None:
-            lote_etapa.requiere_aprobacion_calidad = requiere_aprobacion_calidad
 
         # Adjuntar informaci�n para auditoria
         lote_etapa._usuario_actual = request.user

@@ -176,7 +176,18 @@ class LoteSerializer(serializers.ModelSerializer):
             "fecha_cancelacion",
             "motivo_cancelacion",
         ]
-        read_only_fields = ["id", "fecha_creacion", "creado_por", "cancelado_por", "fecha_cancelacion"]
+        read_only_fields = [
+            "id",
+            "fecha_creacion",
+            "creado_por",
+            "cancelado_por",
+            "fecha_cancelacion",
+            "cantidad_producida",
+            "fecha_real_inicio",
+            "fecha_real_fin",
+            "estado",
+            "unidad",
+        ]
 
     def validate(self, data):
         """Validaciones de negocio"""
@@ -186,6 +197,25 @@ class LoteSerializer(serializers.ModelSerializer):
                     "fecha_real_fin": "La fecha de fin debe ser posterior a la fecha de inicio"
                 })
         return data
+
+    def _resolver_unidad(self, producto, formula):
+        if producto is not None and hasattr(producto, "unidad_medida") and getattr(producto, "unidad_medida"):
+            return producto.unidad_medida
+        if formula is not None and getattr(formula, "unidad", None):
+            return formula.unidad
+        return getattr(producto, "unidad", None) or getattr(self.instance, "unidad", "")
+
+    def create(self, validated_data):
+        producto = validated_data.get("producto")
+        formula = validated_data.get("formula")
+        validated_data["unidad"] = self._resolver_unidad(producto, formula)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        producto = validated_data.get("producto", instance.producto)
+        formula = validated_data.get("formula", instance.formula)
+        validated_data["unidad"] = self._resolver_unidad(producto, formula)
+        return super().update(instance, validated_data)
 
 
 class LoteEtapaSerializer(serializers.ModelSerializer):
@@ -220,8 +250,22 @@ class LoteEtapaSerializer(serializers.ModelSerializer):
             "cantidad_merma",
             "porcentaje_rendimiento",
             "observaciones",
+            "requiere_aprobacion_calidad",
+            "aprobada_por_calidad",
+            "fecha_aprobacion_calidad",
         ]
-        read_only_fields = ["id", "duracion_minutos", "porcentaje_rendimiento"]
+        read_only_fields = [
+            "id",
+            "duracion_minutos",
+            "porcentaje_rendimiento",
+            "cantidad_merma",
+            "estado",
+            "fecha_inicio",
+            "fecha_fin",
+            "requiere_aprobacion_calidad",
+            "aprobada_por_calidad",
+            "fecha_aprobacion_calidad",
+        ]
 
 
 

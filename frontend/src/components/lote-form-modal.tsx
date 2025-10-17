@@ -13,7 +13,6 @@ interface LoteFormModalProps {
   onClose: () => void
   onSuccess: () => void
   lote?: Lote | null // Si es null, es modo crear; si tiene datos, es modo editar
-  completeAfterSave?: boolean
 }
 
 interface FormData {
@@ -21,15 +20,11 @@ interface FormData {
   producto: number | ''
   formula: number | ''
   cantidad_planificada: number | ''
-  cantidad_producida: number | ''
   cantidad_rechazada: number | ''
   unidad: string
-  estado: string
   prioridad: string
   fecha_planificada_inicio: string
   fecha_planificada_fin: string
-  fecha_real_inicio: string
-  fecha_real_fin: string
   turno: number | ''
   supervisor: number | ''
   observaciones: string
@@ -55,21 +50,17 @@ interface Formula {
   version: string
 }
 
-export default function LoteFormModal({ isOpen, onClose, onSuccess, lote, completeAfterSave }: LoteFormModalProps) {
+export default function LoteFormModal({ isOpen, onClose, onSuccess, lote }: LoteFormModalProps) {
   const [formData, setFormData] = useState<FormData>({
     codigo_lote: '',
     producto: '',
     formula: '',
     cantidad_planificada: '',
-    cantidad_producida: '',
     cantidad_rechazada: '',
     unidad: '',
-    estado: 'PLANIFICADO',
     prioridad: 'NORMAL',
     fecha_planificada_inicio: '',
     fecha_planificada_fin: '',
-    fecha_real_inicio: '',
-    fecha_real_fin: '',
     turno: '',
     supervisor: '',
     observaciones: '',
@@ -84,16 +75,13 @@ export default function LoteFormModal({ isOpen, onClose, onSuccess, lote, comple
 
   const isEditMode = !!lote
 
-  const getNowLocalDatetimeMinutes = () => {
-    const d = new Date()
-    // local YYYY-MM-DDTHH:mm
-    const pad = (n: number) => n.toString().padStart(2, '0')
-    const yyyy = d.getFullYear()
-    const mm = pad(d.getMonth() + 1)
-    const dd = pad(d.getDate())
-    const hh = pad(d.getHours())
-    const min = pad(d.getMinutes())
-    return `${yyyy}-${mm}-${dd}T${hh}:${min}`
+  const formatDateTime = (value?: string | null) => {
+    if (!value) return 'Sin registro'
+    const parsed = new Date(value)
+    if (Number.isNaN(parsed.getTime())) {
+      return value
+    }
+    return parsed.toLocaleString()
   }
 
   useEffect(() => {
@@ -114,36 +102,21 @@ export default function LoteFormModal({ isOpen, onClose, onSuccess, lote, comple
       
       if (lote) {
         // Modo edición: cargar datos del lote
-        const initialData = {
+        setFormData({
           codigo_lote: lote.codigo_lote,
           producto: lote.producto,
           formula: lote.formula || '',
           cantidad_planificada: lote.cantidad_planificada,
-          cantidad_producida: lote.cantidad_producida || '',
           cantidad_rechazada: lote.cantidad_rechazada || '',
           unidad: lote.unidad,
-          estado: lote.estado,
           prioridad: lote.prioridad,
           // Formato datetime-local: YYYY-MM-DDTHH:mm
           fecha_planificada_inicio: lote.fecha_planificada_inicio ? lote.fecha_planificada_inicio.substring(0, 16) : '',
           fecha_planificada_fin: lote.fecha_planificada_fin ? lote.fecha_planificada_fin.substring(0, 16) : '',
-          fecha_real_inicio: lote.fecha_real_inicio ? lote.fecha_real_inicio.substring(0, 16) : '',
-          fecha_real_fin: lote.fecha_real_fin ? lote.fecha_real_fin.substring(0, 16) : '',
           turno: lote.turno,
           supervisor: lote.supervisor || currentUserId,
           observaciones: lote.observaciones || '',
-        }
-
-        // If the modal was opened as part of a 'completar' action, and there is no fecha_real_fin yet,
-        // default it to current local datetime so the user doesn't have to type it.
-        if (completeAfterSave && !lote.fecha_real_fin) {
-          // Only set default if the lote is not in PLANIFICADO state
-          if (lote.estado !== 'PLANIFICADO') {
-            initialData.fecha_real_fin = getNowLocalDatetimeMinutes()
-          }
-        }
-
-        setFormData(initialData)
+        })
       } else {
         // Modo creación: usar usuario actual como supervisor por defecto
         setFormData({
@@ -151,15 +124,11 @@ export default function LoteFormModal({ isOpen, onClose, onSuccess, lote, comple
           producto: '',
           formula: '',
           cantidad_planificada: '',
-          cantidad_producida: '',
           cantidad_rechazada: '',
           unidad: '',
-          estado: 'PLANIFICADO',
           prioridad: 'NORMAL',
           fecha_planificada_inicio: '',
           fecha_planificada_fin: '',
-          fecha_real_inicio: '',
-          fecha_real_fin: '',
           turno: '',
           supervisor: currentUserId,
           observaciones: '',
@@ -202,7 +171,7 @@ export default function LoteFormModal({ isOpen, onClose, onSuccess, lote, comple
         setFormData(prev => ({
           ...prev,
           producto: value,
-          unidad: productoSeleccionado.unidad_medida,
+          unidad: productoSeleccionado.unidad_medida || prev.unidad,
           formula: '', // Reset formula when product changes
         }))
       }
@@ -220,23 +189,12 @@ export default function LoteFormModal({ isOpen, onClose, onSuccess, lote, comple
         throw new Error('Por favor completa todos los campos obligatorios')
       }
 
-      // Obtener el usuario actual del token para creado_por
-      const token = localStorage.getItem('access_token')
-      if (!token) {
-        throw new Error('Usuario no autenticado')
-      }
-
-      const payload = JSON.parse(atob(token.split('.')[1]))
-      const userId = payload.user_id
-
       // Preparar datos para enviar
       const dataToSubmit: any = {
         codigo_lote: formData.codigo_lote,
         producto: Number(formData.producto),
         formula: Number(formData.formula),
         cantidad_planificada: Number(formData.cantidad_planificada),
-        unidad: formData.unidad,
-        estado: formData.estado,
         prioridad: formData.prioridad,
         turno: Number(formData.turno),
         supervisor: Number(formData.supervisor),
@@ -246,42 +204,13 @@ export default function LoteFormModal({ isOpen, onClose, onSuccess, lote, comple
         fecha_planificada_fin: formData.fecha_planificada_fin ? formData.fecha_planificada_fin + ':00' : null,
       }
 
-      // Agregar cantidades producidas/rechazadas solo si tienen valor
-      if (formData.cantidad_producida !== '') {
-        dataToSubmit.cantidad_producida = Number(formData.cantidad_producida)
-      }
+      // Agregar cantidades rechazadas solo si tienen valor
       if (formData.cantidad_rechazada !== '') {
         dataToSubmit.cantidad_rechazada = Number(formData.cantidad_rechazada)
       }
 
-      // Agregar fechas reales solo si tienen valor
-      if (formData.fecha_real_inicio) {
-        dataToSubmit.fecha_real_inicio = formData.fecha_real_inicio + ':00'
-      }
-      if (formData.fecha_real_fin) {
-        dataToSubmit.fecha_real_fin = formData.fecha_real_fin + ':00'
-      }
-
-      // Solo agregar creado_por en modo creación
-      if (!isEditMode) {
-        dataToSubmit.creado_por = userId
-      }
-
-      console.log('Enviando datos al backend:', dataToSubmit)
-
       if (isEditMode && lote) {
-        // If user requested complete after save, update the lote to FINALIZADO in one request
-        if (completeAfterSave) {
-          dataToSubmit.estado = 'FINALIZADO'
-          // Ensure fecha_real_fin is included when completing
-          if (!dataToSubmit.fecha_real_fin && formData.fecha_real_fin) {
-            dataToSubmit.fecha_real_fin = formData.fecha_real_fin + ':00'
-          }
-          // Use update endpoint to set final state and fecha_real_fin in one go. This triggers signals/audit.
-          await api.updateLote(lote.id, dataToSubmit)
-        } else {
-          await api.updateLote(lote.id, dataToSubmit)
-        }
+        await api.updateLote(lote.id, dataToSubmit)
       } else {
         await api.createLote(dataToSubmit)
       }
@@ -457,10 +386,11 @@ export default function LoteFormModal({ isOpen, onClose, onSuccess, lote, comple
                         <input
                           type="text"
                           value={formData.unidad}
-                          onChange={(e) => handleInputChange('unidad', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          readOnly
+                          className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg text-gray-600"
                           placeholder="comprimidos"
                         />
+                        <p className="text-xs text-gray-500 mt-1">Definida automáticamente por el producto.</p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -482,8 +412,8 @@ export default function LoteFormModal({ isOpen, onClose, onSuccess, lote, comple
                       </div>
                     </div>
 
-                    {/* Cantidades Reales (solo en edición y si estado != PLANIFICADO) */}
-                    {isEditMode && formData.estado !== 'PLANIFICADO' && (
+                    {/* Cantidades Reales (solo lectura excepto rechazos) */}
+                    {isEditMode && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -491,13 +421,11 @@ export default function LoteFormModal({ isOpen, onClose, onSuccess, lote, comple
                           </label>
                           <input
                             type="number"
-                            value={formData.cantidad_producida}
-                            onChange={(e) => handleInputChange('cantidad_producida', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                            placeholder="0"
-                            min="0"
+                            value={lote?.cantidad_producida ?? 0}
+                            readOnly
+                            className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg text-gray-600"
                           />
-                          <p className="text-xs text-gray-500 mt-1">Cantidad efectivamente producida</p>
+                          <p className="text-xs text-gray-500 mt-1">Se calcula automáticamente desde las etapas.</p>
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -511,7 +439,7 @@ export default function LoteFormModal({ isOpen, onClose, onSuccess, lote, comple
                             placeholder="0"
                             min="0"
                           />
-                          <p className="text-xs text-gray-500 mt-1">Cantidad descartada por calidad</p>
+                          <p className="text-xs text-gray-500 mt-1">Registrar ajustes por calidad si aplica.</p>
                         </div>
                       </div>
                     )}
@@ -527,21 +455,15 @@ export default function LoteFormModal({ isOpen, onClose, onSuccess, lote, comple
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Estado *
+                          Estado
                         </label>
-                        <select
-                          value={formData.estado}
-                          onChange={(e) => handleInputChange('estado', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          required
-                        >
-                          <option value="PLANIFICADO">Planificado</option>
-                          <option value="EN_PROCESO">En Proceso</option>
-                          <option value="PAUSADO">Pausado</option>
-                          <option value="FINALIZADO">Finalizado</option>
-                          <option value="RECHAZADO">Rechazado</option>
-                          <option value="LIBERADO">Liberado</option>
-                        </select>
+                        <input
+                          type="text"
+                          value={isEditMode ? (lote?.estado_display || lote?.estado || 'PLANIFICADO') : 'PLANIFICADO'}
+                          readOnly
+                          className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg text-gray-600"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Modificable solo mediante acciones operativas.</p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -596,50 +518,32 @@ export default function LoteFormModal({ isOpen, onClose, onSuccess, lote, comple
                       </div>
                     </div>
 
-                    {/* Fechas Reales (solo en edición y si estado != PLANIFICADO) */}
-                    {isEditMode && formData.estado !== 'PLANIFICADO' && (
+                    {/* Fechas Reales (solo lectura) */}
+                    {isEditMode && lote && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             Fecha y Hora Real de Inicio
                           </label>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="datetime-local"
-                              value={formData.fecha_real_inicio}
-                              onChange={(e) => handleInputChange('fecha_real_inicio', e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleInputChange('fecha_real_inicio', getNowLocalDatetimeMinutes())}
-                              className="px-3 py-2 bg-green-50 text-green-700 border border-green-100 rounded-md text-sm"
-                            >
-                              Ahora
-                            </button>
-                          </div>
-                          <p className="text-xs text-gray-500 mt-1">Hora efectiva de inicio de producción</p>
+                          <input
+                            type="text"
+                            value={formatDateTime(lote.fecha_real_inicio)}
+                            readOnly
+                            className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg text-gray-600"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">Se fija al registrar las etapas.</p>
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             Fecha y Hora Real de Fin
                           </label>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="datetime-local"
-                              value={formData.fecha_real_fin}
-                              onChange={(e) => handleInputChange('fecha_real_fin', e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleInputChange('fecha_real_fin', getNowLocalDatetimeMinutes())}
-                              className="px-3 py-2 bg-green-50 text-green-700 border border-green-100 rounded-md text-sm"
-                            >
-                              Ahora
-                            </button>
-                          </div>
-                          <p className="text-xs text-gray-500 mt-1">Hora efectiva de finalización</p>
+                          <input
+                            type="text"
+                            value={formatDateTime(lote.fecha_real_fin)}
+                            readOnly
+                            className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg text-gray-600"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">Se completa automáticamente al finalizar las etapas.</p>
                         </div>
                       </div>
                     )}
