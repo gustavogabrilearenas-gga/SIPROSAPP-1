@@ -20,6 +20,9 @@ class RegistroProduccionSerializer(serializers.ModelSerializer):
         model = RegistroProduccion
         fields = "__all__"
         read_only_fields = ["fecha_registro", "registrado_por"]
+        extra_kwargs = {
+            "cantidad_producida": {"min_value": 0},
+        }
 
     def validate(self, data):
         """Validaciones cruzadas a nivel de serializer."""
@@ -35,11 +38,48 @@ class RegistroProduccionSerializer(serializers.ModelSerializer):
                 "cantidad_producida": "La cantidad no puede ser negativa."
             })
 
+        fecha_produccion = data.get("fecha_produccion")
+        maquina = data.get("maquina")
+        turno = data.get("turno")
+
+        if self.instance is not None:
+            if fecha_produccion is None:
+                fecha_produccion = self.instance.fecha_produccion
+            if maquina is None:
+                maquina = self.instance.maquina
+            if turno is None:
+                turno = self.instance.turno
+
+        if fecha_produccion and maquina and turno:
+            qs = RegistroProduccion.objects.filter(
+                fecha_produccion=fecha_produccion,
+                maquina=maquina,
+                turno=turno,
+            )
+            if self.instance is not None:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError(
+                    {
+                        "turno": "Ya existe un registro para esta máquina, fecha y turno.",
+                    }
+                )
+
         return data
 
     def create(self, validated_data):
         """Crea el registro aplicando validaciones del modelo."""
         instance = RegistroProduccion(**validated_data)
+        try:
+            instance.full_clean()
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(exc.message_dict)
+        instance.save()
+        return instance
+
+    def update(self, instance, validated_data):
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
         try:
             instance.full_clean()
         except DjangoValidationError as exc:
