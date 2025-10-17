@@ -25,6 +25,10 @@ services:
       - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0,api
       - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:8000
       - CSRF_TRUSTED_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:8000
+      - THROTTLE_RATE_ANON=100/hour
+      - THROTTLE_RATE_USER=1000/hour
+      - LOGIN_THROTTLE_RATE=10/min
+      - REGISTER_THROTTLE_RATE=5/hour
       - DJANGO_SUPERUSER_USERNAME=admin
       - DJANGO_SUPERUSER_EMAIL=admin@siprosa.com.ar
       - DJANGO_SUPERUSER_PASSWORD=Admin123456

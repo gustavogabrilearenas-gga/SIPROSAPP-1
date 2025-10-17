@@ -308,6 +308,12 @@ LOGGING = {
 # ============================================
 # DJANGO REST FRAMEWORK
 # ============================================
+THROTTLE_RATE_ANON = os.getenv("THROTTLE_RATE_ANON", "100/hour")
+THROTTLE_RATE_USER = os.getenv("THROTTLE_RATE_USER", "1000/hour")
+LOGIN_THROTTLE_RATE = os.getenv("LOGIN_THROTTLE_RATE", "10/min")
+REGISTER_THROTTLE_RATE = os.getenv("REGISTER_THROTTLE_RATE", "5/hour")
+
+
 REST_FRAMEWORK = {
     # Autenticación
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -336,8 +342,10 @@ REST_FRAMEWORK = {
         "rest_framework.throttling.UserRateThrottle",
     ],
     "DEFAULT_THROTTLE_RATES": {
-        "anon": "100/hour",
-        "user": "1000/hour",
+        "anon": THROTTLE_RATE_ANON,
+        "user": THROTTLE_RATE_USER,
+        "login": LOGIN_THROTTLE_RATE,
+        "register": REGISTER_THROTTLE_RATE,
     },
     
     # Formato de respuesta

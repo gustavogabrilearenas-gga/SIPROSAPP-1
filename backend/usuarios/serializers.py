@@ -1,6 +1,8 @@
 """Serializers del dominio de usuarios."""
 
 from django.contrib.auth.models import User
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
 from .models import UserProfile
@@ -284,6 +286,19 @@ class CambiarPasswordSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 {"password_confirmacion": "Las contraseñas no coinciden"}
             )
+
+        user = self.context.get("target_user")
+        if user is None:
+            request = self.context.get("request")
+            user = getattr(request, "user", None) if request else None
+
+        try:
+            validate_password(data["password_nueva"], user=user)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(
+                {"password_nueva": list(exc.messages)}
+            ) from exc
+
         return data
 
 
@@ -333,6 +348,13 @@ class CrearUsuarioSerializer(serializers.ModelSerializer):
                     )
                 }
             )
+
+        try:
+            validate_password(data["password"], user=None)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(
+                {"password": list(exc.messages)}
+            ) from exc
 
         return data
 

@@ -92,7 +92,9 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], permission_classes=[IsAdmin])
     def cambiar_password(self, request, pk=None):
         usuario = self.get_object()
-        serializer = self.get_serializer(data=request.data)
+        context = self.get_serializer_context()
+        context["target_user"] = usuario
+        serializer = self.get_serializer(data=request.data, context=context)
         serializer.is_valid(raise_exception=True)
 
         usuario.set_password(serializer.validated_data["password_nueva"])
