@@ -1,6 +1,7 @@
 """Modelos del dominio de Producción"""
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
 
@@ -60,12 +61,34 @@ class RegistroProduccion(models.Model):
         ]
 
     def clean(self):
-        from django.core.exceptions import ValidationError
+        super().clean()
 
         if self.hora_fin and self.hora_inicio and self.hora_fin <= self.hora_inicio:
             raise ValidationError(
                 {"hora_fin": "La hora de fin debe ser posterior a la hora de inicio."}
             )
+
+        if self.cantidad_producida is not None and self.cantidad_producida < 0:
+            raise ValidationError(
+                {"cantidad_producida": "La cantidad producida no puede ser negativa."}
+            )
+
+        if self.maquina_id and self.fecha_produccion and self.turno_id:
+            exists = (
+                self.__class__.objects.filter(
+                    maquina_id=self.maquina_id,
+                    fecha_produccion=self.fecha_produccion,
+                    turno_id=self.turno_id,
+                )
+                .exclude(pk=self.pk)
+                .exists()
+            )
+            if exists:
+                raise ValidationError(
+                    {
+                        "turno": "Ya existe un registro de producción para esta máquina, fecha y turno.",
+                    }
+                )
 
 
 class Lote(models.Model):
