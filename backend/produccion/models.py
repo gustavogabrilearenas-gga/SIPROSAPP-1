@@ -276,10 +276,15 @@ class LoteEtapa(TimeWindowMixin):
 
         if entrada is not None and salida is not None:
             if entrada > 0:
-                self.porcentaje_rendimiento = round((salida / entrada) * 100, 2)
+                self.porcentaje_rendimiento = (
+                    (salida / entrada) * Decimal("100")
+                ).quantize(Decimal("0.01"))
             else:
                 self.porcentaje_rendimiento = None
-            self.cantidad_merma = entrada - salida
+            merma = entrada - salida
+            if merma < Decimal("0"):
+                merma = Decimal("0")
+            self.cantidad_merma = merma.quantize(Decimal("0.01"))
         else:
             self.porcentaje_rendimiento = None
             # Mantener merma en cero cuando faltan cantidades
