@@ -332,6 +332,12 @@ class LoteSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         """Validaciones de negocio"""
+        if "estado" in getattr(self, "initial_data", {}):
+            raise serializers.ValidationError(
+                {
+                    "estado": "El estado solo puede modificarse mediante las acciones de flujo definidas.",
+                }
+            )
         if data.get("fecha_real_fin") and data.get("fecha_real_inicio"):
             if data["fecha_real_fin"] < data["fecha_real_inicio"]:
                 raise serializers.ValidationError({
@@ -474,6 +480,15 @@ class LoteEtapaSerializer(serializers.ModelSerializer):
     def save(self, **kwargs):
         self._calcular_cantidades()
         return super().save(**kwargs)
+
+    def validate(self, attrs):
+        if "estado" in getattr(self, "initial_data", {}):
+            raise serializers.ValidationError(
+                {
+                    "estado": "El estado solo puede modificarse mediante las acciones de flujo definidas.",
+                }
+            )
+        return super().validate(attrs)
 
 
 
