@@ -14,7 +14,6 @@ urlpatterns = [
     path('api/incidencias/', include('backend.incidencias.urls')),
     path('api/auditoria/', include('backend.core.auditoria_urls')),
     path('api/eventos/', include('backend.eventos.urls')),
-    path('api/catalogos/', include('backend.catalogos.urls')),
     path('api/', include("backend.core.urls")),  # 👈 importante
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
