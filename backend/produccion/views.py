@@ -20,22 +20,46 @@ from backend.produccion.serializers import (
     LoteListSerializer,
     LoteSerializer,
 )
-from backend.core.permissions import IsAdmin, IsAdminOrOperario, IsAdminOrSupervisor
+from backend.core.permissions import IsAdmin, IsAdminOrSupervisor
+
+
+class IsAdminOrOperario(permissions.BasePermission):
+    def has_permission(self, request, view):
+        user = request.user
+        return user and (
+            user.is_staff
+            or user.groups.filter(name__in=["operario", "supervisor"]).exists()
+        )
 
 
 class RegistroProduccionViewSet(viewsets.ModelViewSet):
     """ViewSet para gestionar registros de producción."""
 
-    queryset = RegistroProduccion.objects.select_related(
-        'registrado_por',
-        'maquina',
-        'producto',
-    ).all().order_by('-fecha_produccion')
+    queryset = (
+        RegistroProduccion.objects.select_related(
+            "maquina",
+            "producto",
+            "turno",
+            "registrado_por",
+        )
+        .all()
+        .order_by("-fecha_produccion", "-fecha_registro")
+    )
     serializer_class = RegistroProduccionSerializer
     permission_classes = [IsAdminOrOperario]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['maquina__codigo', 'producto__nombre', 'registrado_por__username']
-    ordering_fields = ['fecha_produccion', 'fecha_registro', 'maquina', 'producto']
+    search_fields = [
+        "maquina__codigo",
+        "producto__nombre",
+        "registrado_por__username",
+    ]
+    ordering_fields = [
+        "fecha_produccion",
+        "fecha_registro",
+        "maquina",
+        "producto",
+        "turno",
+    ]
 
     def perform_create(self, serializer):
         serializer.save(registrado_por=self.request.user)
