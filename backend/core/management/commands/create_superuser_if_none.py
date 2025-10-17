@@ -1,7 +1,9 @@
 """Comando Django para crear superusuario automáticamente si no existe."""
 
 import os
-from django.contrib.auth.models import User
+
+from django.apps import apps
+from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
 
@@ -33,7 +35,9 @@ class Command(BaseCommand):
             )
 
         # Verificar si ya existe algún superusuario
-        if User.objects.filter(is_superuser=True).exists():
+        user_model = apps.get_model(settings.AUTH_USER_MODEL)
+
+        if user_model.objects.filter(is_superuser=True).exists():
             self.stdout.write(
                 self.style.WARNING("⚠️  Ya existe al menos un superusuario")
             )
@@ -41,7 +45,7 @@ class Command(BaseCommand):
 
         # Crear el superusuario
         try:
-            User.objects.create_superuser(
+            user_model.objects.create_superuser(
                 username=username, email=email, password=password
             )
             self.stdout.write(

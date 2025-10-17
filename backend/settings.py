@@ -80,6 +80,15 @@ INSTALLED_APPS = [
     'backend.catalogos.apps.CatalogosConfig',
 ]
 
+MIGRATION_MODULES = {
+    "produccion": None,
+    "eventos": None,
+    "mantenimiento": None,
+    "incidencias": None,
+    "catalogos": None,
+    "core": None,
+}
+
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',

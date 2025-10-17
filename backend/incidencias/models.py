@@ -1,6 +1,6 @@
 """Modelos del dominio de incidencias"""
 
-from django.contrib.auth.models import User
+from django.conf import settings
 from django.db import models
 
 
@@ -49,15 +49,31 @@ class Incidente(models.Model):
     ubicacion = models.ForeignKey('catalogos.Ubicacion', on_delete=models.PROTECT, related_name='incidentes')
     maquina = models.ForeignKey('catalogos.Maquina', on_delete=models.SET_NULL, null=True, blank=True, related_name='incidentes')
     lote_afectado = models.ForeignKey('produccion.Lote', on_delete=models.SET_NULL, null=True, blank=True, related_name='incidentes')
-    reportado_por = models.ForeignKey(User, on_delete=models.PROTECT, related_name='incidentes_reportados')
+    reportado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='incidentes_reportados',
+    )
     fecha_reporte = models.DateTimeField(auto_now_add=True)
-    asignado_a = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='incidentes_asignados')
+    asignado_a = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='incidentes_asignados',
+    )
     impacto_produccion = models.TextField(blank=True)
     impacto_calidad = models.TextField(blank=True)
     impacto_seguridad = models.TextField(blank=True)
     requiere_notificacion_anmat = models.BooleanField(default=False)
     fecha_cierre = models.DateTimeField(null=True, blank=True)
-    cerrado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='incidentes_cerrados')
+    cerrado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='incidentes_cerrados',
+    )
 
     class Meta:
         verbose_name = "Incidente"

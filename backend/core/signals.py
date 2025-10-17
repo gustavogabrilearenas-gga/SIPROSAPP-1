@@ -6,7 +6,8 @@ Sistema de trazabilidad completa de cambios en SIPROSA MES.
 import json
 from threading import local
 
-from django.contrib.auth.models import User
+from django.apps import apps
+from django.conf import settings
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
@@ -182,7 +183,10 @@ def lote_post_delete(sender, instance, **kwargs):
     )
 
 
-@receiver(post_save, sender=User)
+UserModel = apps.get_model(settings.AUTH_USER_MODEL)
+
+
+@receiver(post_save, sender=UserModel)
 def update_existing_user_profile(sender, instance, created, **kwargs):
     """Actualiza el perfil del usuario solo si ya existe."""
     try:

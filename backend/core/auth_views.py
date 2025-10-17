@@ -1,7 +1,8 @@
 """Vistas relacionadas con autenticación y usuarios."""
 
+from django.apps import apps
+from django.conf import settings
 from django.contrib.auth import authenticate
-from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.utils import timezone
@@ -14,6 +15,9 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from backend.core.throttles import LoginRateThrottle, RegisterRateThrottle
 from backend.usuarios.serializers import UserSerializer
+
+
+UserModel = apps.get_model(settings.AUTH_USER_MODEL)
 
 
 @csrf_exempt
@@ -175,13 +179,13 @@ def register_view(request):
         )
 
     # Verificar si el usuario ya existe
-    if User.objects.filter(username__iexact=username).exists():
+    if UserModel.objects.filter(username__iexact=username).exists():
         return Response(
             {'error': 'El usuario ya existe'},
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    if email and User.objects.filter(email__iexact=email).exists():
+    if email and UserModel.objects.filter(email__iexact=email).exists():
         return Response(
             {'error': 'El email ya está registrado'},
             status=status.HTTP_400_BAD_REQUEST
@@ -196,7 +200,7 @@ def register_view(request):
         )
 
     # Crear usuario
-    user = User.objects.create_user(
+    user = UserModel.objects.create_user(
         username=username,
         password=password,
         email=email,

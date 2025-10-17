@@ -1,6 +1,6 @@
 """ViewSets del dominio de usuarios."""
-
-from django.contrib.auth.models import User
+from django.apps import apps
+from django.conf import settings
 from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -14,11 +14,14 @@ from backend.usuarios.serializers import (
 from backend.core.permissions import IsAdmin
 
 
+UserModel = apps.get_model(settings.AUTH_USER_MODEL)
+
+
 class UsuarioViewSet(viewsets.ModelViewSet):
     """ViewSet para gestión de usuarios (solo admin/superuser)."""
 
     queryset = (
-        User.objects.all().select_related("user_profile").order_by("username")
+        UserModel.objects.all().select_related("user_profile").order_by("username")
     )
     serializer_class = UsuarioDetalleSerializer
     permission_classes = [permissions.IsAuthenticated]

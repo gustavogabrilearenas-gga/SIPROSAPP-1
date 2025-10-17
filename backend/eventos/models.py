@@ -1,8 +1,8 @@
 """Modelos para el registro de observaciones de producción, mantenimiento e incidentes."""
 
-from django.db import models
-from django.contrib.auth.models import User
+from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.db import models
 from backend.catalogos.models import Maquina, Producto, Turno
 
 
@@ -12,7 +12,7 @@ class RegistroProduccion(models.Model):
     fecha_produccion = models.DateField(db_index=True)
     fecha_registro = models.DateTimeField(auto_now_add=True)
     registrado_por = models.ForeignKey(
-        User, 
+        settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name='registros_produccion'
     )
@@ -82,7 +82,7 @@ class RegistroMantenimiento(models.Model):
     fecha_mantenimiento = models.DateField(db_index=True)
     fecha_registro = models.DateTimeField(auto_now_add=True)
     registrado_por = models.ForeignKey(
-        User, 
+        settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name='registros_mantenimiento'
     )
@@ -143,7 +143,7 @@ class RegistroIncidente(models.Model):
     fecha_incidente = models.DateField(db_index=True)
     fecha_registro = models.DateTimeField(auto_now_add=True)
     registrado_por = models.ForeignKey(
-        User, 
+        settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name='registros_incidentes'
     )
@@ -206,7 +206,7 @@ class ObservacionGeneral(models.Model):
     hora_registro = models.TimeField(default='09:00', verbose_name='Hora de Registro')
     fecha_registro = models.DateTimeField(auto_now_add=True)
     registrado_por = models.ForeignKey(
-        User, 
+        settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name='observaciones_registradas'
     )
