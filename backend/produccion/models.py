@@ -217,3 +217,20 @@ class LoteEtapa(models.Model):
 
 
 
+class LoteEtapaParametro(models.Model):
+    class Meta:
+        managed = False
+        db_table = "produccion_loteetapaparametro"
+        unique_together = [("lote_etapa_id", "nombre")]
+
+    lote_etapa = models.ForeignKey(
+        "LoteEtapa",
+        on_delete=models.CASCADE,
+        related_name="parametros",
+    )
+    nombre = models.CharField(max_length=100)
+    valor = models.CharField(max_length=100)
+    unidad = models.CharField(max_length=20, blank=True)
+    conforme = models.BooleanField(default=True)
+
+
