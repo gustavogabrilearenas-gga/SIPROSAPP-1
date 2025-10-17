@@ -12,6 +12,14 @@ class LoteEtapaInline(admin.TabularInline):
     extra = 0
     readonly_fields = ['duracion_minutos', 'porcentaje_rendimiento']
 
+    def get_readonly_fields(self, request, obj=None):
+        fields = list(super().get_readonly_fields(request, obj))
+        if is_operario(request.user) and not (
+            is_admin(request.user) or is_supervisor(request.user)
+        ):
+            fields.append('estado')
+        return tuple(dict.fromkeys(fields))
+
 
 @admin.register(Lote)
 class LoteAdmin(admin.ModelAdmin):
@@ -34,6 +42,7 @@ class LoteAdmin(admin.ModelAdmin):
         ):
             fields.extend(
                 [
+                    'estado',
                     'supervisor',
                     'cancelado_por',
                     'fecha_cancelacion',
@@ -51,6 +60,7 @@ class LoteAdmin(admin.ModelAdmin):
         ):
             exclude.extend(
                 [
+                    'estado',
                     'supervisor',
                     'cancelado_por',
                     'fecha_cancelacion',
@@ -68,6 +78,22 @@ class LoteEtapaAdmin(admin.ModelAdmin):
     list_filter = ['estado', 'etapa', 'maquina']
     search_fields = ['lote__codigo_lote']
     readonly_fields = ['duracion_minutos', 'porcentaje_rendimiento']
+
+    def get_readonly_fields(self, request, obj=None):
+        fields = list(super().get_readonly_fields(request, obj))
+        if is_operario(request.user) and not (
+            is_admin(request.user) or is_supervisor(request.user)
+        ):
+            fields.append('estado')
+        return tuple(dict.fromkeys(fields))
+
+    def get_exclude(self, request, obj=None):
+        exclude = list(super().get_exclude(request, obj) or [])
+        if is_operario(request.user) and not (
+            is_admin(request.user) or is_supervisor(request.user)
+        ):
+            exclude.append('estado')
+        return tuple(dict.fromkeys(exclude)) or None
 
 
 @admin.register(RegistroProduccion)
