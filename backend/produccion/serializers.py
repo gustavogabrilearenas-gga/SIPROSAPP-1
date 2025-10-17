@@ -9,29 +9,30 @@ from backend.produccion.models import Lote, LoteEtapa, RegistroProduccion
 class RegistroProduccionSerializer(serializers.ModelSerializer):
     """Serializer para registros diarios de producción."""
 
-    registrado_por_nombre = serializers.CharField(source='registrado_por.get_full_name', read_only=True)
-    maquina_nombre = serializers.CharField(source='maquina.nombre', read_only=True)
-    producto_nombre = serializers.CharField(source='producto.nombre', read_only=True)
-    turno_nombre = serializers.CharField(source='turno.nombre', read_only=True)
-    turno_display = serializers.CharField(source='turno.get_codigo_display', read_only=True)
-    unidad_display = serializers.CharField(source='get_unidad_medida_display', read_only=True)
+    registrado_por_nombre = serializers.CharField(source="registrado_por.get_full_name", read_only=True)
+    maquina_nombre = serializers.CharField(source="maquina.nombre", read_only=True)
+    producto_nombre = serializers.CharField(source="producto.nombre", read_only=True)
+    turno_nombre = serializers.CharField(source="turno.nombre", read_only=True)
+    turno_display = serializers.CharField(source="turno.get_codigo_display", read_only=True)
+    unidad_display = serializers.CharField(source="get_unidad_medida_display", read_only=True)
 
     class Meta:
         model = RegistroProduccion
-        fields = '__all__'
-        read_only_fields = ['fecha_registro', 'registrado_por']
+        fields = "__all__"
+        read_only_fields = ["fecha_registro", "registrado_por"]
 
     def validate(self, data):
         """Validaciones cruzadas a nivel de serializer."""
-        if data.get('hora_fin') and data.get('hora_inicio'):
-            if data['hora_fin'] <= data['hora_inicio']:
-                raise serializers.ValidationError({
-                    'hora_fin': 'La hora de fin debe ser posterior a la hora de inicio.'
-                })
-
-        if data.get('cantidad_producida') and data['cantidad_producida'] < 0:
+        hora_inicio = data.get("hora_inicio")
+        hora_fin = data.get("hora_fin")
+        if hora_inicio and hora_fin and hora_fin <= hora_inicio:
             raise serializers.ValidationError({
-                'cantidad_producida': 'La cantidad no puede ser negativa.'
+                "hora_fin": "La hora de fin debe ser posterior a la de inicio."
+            })
+
+        if data.get("cantidad_producida") and data["cantidad_producida"] < 0:
+            raise serializers.ValidationError({
+                "cantidad_producida": "La cantidad no puede ser negativa."
             })
 
         return data
@@ -50,58 +51,97 @@ class RegistroProduccionSerializer(serializers.ModelSerializer):
 class LoteListSerializer(serializers.ModelSerializer):
     """Serializer simplificado para listados de lotes"""
 
-    producto_nombre = serializers.CharField(source='producto.nombre', read_only=True)
-    estado_display = serializers.CharField(source='get_estado_display', read_only=True)
-    prioridad_display = serializers.CharField(source='get_prioridad_display', read_only=True)
-    supervisor_nombre = serializers.CharField(source='supervisor.get_full_name', read_only=True)
+    producto_nombre = serializers.CharField(source="producto.nombre", read_only=True)
+    estado_display = serializers.CharField(source="get_estado_display", read_only=True)
+    prioridad_display = serializers.CharField(source="get_prioridad_display", read_only=True)
+    supervisor_nombre = serializers.CharField(source="supervisor.get_full_name", read_only=True)
     rendimiento_porcentaje = serializers.ReadOnlyField()
-    rendimiento = serializers.ReadOnlyField(source='rendimiento_porcentaje')
+    rendimiento = serializers.ReadOnlyField(source="rendimiento_porcentaje")
 
     class Meta:
         model = Lote
         fields = [
-            'id', 'codigo_lote', 'producto', 'producto_nombre',
-            'estado', 'estado_display', 'prioridad', 'prioridad_display',
-            'cantidad_planificada', 'cantidad_producida', 'cantidad_rechazada',
-            'unidad', 'rendimiento_porcentaje', 'rendimiento',
-            'fecha_planificada_inicio', 'fecha_real_inicio',
-            'fecha_planificada_fin', 'fecha_real_fin',
-            'fecha_creacion', 'supervisor', 'supervisor_nombre'
+            "id",
+            "codigo_lote",
+            "producto",
+            "producto_nombre",
+            "estado",
+            "estado_display",
+            "prioridad",
+            "prioridad_display",
+            "cantidad_planificada",
+            "cantidad_producida",
+            "cantidad_rechazada",
+            "unidad",
+            "rendimiento_porcentaje",
+            "rendimiento",
+            "fecha_planificada_inicio",
+            "fecha_real_inicio",
+            "fecha_planificada_fin",
+            "fecha_real_fin",
+            "fecha_creacion",
+            "supervisor",
+            "supervisor_nombre",
         ]
 
 
 class LoteSerializer(serializers.ModelSerializer):
     """Serializer completo de lotes"""
 
-    producto_nombre = serializers.CharField(source='producto.nombre', read_only=True)
-    formula_version = serializers.CharField(source='formula.version', read_only=True)
-    estado_display = serializers.CharField(source='get_estado_display', read_only=True)
-    prioridad_display = serializers.CharField(source='get_prioridad_display', read_only=True)
-    turno_nombre = serializers.CharField(source='turno.nombre', read_only=True)
-    supervisor_nombre = serializers.CharField(source='supervisor.get_full_name', read_only=True)
-    creado_por_nombre = serializers.CharField(source='creado_por.get_full_name', read_only=True)
-    cancelado_por_nombre = serializers.CharField(source='cancelado_por.get_full_name', read_only=True, allow_null=True)
-    rendimiento = serializers.ReadOnlyField(source='rendimiento_porcentaje')
+    producto_nombre = serializers.CharField(source="producto.nombre", read_only=True)
+    formula_version = serializers.CharField(source="formula.version", read_only=True)
+    estado_display = serializers.CharField(source="get_estado_display", read_only=True)
+    prioridad_display = serializers.CharField(source="get_prioridad_display", read_only=True)
+    turno_nombre = serializers.CharField(source="turno.nombre", read_only=True)
+    supervisor_nombre = serializers.CharField(source="supervisor.get_full_name", read_only=True)
+    creado_por_nombre = serializers.CharField(source="creado_por.get_full_name", read_only=True)
+    cancelado_por_nombre = serializers.CharField(
+        source="cancelado_por.get_full_name", read_only=True, allow_null=True
+    )
+    rendimiento = serializers.ReadOnlyField(source="rendimiento_porcentaje")
 
     class Meta:
         model = Lote
         fields = [
-            'id', 'codigo_lote', 'producto', 'producto_nombre',
-            'formula', 'formula_version', 'cantidad_planificada', 'cantidad_producida',
-            'cantidad_rechazada', 'unidad', 'estado', 'estado_display',
-            'prioridad', 'prioridad_display', 'fecha_planificada_inicio',
-            'fecha_real_inicio', 'fecha_planificada_fin', 'fecha_real_fin',
-            'turno', 'turno_nombre', 'supervisor', 'supervisor_nombre',
-            'observaciones', 'creado_por', 'creado_por_nombre',
-            'fecha_creacion', 'rendimiento', 'visible',
-            'cancelado_por', 'cancelado_por_nombre', 'fecha_cancelacion', 'motivo_cancelacion'
+            "id",
+            "codigo_lote",
+            "producto",
+            "producto_nombre",
+            "formula",
+            "formula_version",
+            "cantidad_planificada",
+            "cantidad_producida",
+            "cantidad_rechazada",
+            "unidad",
+            "estado",
+            "estado_display",
+            "prioridad",
+            "prioridad_display",
+            "fecha_planificada_inicio",
+            "fecha_real_inicio",
+            "fecha_planificada_fin",
+            "fecha_real_fin",
+            "turno",
+            "turno_nombre",
+            "supervisor",
+            "supervisor_nombre",
+            "observaciones",
+            "creado_por",
+            "creado_por_nombre",
+            "fecha_creacion",
+            "rendimiento",
+            "visible",
+            "cancelado_por",
+            "cancelado_por_nombre",
+            "fecha_cancelacion",
+            "motivo_cancelacion",
         ]
-        read_only_fields = ['id', 'fecha_creacion', 'creado_por', 'cancelado_por', 'fecha_cancelacion']
+        read_only_fields = ["id", "fecha_creacion", "creado_por", "cancelado_por", "fecha_cancelacion"]
 
     def validate(self, data):
         """Validaciones de negocio"""
-        if data.get('fecha_real_fin') and data.get('fecha_real_inicio'):
-            if data['fecha_real_fin'] < data['fecha_real_inicio']:
+        if data.get("fecha_real_fin") and data.get("fecha_real_inicio"):
+            if data["fecha_real_fin"] < data["fecha_real_inicio"]:
                 raise serializers.ValidationError({
                     "fecha_real_fin": "La fecha de fin debe ser posterior a la fecha de inicio"
                 })
@@ -111,22 +151,37 @@ class LoteSerializer(serializers.ModelSerializer):
 class LoteEtapaSerializer(serializers.ModelSerializer):
     """Serializer de etapas de lote"""
 
-    lote_codigo = serializers.CharField(source='lote.codigo_lote', read_only=True)
-    etapa_nombre = serializers.CharField(source='etapa.nombre', read_only=True)
-    maquina_nombre = serializers.CharField(source='maquina.nombre', read_only=True)
-    operario_nombre = serializers.CharField(source='operario.get_full_name', read_only=True)
-    estado_display = serializers.CharField(source='get_estado_display', read_only=True)
+    lote_codigo = serializers.CharField(source="lote.codigo_lote", read_only=True)
+    etapa_nombre = serializers.CharField(source="etapa.nombre", read_only=True)
+    maquina_nombre = serializers.CharField(source="maquina.nombre", read_only=True)
+    operario_nombre = serializers.CharField(source="operario.get_full_name", read_only=True)
+    estado_display = serializers.CharField(source="get_estado_display", read_only=True)
 
     class Meta:
         model = LoteEtapa
         fields = [
-            'id', 'lote', 'lote_codigo', 'etapa', 'etapa_nombre',
-            'orden', 'maquina', 'maquina_nombre', 'estado', 'estado_display',
-            'fecha_inicio', 'fecha_fin', 'duracion_minutos',
-            'operario', 'operario_nombre', 'cantidad_entrada', 'cantidad_salida',
-            'cantidad_merma', 'porcentaje_rendimiento', 'observaciones'
+            "id",
+            "lote",
+            "lote_codigo",
+            "etapa",
+            "etapa_nombre",
+            "orden",
+            "maquina",
+            "maquina_nombre",
+            "estado",
+            "estado_display",
+            "fecha_inicio",
+            "fecha_fin",
+            "duracion_minutos",
+            "operario",
+            "operario_nombre",
+            "cantidad_entrada",
+            "cantidad_salida",
+            "cantidad_merma",
+            "porcentaje_rendimiento",
+            "observaciones",
         ]
-        read_only_fields = ['id', 'duracion_minutos', 'porcentaje_rendimiento']
+        read_only_fields = ["id", "duracion_minutos", "porcentaje_rendimiento"]
 
 
 
