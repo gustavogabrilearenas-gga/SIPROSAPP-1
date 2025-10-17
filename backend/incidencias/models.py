@@ -63,6 +63,11 @@ class Incidente(models.Model):
         verbose_name = "Incidente"
         verbose_name_plural = "Incidentes"
         ordering = ['-fecha_ocurrencia']
+        indexes = [
+            models.Index(fields=['estado', 'fecha_ocurrencia'], name='inc_estado_fecha_idx'),
+            models.Index(fields=['tipo', 'severidad'], name='inc_tipo_severidad_idx'),
+            models.Index(fields=['fecha_ocurrencia'], name='inc_fecha_idx'),
+        ]
 
     def __str__(self):
         return f"{self.codigo} - {self.titulo}"
