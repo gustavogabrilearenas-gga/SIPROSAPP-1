@@ -164,3 +164,57 @@ class LoteSerializerStateTests(TestCase):
         )
         self.assertFalse(serializer.is_valid())
         self.assertIn("estado", serializer.errors)
+
+    def test_lote_etapa_serializer_accepts_parametros_catalogo(self):
+        self.etapa.parametros = [
+            {"nombre": "Temperatura", "unidad": "°C"},
+            {"nombre": "Humedad", "unidad": "%"},
+        ]
+        self.etapa.save()
+
+        request = self.factory.post("/api/lotes-etapas/")
+        request.user = self.operario
+        data = {
+            "lote": self.lote.pk,
+            "etapa": self.etapa.pk,
+            "orden": 1,
+            "maquina": self.maquina.pk,
+            "operario": self.operario.pk,
+            "parametros_registrados": [
+                {
+                    "nombre": "Temperatura",
+                    "valor": 22,
+                    "unidad": "°C",
+                    "conforme": True,
+                }
+            ],
+        }
+        serializer = LoteEtapaSerializer(data=data, context={"request": request})
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+
+    def test_lote_etapa_serializer_rejects_parametro_fuera_catalogo(self):
+        self.etapa.parametros = [{"nombre": "Temperatura", "unidad": "°C"}]
+        self.etapa.save()
+
+        request = self.factory.post("/api/lotes-etapas/")
+        request.user = self.operario
+        data = {
+            "lote": self.lote.pk,
+            "etapa": self.etapa.pk,
+            "orden": 1,
+            "maquina": self.maquina.pk,
+            "operario": self.operario.pk,
+            "parametros_registrados": [
+                {
+                    "nombre": "Presión",
+                    "valor": 5,
+                    "unidad": "bar",
+                    "conforme": True,
+                }
+            ],
+        }
+        serializer = LoteEtapaSerializer(data=data, context={"request": request})
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("parametros_registrados", serializer.errors)
+        error_message = serializer.errors["parametros_registrados"][0]
+        self.assertIn("no está definido", error_message)

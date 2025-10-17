@@ -375,6 +375,19 @@ class LoteEtapaSerializer(serializers.ModelSerializer):
     maquina_nombre = serializers.CharField(source="maquina.nombre", read_only=True)
     operario_nombre = serializers.CharField(source="operario.get_full_name", read_only=True)
     estado_display = serializers.CharField(source="get_estado_display", read_only=True)
+    parametros_registrados = serializers.JSONField(
+        required=False,
+        default=list,
+        help_text=(
+            "Lista de parámetros registrados: "
+            '[{"nombre": "...", "valor": "...", "unidad": "...", "conforme": true}]'
+        ),
+        style={
+            "base_template": "textarea.html",
+            "rows": 4,
+            "placeholder": '[{"nombre": "...", "valor": "...", "unidad": "...", "conforme": true}]',
+        },
+    )
 
     class Meta:
         model = LoteEtapa
@@ -398,6 +411,7 @@ class LoteEtapaSerializer(serializers.ModelSerializer):
             "cantidad_salida",
             "cantidad_merma",
             "porcentaje_rendimiento",
+            "parametros_registrados",
             "observaciones",
             "requiere_aprobacion_calidad",
             "aprobada_por_calidad",
@@ -438,6 +452,26 @@ class LoteEtapaSerializer(serializers.ModelSerializer):
             fecha_field = self.fields.get("fecha_aprobacion_calidad")
             if fecha_field is not None:
                 fecha_field.read_only = True
+
+    def _resolver_etapa(self, attrs):
+        if "etapa" in attrs:
+            return attrs["etapa"]
+        if self.instance is not None:
+            return getattr(self.instance, "etapa", None)
+        return None
+
+    def _obtener_parametros_catalogo(self, etapa):
+        parametros = getattr(etapa, "parametros", None) or []
+        nombres = set()
+        for parametro in parametros:
+            if not isinstance(parametro, dict):
+                continue
+            nombre = parametro.get("nombre")
+            if isinstance(nombre, str):
+                nombre_normalizado = nombre.strip()
+                if nombre_normalizado:
+                    nombres.add(nombre_normalizado)
+        return nombres
 
     def add_warning(self, *, field, message):
         """Registra advertencias de validación no bloqueantes."""
@@ -498,12 +532,49 @@ class LoteEtapaSerializer(serializers.ModelSerializer):
         return super().save(**kwargs)
 
     def validate(self, attrs):
+        errors = {}
+
         if "estado" in getattr(self, "initial_data", {}):
-            raise serializers.ValidationError(
-                {
-                    "estado": "El estado solo puede modificarse mediante las acciones de flujo definidas.",
-                }
-            )
+            errors["estado"] = "El estado solo puede modificarse mediante las acciones de flujo definidas."
+
+        etapa = self._resolver_etapa(attrs)
+        parametros_registrados = attrs.get("parametros_registrados", serializers.empty)
+        if parametros_registrados is serializers.empty:
+            if self.instance is not None:
+                parametros_registrados = getattr(self.instance, "parametros_registrados", []) or []
+            else:
+                parametros_registrados = []
+
+        if parametros_registrados and etapa is not None:
+            if not isinstance(parametros_registrados, (list, tuple)):
+                errors["parametros_registrados"] = "El campo debe ser una lista de parámetros."  # pragma: no cover
+            else:
+                nombres_definidos = self._obtener_parametros_catalogo(etapa)
+                for parametro in parametros_registrados:
+                    if not isinstance(parametro, dict):
+                        errors["parametros_registrados"] = (
+                            "Cada parámetro registrado debe ser un objeto con al menos la clave 'nombre'."
+                        )
+                        break
+
+                    nombre_original = parametro.get("nombre")
+                    nombre_normalizado = nombre_original.strip() if isinstance(nombre_original, str) else None
+
+                    if not nombre_normalizado:
+                        errors["parametros_registrados"] = (
+                            "Cada parámetro registrado debe incluir un nombre válido."
+                        )
+                        break
+
+                    if nombre_normalizado not in nombres_definidos:
+                        errors["parametros_registrados"] = (
+                            f'El parámetro "{nombre_original}" no está definido en el catálogo de la etapa.'
+                        )
+                        break
+
+        if errors:
+            raise serializers.ValidationError(errors)
+
         return super().validate(attrs)
 
     def _actualizar_aprobacion_calidad(self, instance, aprobacion):

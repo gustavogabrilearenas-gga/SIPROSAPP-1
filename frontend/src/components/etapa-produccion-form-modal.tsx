@@ -251,12 +251,12 @@ export default function EtapaProduccionFormModal({ isOpen, etapaId, onClose, onS
                     value={formState.parametros_esperados}
                     onChange={(event) => handleChange('parametros_esperados', event.target.value)}
                     placeholder='[
-  { "nombre": "Temperatura", "unidad": "°C", "min": 20, "max": 25 }
+  { "nombre": "Temperatura", "valor": 22, "unidad": "°C", "conforme": true }
 ]'
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <p className="text-xs text-gray-500">
-                    Utiliza un arreglo JSON con objetos que describan cada parámetro (nombre, unidad y límites).
+                    Utiliza un arreglo JSON con objetos que describan cada parámetro (nombre, valor medido, unidad y si está conforme).
                   </p>
                 </div>
 
