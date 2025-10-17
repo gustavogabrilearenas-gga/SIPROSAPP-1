@@ -3,6 +3,7 @@
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db.models import Max, Min, Q, Sum
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -77,24 +78,92 @@ class RegistroProduccionSerializer(serializers.ModelSerializer):
     class Meta:
         model = RegistroProduccion
         fields = "__all__"
-        read_only_fields = ["fecha_registro", "registrado_por", "hora_inicio", "hora_fin"]
-        extra_kwargs = {
-            "cantidad_producida": {"min_value": 0},
+        read_only_fields = [
+            "fecha_registro",
+            "registrado_por",
+            "hora_inicio",
+            "hora_fin",
+            "cantidad_producida",
+            "unidad_medida",
+        ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._unidad_resuelta = None
+        self._metricas_derivadas = {
+            "cantidad_producida": None,
+            "hora_inicio": None,
+            "hora_fin": None,
+        }
+
+    def _resolver_valor(self, attrs, nombre):
+        if nombre in attrs:
+            return attrs[nombre]
+        if self.instance is not None:
+            return getattr(self.instance, nombre, None)
+        return None
+
+    def _extraer_hora(self, valor):
+        if valor is None:
+            return None
+        if timezone.is_aware(valor):
+            valor = timezone.localtime(valor)
+        return valor.time()
+
+    def _calcular_metricas(self, *, fecha_produccion, maquina, turno):
+        if not (fecha_produccion and maquina and turno):
+            return {
+                "cantidad_producida": None,
+                "hora_inicio": None,
+                "hora_fin": None,
+            }
+
+        etapas = LoteEtapa.objects.filter(
+            maquina=maquina,
+            lote__turno=turno,
+        )
+
+        etapas_cantidad = etapas.filter(
+            fecha_inicio__date__lte=fecha_produccion,
+        ).filter(
+            Q(fecha_fin__date__gte=fecha_produccion)
+            | (Q(fecha_fin__isnull=True) & Q(fecha_inicio__date=fecha_produccion))
+        )
+
+        total = etapas_cantidad.aggregate(total=Sum("cantidad_salida"))["total"]
+        if total is not None:
+            total = Decimal(total).quantize(Decimal("0.01"))
+
+        etapas_mismo_dia = etapas.filter(fecha_inicio__date=fecha_produccion)
+
+        hora_inicio_dt = etapas_mismo_dia.filter(
+            fecha_inicio__isnull=False
+        ).aggregate(valor=Min("fecha_inicio"))["valor"]
+        hora_fin_dt = etapas_mismo_dia.filter(
+            fecha_fin__isnull=False
+        ).aggregate(valor=Max("fecha_fin"))["valor"]
+
+        return {
+            "cantidad_producida": total,
+            "hora_inicio": self._extraer_hora(hora_inicio_dt),
+            "hora_fin": self._extraer_hora(hora_fin_dt),
         }
 
     def validate(self, data):
         """Validaciones cruzadas a nivel de serializer."""
-        hora_inicio = data.get("hora_inicio")
-        hora_fin = data.get("hora_fin")
-        if hora_inicio and hora_fin and hora_fin <= hora_inicio:
-            raise serializers.ValidationError({
-                "hora_fin": "La hora de fin debe ser posterior a la de inicio."
-            })
 
-        if data.get("cantidad_producida") and data["cantidad_producida"] < 0:
-            raise serializers.ValidationError({
-                "cantidad_producida": "La cantidad no puede ser negativa."
-            })
+        errores = {}
+
+        campos_derivados = {
+            "cantidad_producida": "La cantidad producida se deriva de las etapas del lote.",
+            "unidad_medida": "La unidad de medida se deriva del producto.",
+            "hora_inicio": "El horario se deriva de las etapas registradas.",
+            "hora_fin": "El horario se deriva de las etapas registradas.",
+        }
+
+        for campo, mensaje in campos_derivados.items():
+            if campo in getattr(self, "initial_data", {}):
+                errores[campo] = mensaje
 
         fecha_produccion = data.get("fecha_produccion")
         maquina = data.get("maquina")
@@ -117,11 +186,7 @@ class RegistroProduccionSerializer(serializers.ModelSerializer):
             if self.instance is not None:
                 qs = qs.exclude(pk=self.instance.pk)
             if qs.exists():
-                raise serializers.ValidationError(
-                    {
-                        "turno": "Ya existe un registro para esta máquina, fecha y turno.",
-                    }
-                )
+                errores["turno"] = "Ya existe un registro para esta máquina, fecha y turno."
 
         producto = data.get("producto")
         if self.instance is not None and producto is None:
@@ -129,19 +194,55 @@ class RegistroProduccionSerializer(serializers.ModelSerializer):
 
         unidad_medida = _obtener_unidad_producto(producto)
         if unidad_medida:
-            data["unidad_medida"] = unidad_medida
+            self._unidad_resuelta = unidad_medida
         elif self.instance is not None and getattr(self.instance, "unidad_medida", None):
-            data["unidad_medida"] = self.instance.unidad_medida
+            self._unidad_resuelta = self.instance.unidad_medida
         else:
-            raise serializers.ValidationError(
-                {"producto": "El producto no tiene una unidad de producción configurada."}
-            )
+            errores["producto"] = "El producto no tiene una unidad de producción configurada."
+
+        fecha_resuelta = self._resolver_valor(data, "fecha_produccion")
+        maquina_resuelta = self._resolver_valor(data, "maquina")
+        turno_resuelto = self._resolver_valor(data, "turno")
+
+        metricas = self._calcular_metricas(
+            fecha_produccion=fecha_resuelta,
+            maquina=maquina_resuelta,
+            turno=turno_resuelto,
+        )
+        self._metricas_derivadas = metricas
+
+        if self.instance is None:
+            if metricas["cantidad_producida"] is None:
+                errores["cantidad_producida"] = (
+                    "No hay etapas registradas para derivar la cantidad producida."
+                )
+            if metricas["hora_inicio"] is None:
+                errores["hora_inicio"] = (
+                    "No hay etapas registradas para derivar la hora de inicio."
+                )
+            if metricas["hora_fin"] is None:
+                errores["hora_fin"] = (
+                    "No hay etapas registradas para derivar la hora de fin."
+                )
+
+        if errores:
+            raise serializers.ValidationError(errores)
 
         return data
 
     def create(self, validated_data):
         """Crea el registro aplicando validaciones del modelo."""
+
         instance = RegistroProduccion(**validated_data)
+        if self._unidad_resuelta is not None:
+            instance.unidad_medida = self._unidad_resuelta
+
+        metricas = self._metricas_derivadas or {}
+        for campo in ["cantidad_producida", "hora_inicio", "hora_fin"]:
+            valor = metricas.get(campo)
+            if valor is not None:
+                setattr(instance, campo, valor)
+
         try:
             instance.full_clean()
         except DjangoValidationError as exc:
@@ -152,6 +253,16 @@ class RegistroProduccionSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
+
+        if self._unidad_resuelta is not None:
+            instance.unidad_medida = self._unidad_resuelta
+
+        metricas = self._metricas_derivadas or {}
+        for campo in ["cantidad_producida", "hora_inicio", "hora_fin"]:
+            valor = metricas.get(campo)
+            if valor is not None:
+                setattr(instance, campo, valor)
+
         try:
             instance.full_clean()
         except DjangoValidationError as exc:
