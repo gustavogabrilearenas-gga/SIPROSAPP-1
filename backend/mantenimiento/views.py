@@ -6,6 +6,7 @@ from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from backend.core.mixins import QueryParamFilterMixin, SafeMethodPermissionMixin
 from backend.core.permissions import IsAdmin, IsAdminOrSupervisor
 
 from .models import OrdenTrabajo, TipoMantenimiento
@@ -18,21 +19,18 @@ from .serializers import (
 User = get_user_model()
 
 
-class TipoMantenimientoViewSet(viewsets.ModelViewSet):
+class TipoMantenimientoViewSet(SafeMethodPermissionMixin, viewsets.ModelViewSet):
     """ViewSet para gestionar Tipos de Mantenimiento."""
 
     queryset = TipoMantenimiento.objects.all().order_by('codigo')
     serializer_class = TipoMantenimientoSerializer
 
-    def get_permissions(self):
-        if self.request.method in permissions.SAFE_METHODS:
-            perm_classes = [permissions.IsAuthenticated]
-        else:
-            perm_classes = [IsAdmin]
-        return [p() for p in perm_classes]
+    unsafe_permission_classes = (IsAdmin,)
 
 
-class OrdenTrabajoViewSet(viewsets.ModelViewSet):
+class OrdenTrabajoViewSet(
+    QueryParamFilterMixin, SafeMethodPermissionMixin, viewsets.ModelViewSet
+):
     """ViewSet para gestionar Órdenes de Trabajo."""
 
     queryset = (
@@ -45,44 +43,29 @@ class OrdenTrabajoViewSet(viewsets.ModelViewSet):
     search_fields = ['codigo', 'titulo', 'maquina__nombre']
     ordering_fields = ['fecha_creacion', 'fecha_planificada', 'prioridad']
 
+    query_param_filters = {
+        'maquina': 'maquina_id',
+        'tipo': 'tipo_id',
+        'estado': lambda qs, value: qs.filter(estado=value.upper()),
+        'prioridad': lambda qs, value: qs.filter(prioridad=value.upper()),
+    }
+
     def get_queryset(self):
+        """Aplica filtros declarativos sobre el listado de órdenes de trabajo."""
+
         queryset = super().get_queryset()
-
-        # Filtro por máquina
-        maquina_id = self.request.query_params.get('maquina', None)
-        if maquina_id:
-            queryset = queryset.filter(maquina_id=maquina_id)
-
-        # Filtro por tipo
-        tipo_id = self.request.query_params.get('tipo', None)
-        if tipo_id:
-            queryset = queryset.filter(tipo_id=tipo_id)
-
-        # Filtro por estado
-        estado = self.request.query_params.get('estado', None)
-        if estado:
-            queryset = queryset.filter(estado=estado.upper())
-
-        # Filtro por prioridad
-        prioridad = self.request.query_params.get('prioridad', None)
-        if prioridad:
-            queryset = queryset.filter(prioridad=prioridad.upper())
-
-        return queryset
+        return self.apply_query_param_filters(queryset)
 
     def get_serializer_class(self):
         if self.action == 'list':
             return OrdenTrabajoListSerializer
         return OrdenTrabajoSerializer
 
-    def get_permissions(self):
-        if self.request.method in permissions.SAFE_METHODS:
-            perm_classes = [permissions.IsAuthenticated]
-        else:
-            perm_classes = [IsAdmin]
-        return [p() for p in perm_classes]
+    unsafe_permission_classes = (IsAdmin,)
 
     def perform_create(self, serializer):
+        """Registra automáticamente al usuario creador de la orden."""
+
         serializer.save(creada_por=self.request.user)
 
     @action(detail=False, methods=['get'])
