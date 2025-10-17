@@ -416,6 +416,7 @@ class LoteEtapaSerializer(serializers.ModelSerializer):
 
 
     def __init__(self, *args, **kwargs):
+        self._validation_warnings = []
         super().__init__(*args, **kwargs)
         request = self.context.get("request")
         if not request:
@@ -437,6 +438,17 @@ class LoteEtapaSerializer(serializers.ModelSerializer):
             fecha_field = self.fields.get("fecha_aprobacion_calidad")
             if fecha_field is not None:
                 fecha_field.read_only = True
+
+    def add_warning(self, *, field, message):
+        """Registra advertencias de validación no bloqueantes."""
+
+        self._validation_warnings.append({"field": field, "message": message})
+
+    @property
+    def warnings(self):
+        """Lista de advertencias generadas durante la validación."""
+
+        return list(self._validation_warnings)
 
     def _calcular_cantidades(self):
         """Calcula cantidad_merma y porcentaje_rendimiento antes de guardar."""
@@ -465,6 +477,12 @@ class LoteEtapaSerializer(serializers.ModelSerializer):
         merma = entrada_decimal - salida_decimal
         if merma < Decimal("0"):
             merma = Decimal("0")
+            self.add_warning(
+                field="cantidad_merma",
+                message=(
+                    "La cantidad de salida supera a la entrada. La merma fue ajustada a 0."
+                ),
+            )
 
         if entrada_decimal > Decimal("0"):
             rendimiento = (salida_decimal / entrada_decimal) * Decimal("100")

@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.utils.serializer_helpers import ReturnDict
 
 from backend.auditoria.models import ElectronicSignature, LogAuditoria
 from backend.auditoria.serializers import ElectronicSignatureSerializer
@@ -853,6 +854,41 @@ class LoteEtapaViewSet(viewsets.ModelViewSet):
             'message': 'Etapa iniciada exitosamente',
             'lote_etapa': serializer.data
         })
+
+    def perform_create(self, serializer):
+        self._last_serializer = serializer
+        serializer.save()
+
+    def perform_update(self, serializer):
+        self._last_serializer = serializer
+        serializer.save()
+
+    def _attach_warnings(self, response):
+        serializer = getattr(self, "_last_serializer", None)
+        if not serializer:
+            return response
+
+        warnings = getattr(serializer, "warnings", None)
+        if warnings:
+            data = response.data
+            if isinstance(data, (dict, ReturnDict)):
+                data_with_warnings = dict(data)
+                data_with_warnings["warnings"] = warnings
+                response.data = data_with_warnings
+        self._last_serializer = None
+        return response
+
+    def create(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+        return self._attach_warnings(response)
+
+    def update(self, request, *args, **kwargs):
+        response = super().update(request, *args, **kwargs)
+        return self._attach_warnings(response)
+
+    def partial_update(self, request, *args, **kwargs):
+        response = super().partial_update(request, *args, **kwargs)
+        return self._attach_warnings(response)
 
     @action(detail=True, methods=['post'], permission_classes=[IsAdminSupervisorOrOperario])
     def completar(self, request, pk=None):
