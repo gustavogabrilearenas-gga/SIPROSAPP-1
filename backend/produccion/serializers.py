@@ -10,6 +10,42 @@ from backend.core.permissions import is_admin, is_calidad, is_operario, is_super
 from backend.produccion.models import Lote, LoteEtapa, RegistroProduccion
 
 
+def _obtener_unidad_producto(producto):
+    """Intenta obtener la unidad asociada al producto."""
+
+    if producto is None:
+        return None
+
+    posibles_atributos = (
+        "unidad_medida",
+        "unidad",
+        "unidad_produccion",
+    )
+
+    for atributo in posibles_atributos:
+        if hasattr(producto, atributo):
+            valor = getattr(producto, atributo)
+            if callable(valor):
+                valor = valor()
+            if valor:
+                return valor
+
+    formulas_rel = getattr(producto, "formulas", None)
+    if formulas_rel is not None and hasattr(formulas_rel, "order_by"):
+        primera_formula = formulas_rel.order_by("id").first()
+    elif formulas_rel is not None and hasattr(formulas_rel, "first"):
+        primera_formula = formulas_rel.first()
+    else:
+        primera_formula = None
+
+    if primera_formula is not None:
+        unidad_formula = getattr(primera_formula, "unidad", None)
+        if unidad_formula:
+            return unidad_formula
+
+    return None
+
+
 def _obtener_fechas_reales_lote(lote):
     """Obtiene y cachea las fechas reales calculadas del lote."""
 
@@ -86,6 +122,20 @@ class RegistroProduccionSerializer(serializers.ModelSerializer):
                     }
                 )
 
+        producto = data.get("producto")
+        if self.instance is not None and producto is None:
+            producto = self.instance.producto
+
+        unidad_medida = _obtener_unidad_producto(producto)
+        if unidad_medida:
+            data["unidad_medida"] = unidad_medida
+        elif self.instance is not None and getattr(self.instance, "unidad_medida", None):
+            data["unidad_medida"] = self.instance.unidad_medida
+        else:
+            raise serializers.ValidationError(
+                {"producto": "El producto no tiene una unidad de producción configurada."}
+            )
+
         return data
 
     def create(self, validated_data):
@@ -108,6 +158,13 @@ class RegistroProduccionSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        unidad_producto = _obtener_unidad_producto(getattr(instance, "producto", None))
+        if unidad_producto:
+            data["unidad_medida"] = unidad_producto
+        return data
+
 
 class LoteListSerializer(serializers.ModelSerializer):
     """Serializer simplificado para listados de lotes"""
@@ -120,6 +177,7 @@ class LoteListSerializer(serializers.ModelSerializer):
     rendimiento = serializers.ReadOnlyField(source="rendimiento_porcentaje")
     fecha_real_inicio = serializers.SerializerMethodField()
     fecha_real_fin = serializers.SerializerMethodField()
+    unidad = serializers.SerializerMethodField()
 
     class Meta:
         model = Lote
@@ -154,6 +212,9 @@ class LoteListSerializer(serializers.ModelSerializer):
     def get_fecha_real_fin(self, obj):
         return _obtener_fechas_reales_lote(obj)["fecha_fin"]
 
+    def get_unidad(self, obj):
+        return _obtener_unidad_producto(getattr(obj, "producto", None)) or getattr(obj, "unidad", None)
+
 
 class LoteSerializer(serializers.ModelSerializer):
     """Serializer completo de lotes"""
@@ -171,6 +232,7 @@ class LoteSerializer(serializers.ModelSerializer):
     rendimiento = serializers.ReadOnlyField(source="rendimiento_porcentaje")
     fecha_real_inicio = serializers.SerializerMethodField()
     fecha_real_fin = serializers.SerializerMethodField()
+    unidad = serializers.SerializerMethodField()
 
     class Meta:
         model = Lote
@@ -227,6 +289,9 @@ class LoteSerializer(serializers.ModelSerializer):
     def get_fecha_real_fin(self, obj):
         return _obtener_fechas_reales_lote(obj)["fecha_fin"]
 
+    def get_unidad(self, obj):
+        return _obtener_unidad_producto(getattr(obj, "producto", None)) or getattr(obj, "unidad", None)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         request = self.context.get("request")
@@ -275,8 +340,9 @@ class LoteSerializer(serializers.ModelSerializer):
         return data
 
     def _resolver_unidad(self, producto, formula):
-        if producto is not None and hasattr(producto, "unidad_medida") and getattr(producto, "unidad_medida"):
-            return producto.unidad_medida
+        unidad_producto = _obtener_unidad_producto(producto)
+        if unidad_producto:
+            return unidad_producto
         if formula is not None and getattr(formula, "unidad", None):
             return formula.unidad
         return getattr(producto, "unidad", None) or getattr(self.instance, "unidad", "")

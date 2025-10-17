@@ -11,7 +11,8 @@ from django.test import TransactionTestCase, override_settings
 from django.urls import reverse
 from rest_framework.test import APIClient
 
-from backend.catalogos.models import Maquina, Producto, Turno, Ubicacion
+from backend.catalogos.models import Formula, Maquina, Producto, Turno, Ubicacion
+from backend.core.choices import UnidadProduccion
 from backend.produccion.models import RegistroProduccion
 from backend.produccion.serializers import RegistroProduccionSerializer
 
@@ -96,6 +97,19 @@ class RegistroProduccionDBTestCase(TransactionTestCase):
             concentracion="500mg",
             descripcion="",
         )
+        self.formula = Formula.objects.create(
+            codigo=f"FOR-{base_code}-1",
+            version="1.0",
+            producto=self.producto,
+            descripcion="",
+            tamaño_lote=100,
+            unidad=UnidadProduccion.COMPRIMIDOS,
+            tiempo_total=Decimal("1.00"),
+            activa=True,
+            aprobada=True,
+            ingredientes=[],
+            etapas=[],
+        )
         self.producto_b = Producto.objects.create(
             codigo=f"PRD-{base_code}-2",
             nombre="Tabletas B",
@@ -103,6 +117,19 @@ class RegistroProduccionDBTestCase(TransactionTestCase):
             presentacion="BLISTER",
             concentracion="250mg",
             descripcion="",
+        )
+        self.formula_b = Formula.objects.create(
+            codigo=f"FOR-{base_code}-2",
+            version="1.0",
+            producto=self.producto_b,
+            descripcion="",
+            tamaño_lote=100,
+            unidad=UnidadProduccion.COMPRIMIDOS,
+            tiempo_total=Decimal("1.00"),
+            activa=True,
+            aprobada=True,
+            ingredientes=[],
+            etapas=[],
         )
         Turno.objects.filter(codigo__in=["M", "T"]).delete()
         self.turno_m = Turno.objects.create(
@@ -134,7 +161,6 @@ class RegistroProduccionDBTestCase(TransactionTestCase):
             "hubo_produccion": True,
             "maquina": self.maquina.pk,
             "producto": self.producto.pk,
-            "unidad_medida": "COMPRIMIDOS",
             "cantidad_producida": Decimal("120.50"),
             "hora_inicio": time(7, 0),
             "hora_fin": time(12, 0),
@@ -151,7 +177,7 @@ class RegistroProduccionDBTestCase(TransactionTestCase):
             "hubo_produccion": True,
             "maquina": self.maquina,
             "producto": self.producto,
-            "unidad_medida": "COMPRIMIDOS",
+            "unidad_medida": UnidadProduccion.COMPRIMIDOS,
             "cantidad_producida": Decimal("120.50"),
             "hora_inicio": time(7, 0),
             "hora_fin": time(12, 0),
@@ -173,6 +199,17 @@ class RegistroProduccionSerializerTests(RegistroProduccionDBTestCase):
         self.assertEqual(RegistroProduccion.objects.count(), 1)
         self.assertEqual(registro.registrado_por, self.usuario)
         self.assertEqual(registro.maquina, self.maquina)
+        self.assertEqual(registro.unidad_medida, UnidadProduccion.COMPRIMIDOS)
+
+    def test_ignora_unidad_enviada_por_el_cliente(self):
+        serializer = RegistroProduccionSerializer(
+            data=self.serializer_payload(unidad_medida="KG")
+        )
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+
+        registro = serializer.save(registrado_por=self.usuario)
+
+        self.assertEqual(registro.unidad_medida, UnidadProduccion.COMPRIMIDOS)
 
     def test_rechaza_registro_duplicado_para_misma_maquina_fecha_turno(self):
         self.crear_registro()
