@@ -1,9 +1,15 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 
+from decimal import Decimal
+
+from django.contrib.auth.models import Group
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
-from rest_framework.test import APIRequestFactory
+from rest_framework.test import APIClient, APIRequestFactory
+from unittest.mock import patch
+
+from django.urls import reverse
 
 from backend.catalogos.models import (
     EtapaProduccion,
@@ -26,6 +32,11 @@ class LoteSerializerStateTests(TestCase):
         self.supervisor = User.objects.create_user("supervisor", password="pass1234")
         self.creador = User.objects.create_user("creador", password="pass1234")
         self.operario = User.objects.create_user("operario", password="pass1234")
+
+        self.supervisor_group, _ = Group.objects.get_or_create(name="Supervisor")
+        self.operario_group, _ = Group.objects.get_or_create(name="Operario")
+        self.supervisor.groups.add(self.supervisor_group)
+        self.operario.groups.add(self.operario_group)
 
         turno_inicio = timezone.now()
         self.turno, _ = Turno.objects.update_or_create(
@@ -218,3 +229,222 @@ class LoteSerializerStateTests(TestCase):
         self.assertIn("parametros_registrados", serializer.errors)
         error_message = serializer.errors["parametros_registrados"][0]
         self.assertIn("no está definido", error_message)
+
+    def test_operario_no_puede_aprobar_etapa_que_requiere_calidad(self):
+        etapa_validada = EtapaProduccion.objects.create(
+            codigo="ETP-VAL",
+            nombre="Validación",
+            descripcion="",
+            duracion_tipica=30,
+            requiere_validacion=True,
+            parametros=[],
+        )
+        lote_etapa = LoteEtapa.objects.create(
+            lote=self.lote,
+            etapa=etapa_validada,
+            orden=2,
+            maquina=self.maquina,
+            operario=self.operario,
+        )
+
+        request = self.factory.patch("/api/lotes-etapas/1/")
+        request.user = self.operario
+
+        serializer = LoteEtapaSerializer(
+            lote_etapa,
+            data={"aprobada_por_calidad": self.supervisor.pk},
+            partial=True,
+            context={"request": request},
+        )
+
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("aprobada_por_calidad", serializer.errors)
+
+    def test_supervisor_puede_aprobar_etapa_que_requiere_calidad(self):
+        etapa_validada = EtapaProduccion.objects.create(
+            codigo="ETP-VAL2",
+            nombre="Validación 2",
+            descripcion="",
+            duracion_tipica=45,
+            requiere_validacion=True,
+            parametros=[],
+        )
+        lote_etapa = LoteEtapa.objects.create(
+            lote=self.lote,
+            etapa=etapa_validada,
+            orden=3,
+            maquina=self.maquina,
+            operario=self.operario,
+        )
+
+        request = self.factory.patch("/api/lotes-etapas/1/")
+        request.user = self.supervisor
+
+        serializer = LoteEtapaSerializer(
+            lote_etapa,
+            data={"aprobada_por_calidad": self.supervisor.pk},
+            partial=True,
+            context={"request": request},
+        )
+
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        actualizado = serializer.save()
+
+        self.assertEqual(actualizado.aprobada_por_calidad, self.supervisor)
+        self.assertIsNotNone(actualizado.fecha_aprobacion_calidad)
+
+
+@override_settings(ROOT_URLCONF="backend.produccion.urls")
+class LoteEtapaWorkflowTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.supervisor = User.objects.create_superuser(
+            "supervisor_api", email="sup@example.com", password="pass1234"
+        )
+        self.operario = User.objects.create_user("operario_api", password="pass1234")
+        operario_group, _ = Group.objects.get_or_create(name="Operario")
+        self.operario.groups.add(operario_group)
+
+        turno_inicio = timezone.make_aware(datetime(2024, 5, 1, 6, 0))
+        self.turno = Turno.objects.create(
+            codigo="TM",
+            nombre="Turno Mañana",
+            hora_inicio=turno_inicio.time().replace(tzinfo=None),
+            hora_fin=(turno_inicio + timedelta(hours=8)).time().replace(tzinfo=None),
+        )
+
+        self.producto = Producto.objects.create(
+            codigo="PRD-WF",
+            nombre="Producto Workflow",
+            tipo="COMPRIMIDO",
+            presentacion="BLISTER",
+            concentracion="500mg",
+            descripcion="",
+        )
+
+        self.formula = Formula.objects.create(
+            codigo="FOR-WF",
+            version="1.0",
+            producto=self.producto,
+            descripcion="",
+            tamaño_lote=200,
+            unidad="COMPRIMIDOS",
+            tiempo_total=1,
+            activa=True,
+            aprobada=True,
+            ingredientes=[],
+            etapas=[],
+        )
+
+        ubicacion = Ubicacion.objects.create(
+            codigo="UB-WF",
+            nombre="Planta Workflow",
+            descripcion="",
+        )
+        self.maquina = Maquina.objects.create(
+            codigo="MAQ-WF",
+            nombre="Granuladora",
+            tipo="GRANULADO",
+            ubicacion=ubicacion,
+            descripcion="",
+        )
+
+        self.etapa1 = EtapaProduccion.objects.create(
+            codigo="ETP-WF1",
+            nombre="Mezclado",
+            descripcion="",
+            duracion_tipica=60,
+            requiere_validacion=False,
+            parametros=[],
+        )
+        self.etapa2 = EtapaProduccion.objects.create(
+            codigo="ETP-WF2",
+            nombre="Compresión",
+            descripcion="",
+            duracion_tipica=90,
+            requiere_validacion=False,
+            parametros=[],
+        )
+
+        inicio_planificado = timezone.make_aware(datetime(2024, 5, 2, 6, 0))
+        fin_planificado = inicio_planificado + timedelta(hours=6)
+        self.lote = Lote.objects.create(
+            codigo_lote="LOT-WF",
+            producto=self.producto,
+            formula=self.formula,
+            cantidad_planificada=200,
+            unidad="COMPRIMIDOS",
+            prioridad="NORMAL",
+            fecha_planificada_inicio=inicio_planificado,
+            fecha_planificada_fin=fin_planificado,
+            turno=self.turno,
+            supervisor=self.supervisor,
+            observaciones="",
+            creado_por=self.supervisor,
+        )
+
+        self.lote_etapa1 = LoteEtapa.objects.create(
+            lote=self.lote,
+            etapa=self.etapa1,
+            orden=1,
+            maquina=self.maquina,
+            operario=self.operario,
+        )
+        self.lote_etapa2 = LoteEtapa.objects.create(
+            lote=self.lote,
+            etapa=self.etapa2,
+            orden=2,
+            maquina=self.maquina,
+            operario=self.operario,
+        )
+
+        self.client.force_authenticate(self.supervisor)
+
+    def iniciar_y_completar(self, etapa, *, entrada, salida, inicio, fin):
+        with patch("django.utils.timezone.now", return_value=inicio):
+            response = self.client.post(
+                reverse("loteetapa-iniciar", args=[etapa.pk]), format="json"
+            )
+        self.assertEqual(response.status_code, 200, response.content)
+
+        with patch("django.utils.timezone.now", return_value=fin):
+            response = self.client.post(
+                reverse("loteetapa-completar", args=[etapa.pk]),
+                {"cantidad_entrada": entrada, "cantidad_salida": salida},
+                format="json",
+            )
+        self.assertEqual(response.status_code, 200, response.content)
+
+    def test_completar_etapas_actualiza_metricas_del_lote(self):
+        inicio1 = timezone.make_aware(datetime(2024, 5, 2, 7, 0))
+        fin1 = inicio1 + timedelta(hours=2)
+        inicio2 = timezone.make_aware(datetime(2024, 5, 2, 10, 0))
+        fin2 = inicio2 + timedelta(hours=3)
+
+        self.iniciar_y_completar(
+            self.lote_etapa1,
+            entrada=Decimal("100"),
+            salida=Decimal("90"),
+            inicio=inicio1,
+            fin=fin1,
+        )
+        self.iniciar_y_completar(
+            self.lote_etapa2,
+            entrada=Decimal("90"),
+            salida=Decimal("85"),
+            inicio=inicio2,
+            fin=fin2,
+        )
+
+        self.lote.refresh_from_db()
+        etapa1 = LoteEtapa.objects.get(pk=self.lote_etapa1.pk)
+        etapa2 = LoteEtapa.objects.get(pk=self.lote_etapa2.pk)
+
+        self.assertEqual(self.lote.cantidad_producida, 175)
+        self.assertEqual(self.lote.fecha_real_inicio, inicio1)
+        self.assertEqual(self.lote.fecha_real_fin, fin2)
+
+        self.assertEqual(etapa1.cantidad_merma, Decimal("10.00"))
+        self.assertEqual(etapa1.porcentaje_rendimiento, Decimal("90.00"))
+        self.assertEqual(etapa2.cantidad_merma, Decimal("5.00"))
+        self.assertEqual(etapa2.porcentaje_rendimiento, Decimal("94.44"))

@@ -19,6 +19,7 @@ from django.db.models import (
 )
 from django.db.models.functions import Coalesce, Cast
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 
 logger = logging.getLogger(__name__)
 from rest_framework import filters, permissions, status, viewsets
@@ -76,6 +77,25 @@ class RegistroProduccionViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         queryset = super().get_queryset()
+
+        params = self.request.query_params
+
+        fecha = parse_date(params.get("fecha")) if params.get("fecha") else None
+        fecha_desde = parse_date(params.get("fecha_desde")) if params.get("fecha_desde") else None
+        fecha_hasta = parse_date(params.get("fecha_hasta")) if params.get("fecha_hasta") else None
+        turno_id = params.get("turno")
+        maquina_id = params.get("maquina")
+
+        if fecha is not None:
+            queryset = queryset.filter(fecha_produccion=fecha)
+        if fecha_desde is not None:
+            queryset = queryset.filter(fecha_produccion__gte=fecha_desde)
+        if fecha_hasta is not None:
+            queryset = queryset.filter(fecha_produccion__lte=fecha_hasta)
+        if turno_id:
+            queryset = queryset.filter(turno_id=turno_id)
+        if maquina_id:
+            queryset = queryset.filter(maquina_id=maquina_id)
 
         suma_cantidades = (
             LoteEtapa.objects.filter(

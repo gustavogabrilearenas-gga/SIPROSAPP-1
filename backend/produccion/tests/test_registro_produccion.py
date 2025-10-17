@@ -1,6 +1,6 @@
 """Tests para serializer y viewset de RegistroProduccion."""
 
-from datetime import date, time
+from datetime import date, datetime, time
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -10,10 +10,18 @@ from django.db.utils import OperationalError, ProgrammingError
 from django.test import TransactionTestCase, override_settings
 from django.urls import reverse
 from rest_framework.test import APIClient
+from django.utils import timezone
 
-from backend.catalogos.models import Formula, Maquina, Producto, Turno, Ubicacion
+from backend.catalogos.models import (
+    EtapaProduccion,
+    Formula,
+    Maquina,
+    Producto,
+    Turno,
+    Ubicacion,
+)
 from backend.core.choices import UnidadProduccion
-from backend.produccion.models import RegistroProduccion
+from backend.produccion.models import Lote, LoteEtapa, RegistroProduccion
 from backend.produccion.serializers import RegistroProduccionSerializer
 
 
@@ -211,6 +219,13 @@ class RegistroProduccionSerializerTests(RegistroProduccionDBTestCase):
 
         self.assertEqual(registro.unidad_medida, UnidadProduccion.COMPRIMIDOS)
 
+    def test_representacion_utiliza_unidad_del_producto(self):
+        registro = self.crear_registro(unidad_medida=UnidadProduccion.KG)
+        serializer = RegistroProduccionSerializer(instance=registro)
+
+        representacion = serializer.data
+        self.assertEqual(representacion["unidad_medida"], UnidadProduccion.COMPRIMIDOS)
+
     def test_rechaza_registro_duplicado_para_misma_maquina_fecha_turno(self):
         self.crear_registro()
 
@@ -273,7 +288,7 @@ class RegistroProduccionViewSetTests(RegistroProduccionDBTestCase):
 
     def setUp(self):
         super().setUp()
-        self.operario_group, _ = Group.objects.get_or_create(name="operario")
+        self.operario_group, _ = Group.objects.get_or_create(name="Operario")
         self.operario = UserModel.objects.create_user(
             f"view-operario-{self._testMethodName.lower()}", password="pass1234"
         )
@@ -282,68 +297,144 @@ class RegistroProduccionViewSetTests(RegistroProduccionDBTestCase):
         self.client = APIClient()
         self.client.force_authenticate(self.operario)
 
-    def test_listado_filtra_por_busqueda(self):
-        self.crear_registro()
+    def crear_lote_y_etapas(self, fecha_objetivo):
+        supervisor = UserModel.objects.create_superuser(
+            f"sup-{self._testMethodName.lower()}", "sup@example.com", "pass1234"
+        )
+
+        formula = Formula.objects.create(
+            codigo=f"FOR-{self._testMethodName}-WF",
+            version="1.0",
+            producto=self.producto,
+            descripcion="",
+            tamaño_lote=100,
+            unidad=UnidadProduccion.COMPRIMIDOS,
+            tiempo_total=Decimal("1.00"),
+            activa=True,
+            aprobada=True,
+            ingredientes=[],
+            etapas=[],
+        )
+
+        lote = Lote.objects.create(
+            codigo_lote=f"LOT-{self._testMethodName}",
+            producto=self.producto,
+            formula=formula,
+            cantidad_planificada=200,
+            unidad=UnidadProduccion.COMPRIMIDOS,
+            fecha_planificada_inicio=timezone.make_aware(datetime.combine(fecha_objetivo, time(6, 0))),
+            fecha_planificada_fin=timezone.make_aware(datetime.combine(fecha_objetivo, time(14, 0))),
+            turno=self.turno_m,
+            supervisor=supervisor,
+            observaciones="",
+            creado_por=supervisor,
+        )
+
+        etapa_catalogo = EtapaProduccion.objects.create(
+            codigo=f"ETP-{self._testMethodName}",
+            nombre="Granulado",
+            descripcion="",
+            duracion_tipica=60,
+            requiere_validacion=False,
+            parametros=[],
+        )
+
+        inicio = timezone.make_aware(datetime.combine(fecha_objetivo, time(8, 0)))
+        fin = timezone.make_aware(datetime.combine(fecha_objetivo, time(12, 0)))
+
+        LoteEtapa.objects.create(
+            lote=lote,
+            etapa=etapa_catalogo,
+            orden=1,
+            maquina=self.maquina,
+            operario=self.operario,
+            estado="COMPLETADO",
+            fecha_inicio=inicio,
+            fecha_fin=fin,
+            cantidad_entrada=Decimal("120.00"),
+            cantidad_salida=Decimal("100.00"),
+        )
+
+        return lote
+
+    def test_listado_filtra_por_maquina_turno_y_fecha(self):
+        fecha_objetivo = date(2024, 10, 22)
+        self.crear_lote_y_etapas(fecha_objetivo)
+
         self.crear_registro(
-            maquina=self.maquina_b,
-            producto=self.producto_b,
+            fecha_produccion=fecha_objetivo,
+            turno=self.turno_m,
+            maquina=self.maquina,
+            hora_inicio=time(8, 0),
+            hora_fin=time(12, 0),
+        )
+
+        self.crear_registro(
+            fecha_produccion=date(2024, 10, 23),
             turno=self.turno_t,
-            fecha_produccion=date(2024, 10, 21),
-            hora_inicio=time(15, 0),
-            hora_fin=time(21, 0),
+            maquina=self.maquina_b,
+            hora_inicio=time(14, 0),
+            hora_fin=time(18, 0),
         )
 
         url = reverse("registro-produccion-list")
-        response = self.client.get(url, {"search": self.maquina_b.codigo})
+        response = self.client.get(
+            url,
+            {
+                "fecha": fecha_objetivo.isoformat(),
+                "turno": self.turno_m.pk,
+                "maquina": self.maquina.pk,
+            },
+        )
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertEqual(payload["count"], 1)
-        self.assertEqual(payload["results"][0]["maquina"], self.maquina_b.pk)
+        self.assertEqual(payload["results"][0]["maquina"], self.maquina.pk)
 
-    def test_creacion_asigna_usuario_autenticado(self):
-        url = reverse("registro-produccion-list")
-        payload = self.serializer_payload(
-            fecha_produccion=date(2024, 11, 5),
-            hora_inicio=time(6, 0),
-            hora_fin=time(12, 0),
-        )
+    def test_listado_incluye_agregados_de_etapas(self):
+        fecha_objetivo = date(2024, 10, 24)
+        lote = self.crear_lote_y_etapas(fecha_objetivo)
 
-        response = self.client.post(url, payload, format="json")
-        self.assertEqual(response.status_code, 201, response.content)
-
-        registro = RegistroProduccion.objects.get()
-        self.assertEqual(registro.registrado_por, self.operario)
-        self.assertEqual(response.json()["registrado_por"], self.operario.pk)
-
-    def test_no_permite_crear_registro_duplicado(self):
-        self.crear_registro(
-            registrado_por=self.operario,
-            fecha_produccion=date(2024, 11, 5),
-            hora_inicio=time(6, 0),
-            hora_fin=time(12, 0),
-        )
-        url = reverse("registro-produccion-list")
-        payload = self.serializer_payload(
-            fecha_produccion=date(2024, 11, 5),
-            hora_inicio=time(6, 0),
-            hora_fin=time(12, 0),
-        )
-
-        response = self.client.post(url, payload, format="json")
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("turno", response.json())
-
-    def test_actualiza_registro_existente(self):
         registro = self.crear_registro(
+            fecha_produccion=fecha_objetivo,
+            turno=self.turno_m,
+            maquina=self.maquina,
+            hora_inicio=time(7, 0),
+            hora_fin=time(11, 0),
             registrado_por=self.operario,
-            fecha_produccion=date(2024, 11, 5),
-            hora_inicio=time(6, 0),
-            hora_fin=time(12, 0),
         )
-        url = reverse("registro-produccion-detail", args=[registro.pk])
-        response = self.client.patch(url, {"observaciones": "Actualizado"}, format="json")
+
+        url = reverse("registro-produccion-list")
+        response = self.client.get(
+            url,
+            {
+                "fecha": fecha_objetivo.isoformat(),
+                "turno": self.turno_m.pk,
+                "maquina": self.maquina.pk,
+            },
+        )
 
         self.assertEqual(response.status_code, 200)
-        registro.refresh_from_db()
-        self.assertEqual(registro.observaciones, "Actualizado")
+        payload = response.json()
+        self.assertEqual(payload["count"], 1)
+        resultado = payload["results"][0]
+
+        self.assertEqual(resultado["id"], registro.pk)
+        self.assertEqual(resultado["hora_inicio"], "08:00:00")
+        self.assertEqual(resultado["hora_fin"], "12:00:00")
+        self.assertEqual(Decimal(str(resultado["cantidad_producida"])), Decimal("100.00"))
+
+        lote.refresh_from_db()
+        self.assertEqual(lote.cantidad_producida, 100)
+
+    def test_operario_no_puede_crear_registro(self):
+        url = reverse("registro-produccion-list")
+        payload = self.serializer_payload(
+            fecha_produccion=date(2024, 11, 5),
+            hora_inicio=time(6, 0),
+            hora_fin=time(12, 0),
+        )
+
+        response = self.client.post(url, payload, format="json")
+        self.assertEqual(response.status_code, 405)
