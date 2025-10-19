@@ -61,25 +61,23 @@ if "testserver" not in ALLOWED_HOSTS:
 # APPLICATION DEFINITION
 # ============================================
 INSTALLED_APPS = [
+    # built-ins
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    # terceros
     'rest_framework',
     'corsheaders',
-    'backend.core',
-    'backend.usuarios.apps.UsuariosConfig',
-    'backend.eventos.apps.EventosConfig',
-    'backend.catalogos.apps.CatalogosConfig',
-]
 
-MIGRATION_MODULES = {
-    "eventos": None,
-    "catalogos": None,
-    "core": None,
-}
+    # tuyas
+    'backend.core',
+    'backend.catalogos',
+    'backend.usuarios',
+]
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -91,7 +89,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'backend.middleware.error_handler.GlobalErrorMiddleware',
 ]
 
 ROOT_URLCONF = 'backend.urls'
@@ -254,52 +251,39 @@ else:
 # ============================================
 # LOGGING CONFIGURATION
 # ============================================
-LOGGING_FORMATTERS = {
-    "verbose": {
-        "format": "[{asctime}] {levelname} {name} - {message}",
-        "style": "{",
-    },
-    "simple": {
-        "format": "{levelname}: {message}",
-        "style": "{",
-    },
-}
-
-LOGGING_HANDLERS = {}
-default_handlers = []
-
-if IS_PRODUCTION:
-    LOG_DIR = BASE_DIR / "backend" / "logs"
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
-    LOGGING_HANDLERS["app_file"] = {
-        "level": "INFO",
-        "class": "logging.handlers.RotatingFileHandler",
-        "filename": str(LOG_DIR / "app.log"),
-        "maxBytes": 5 * 1024 * 1024,
-        "backupCount": 3,
-        "formatter": "verbose",
-    }
-    default_handlers.append("app_file")
-else:
-    LOGGING_HANDLERS["console"] = {
-        "class": "logging.StreamHandler",
-        "formatter": "simple",
-        "level": "INFO",
-    }
-    default_handlers.append("console")
-
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "formatters": LOGGING_FORMATTERS,
-    "handlers": LOGGING_HANDLERS,
+    "formatters": {
+        "verbose": {
+            "format": "[{asctime}] {levelname} [{name}] {message}",
+            "style": "{",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+    },
     "root": {
-        "handlers": default_handlers,
+        "handlers": ["console"],
         "level": "INFO",
     },
     "loggers": {
         "django": {
-            "handlers": default_handlers,
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "django.server": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "django.db.backends": {
+            "handlers": ["console"],
             "level": "INFO",
             "propagate": False,
         },

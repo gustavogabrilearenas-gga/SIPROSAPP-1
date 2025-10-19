@@ -18,7 +18,8 @@ RUN apt-get update \
         build-essential \
         libpq-dev \
         gcc \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && which pg_isready
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
@@ -27,7 +28,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project files
 COPY . .
 
-# Copy and set permissions for entrypoint
+# Copy and set permissions for entrypoint (ruta relativa al contexto: la raíz del repo)
 COPY backend/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
