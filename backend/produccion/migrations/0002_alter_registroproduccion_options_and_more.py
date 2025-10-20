@@ -4,6 +4,32 @@ from django.conf import settings
 from django.db import migrations, models
 
 
+def drop_fecha_produccion_column(apps, schema_editor):
+    """Elimina la columna y el índice obsoletos si siguen presentes."""
+
+    model = apps.get_model("produccion", "RegistroProduccion")
+    table_name = model._meta.db_table
+    connection = schema_editor.connection
+
+    with connection.cursor() as cursor:
+        existing_columns = {
+            column.name for column in connection.introspection.get_table_description(cursor, table_name)
+        }
+
+    if "fecha_produccion" in existing_columns:
+        field = models.DateField()
+        field.set_attributes_from_name("fecha_produccion")
+        schema_editor.remove_field(model, field)
+
+    index_name = "produccion_fecha__82798b_idx"
+    quoted_index = connection.ops.quote_name(index_name)
+    drop_index_sql = f"DROP INDEX IF EXISTS {quoted_index}"
+    try:
+        schema_editor.execute(drop_index_sql)
+    except Exception:  # pragma: no cover - el índice puede no existir o el motor no soportar IF EXISTS
+        schema_editor.execute(f"DROP INDEX {quoted_index}")
+
+
 def ensure_registroproduccion_table(apps, schema_editor):
     """Garantiza que la tabla exista antes de manipular sus constraints."""
 
@@ -27,62 +53,29 @@ class Migration(migrations.Migration):
             ensure_registroproduccion_table,
             migrations.RunPython.noop,
         ),
-        migrations.AlterModelOptions(
-            name="registroproduccion",
-            options={
-                "ordering": ("-registrado_en", "-hora_inicio", "-id"),
-                "verbose_name": "Registro de producción",
-                "verbose_name_plural": "Registros de producción",
-            },
+        migrations.RunPython(
+            drop_fecha_produccion_column,
+            migrations.RunPython.noop,
         ),
         migrations.RemoveConstraint(
             model_name="registroproduccion",
             name="produccion_registro_cantidad_mayor_cero",
         ),
+        migrations.AddConstraint(
+            model_name="registroproduccion",
+            constraint=models.CheckConstraint(
+                check=models.Q(cantidad_producida__gt=0),
+                name="produccion_registro_cantidad_mayor_cero",
+            ),
+        ),
         migrations.RemoveConstraint(
             model_name="registroproduccion",
             name="produccion_registro_hora_fin_mayor_inicio",
         ),
-        migrations.RemoveIndex(
-            model_name="registroproduccion",
-            name="produccion_fecha__82798b_idx",
-        ),
-        migrations.RenameIndex(
-            model_name="registroproduccion",
-            new_name="produccion__maquina_7f2d05_idx",
-            old_name="produccion_maquina__f02f6c_idx",
-        ),
-        migrations.RenameIndex(
-            model_name="registroproduccion",
-            new_name="produccion__product_328ea8_idx",
-            old_name="produccion_producto_a765cb_idx",
-        ),
-        migrations.RenameIndex(
-            model_name="registroproduccion",
-            new_name="produccion__registr_7a1cd9_idx",
-            old_name="produccion_registr_438e20_idx",
-        ),
-        migrations.RemoveField(
-            model_name="registroproduccion",
-            name="fecha_produccion",
-        ),
-        migrations.AddIndex(
-            model_name="registroproduccion",
-            index=models.Index(
-                fields=["hora_inicio"], name="produccion__hora_in_b1930d_idx"
-            ),
-        ),
         migrations.AddConstraint(
             model_name="registroproduccion",
             constraint=models.CheckConstraint(
-                condition=models.Q(("cantidad_producida__gt", 0)),
-                name="produccion_registro_cantidad_mayor_cero",
-            ),
-        ),
-        migrations.AddConstraint(
-            model_name="registroproduccion",
-            constraint=models.CheckConstraint(
-                condition=models.Q(("hora_fin__gt", models.F("hora_inicio"))),
+                check=models.Q(hora_fin__gt=models.F("hora_inicio")),
                 name="produccion_registro_hora_fin_mayor_inicio",
             ),
         ),

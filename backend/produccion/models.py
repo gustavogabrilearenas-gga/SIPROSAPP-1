@@ -100,9 +100,19 @@ class RegistroProduccion(models.Model):
     def fecha_produccion(self):
         """Retorna la fecha derivada a partir del inicio."""
 
-        if self.hora_inicio:
-            return timezone.localtime(self.hora_inicio).date()
-        return None
+        if not self.hora_inicio:
+            return None
+
+        inicio = self.hora_inicio
+        if timezone.is_naive(inicio):
+            if settings.USE_TZ:
+                inicio = timezone.make_aware(inicio, timezone.get_current_timezone())
+            else:
+                return inicio.date()
+
+        if settings.USE_TZ:
+            inicio = timezone.localtime(inicio)
+        return inicio.date()
 
     def __str__(self) -> str:  # pragma: no cover - representación legible simple
         return f"Registro #{self.pk or 'nuevo'} - {self.producto}"
