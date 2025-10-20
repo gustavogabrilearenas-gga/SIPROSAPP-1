@@ -34,6 +34,10 @@ class UserWithProfileCreationForm(UserCreationForm):
         model = User
         fields = ("username", "first_name", "last_name", "email")
 
+    def __init__(self, *args, **kwargs):
+        kwargs.pop("current_user", None)
+        super().__init__(*args, **kwargs)
+
     @transaction.atomic
     def save(self, commit=True):
         user = super().save(commit=True)
@@ -73,6 +77,7 @@ class UserWithProfileChangeForm(UserChangeForm):
         fields = ("username", "first_name", "last_name", "email", "password")
 
     def __init__(self, *args, **kwargs):
+        self.current_user = kwargs.pop("current_user", None)
         super().__init__(*args, **kwargs)
         self.fields["first_name"].required = True
         self.fields["last_name"].required = True
@@ -87,6 +92,24 @@ class UserWithProfileChangeForm(UserChangeForm):
                 self.fields["telefono"].initial = profile.telefono
                 self.fields["fecha_ingreso"].initial = profile.fecha_ingreso
                 self.fields["activo"].initial = profile.activo
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if (
+            self.current_user
+            and self.instance
+            and self.instance.pk
+            and self.instance.pk == self.current_user.pk
+        ):
+            staff_flag = cleaned_data.get("is_staff")
+            superuser_flag = cleaned_data.get("is_superuser")
+            if (staff_flag is not None and not staff_flag) or (
+                superuser_flag is not None and not superuser_flag
+            ):
+                raise forms.ValidationError(
+                    "No podés quitarte tus propios permisos administrativos."
+                )
+        return cleaned_data
 
     @transaction.atomic
     def save(self, commit=True):
