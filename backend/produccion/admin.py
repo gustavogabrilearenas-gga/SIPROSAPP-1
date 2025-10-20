@@ -20,7 +20,6 @@ class RegistroProduccionAdmin(admin.ModelAdmin):
         "registrado_por",
     )
     list_filter = (
-        "fecha_produccion",
         "maquina",
         "producto",
         "formula",
@@ -28,6 +27,10 @@ class RegistroProduccionAdmin(admin.ModelAdmin):
     )
     search_fields = ("observaciones",)
     readonly_fields = ("registrado_en", "registrado_por")
+
+    @admin.display(ordering="hora_inicio", description="Fecha de producción")
+    def fecha_produccion(self, obj):
+        return obj.fecha_produccion
 
     def save_model(self, request, obj, form, change):
         if not change and not obj.registrado_por_id:

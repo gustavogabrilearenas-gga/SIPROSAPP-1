@@ -8,11 +8,12 @@ from .models import RegistroProduccion
 
 
 class RegistroProduccionSerializer(serializers.ModelSerializer):
+    fecha_produccion = serializers.DateField(read_only=True)
+
     class Meta:
         model = RegistroProduccion
         fields = (
             "id",
-            "fecha_produccion",
             "maquina",
             "producto",
             "formula",
@@ -23,8 +24,9 @@ class RegistroProduccionSerializer(serializers.ModelSerializer):
             "observaciones",
             "registrado_en",
             "registrado_por",
+            "fecha_produccion",
         )
-        read_only_fields = ("id", "registrado_en", "registrado_por")
+        read_only_fields = ("id", "registrado_en", "registrado_por", "fecha_produccion")
 
     def validate(self, attrs):
         hora_inicio = attrs.get("hora_inicio") or getattr(self.instance, "hora_inicio", None)
