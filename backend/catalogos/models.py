@@ -3,7 +3,6 @@ Modelos de los catálogos maestros del sistema.
 """
 
 from django.db import models
-from django.core.validators import MinValueValidator
 
 
 class Ubicacion(models.Model):
@@ -141,25 +140,15 @@ class Formula(models.Model):
     version = models.CharField(max_length=10, choices=VERSION_CHOICES)
     producto = models.ForeignKey(Producto, on_delete=models.PROTECT, related_name='formulas')
     descripcion = models.TextField(blank=True)
-    tamaño_lote = models.IntegerField(
-        validators=[MinValueValidator(1)],
-        help_text="Tamaño estándar del lote"
-    )
-    unidad = models.CharField(max_length=20)
-    tiempo_total = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        validators=[MinValueValidator(0.01)],
-        help_text="Tiempo total en horas"
-    )
     activa = models.BooleanField(default=True)
-    aprobada = models.BooleanField(default=False)
     ingredientes = models.JSONField(
         default=list,
+        blank=True,
         help_text="Lista de ingredientes: [{material_id, cantidad, unidad}]"
     )
     etapas = models.JSONField(
         default=list,
+        blank=True,
         help_text="Lista de etapas: [{etapa_id, duracion_min, descripcion}]"
     )
     
@@ -171,16 +160,6 @@ class Formula(models.Model):
         indexes = [
             models.Index(fields=['producto', 'activa']),
             models.Index(fields=['codigo', 'version']),
-        ]
-        constraints = [
-            models.CheckConstraint(
-                check=models.Q(tamaño_lote__gt=0),
-                name='formula_tamaño_lote_positivo'
-            ),
-            models.CheckConstraint(
-                check=models.Q(tiempo_total__gt=0),
-                name='formula_tiempo_positivo'
-            ),
         ]
     
     def __str__(self):

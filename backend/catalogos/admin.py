@@ -1,6 +1,6 @@
-"""
-Admin de catalogos
-"""
+"""Admin de catálogos minimalista."""
+
+from django import forms
 from django.contrib import admin
 from .models import (
     Ubicacion,
@@ -50,12 +50,43 @@ class ProductoAdmin(admin.ModelAdmin):
     list_filter = ('tipo', 'presentacion', 'activo')
 
 
+class FormulaAdminForm(forms.ModelForm):
+    class Meta:
+        model = Formula
+        fields = "__all__"
+        widgets = {
+            "ingredientes": forms.Textarea(
+                attrs={"rows": 8, "style": "font-family: monospace"}
+            ),
+            "etapas": forms.Textarea(
+                attrs={"rows": 8, "style": "font-family: monospace"}
+            ),
+        }
+
+
 @admin.register(Formula)
 class FormulaAdmin(admin.ModelAdmin):
-    list_display = ('codigo', 'version', 'producto', 'tamaño_lote', 'unidad', 'activa', 'aprobada')
+    form = FormulaAdminForm
+    list_display = ('codigo', 'version', 'producto', 'activa')
     search_fields = ('codigo', 'producto__nombre')
-    list_filter = ('activa', 'aprobada')
+    list_filter = ('activa',)
     raw_id_fields = ('producto',)
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": (
+                    'codigo',
+                    'version',
+                    'producto',
+                    'descripcion',
+                    'activa',
+                    'ingredientes',
+                    'etapas',
+                )
+            },
+        ),
+    )
 
 
 @admin.register(EtapaProduccion)

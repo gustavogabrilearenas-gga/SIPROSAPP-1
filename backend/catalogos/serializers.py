@@ -1,17 +1,16 @@
 """Serializadores del dominio de catálogos."""
 
+from django.apps import apps
 from rest_framework import serializers
 
-from .models import (
-    EtapaProduccion,
-    Formula,
-    Maquina,
-    Parametro,
-    Producto,
-    Turno,
-    Ubicacion,
-    Funcion,
-)
+Funcion = apps.get_model("catalogos", "Funcion")
+Ubicacion = apps.get_model("catalogos", "Ubicacion")
+Parametro = apps.get_model("catalogos", "Parametro")
+Maquina = apps.get_model("catalogos", "Maquina")
+Producto = apps.get_model("catalogos", "Producto")
+Formula = apps.get_model("catalogos", "Formula")
+EtapaProduccion = apps.get_model("catalogos", "EtapaProduccion")
+Turno = apps.get_model("catalogos", "Turno")
 
 
 class UbicacionSerializer(serializers.ModelSerializer):
@@ -114,15 +113,75 @@ class FormulaSerializer(serializers.ModelSerializer):
             "producto",
             "producto_nombre",
             "descripcion",
-            "tamaño_lote",
-            "unidad",
-            "tiempo_total",
             "activa",
-            "aprobada",
             "ingredientes",
             "etapas",
         ]
         read_only_fields = ["id", "producto_nombre"]
+
+    def validate_ingredientes(self, value):
+        if not isinstance(value, list):
+            raise serializers.ValidationError("Debe ser una lista.")
+        for indice, item in enumerate(value):
+            if not isinstance(item, dict):
+                raise serializers.ValidationError(f"Item {indice} debe ser objeto.")
+            for clave in ("material_id", "cantidad", "unidad"):
+                if clave not in item:
+                    raise serializers.ValidationError(f"Item {indice}: falta '{clave}'.")
+            material_id = item["material_id"]
+            cantidad = item["cantidad"]
+            unidad = item["unidad"]
+            if not isinstance(material_id, int) or material_id <= 0:
+                raise serializers.ValidationError(
+                    f"Item {indice}: material_id inválido."
+                )
+            if not (
+                isinstance(cantidad, (int, float))
+                and not isinstance(cantidad, bool)
+                and cantidad > 0
+            ):
+                raise serializers.ValidationError(
+                    f"Item {indice}: cantidad > 0 requerida."
+                )
+            if not isinstance(unidad, str) or not unidad.strip():
+                raise serializers.ValidationError(
+                    f"Item {indice}: unidad requerida."
+                )
+            if not Producto.objects.filter(pk=material_id).exists():
+                raise serializers.ValidationError(
+                    f"Item {indice}: material_id no existe."
+                )
+        return value
+
+    def validate_etapas(self, value):
+        if not isinstance(value, list):
+            raise serializers.ValidationError("Debe ser una lista.")
+        for indice, item in enumerate(value):
+            if not isinstance(item, dict):
+                raise serializers.ValidationError(f"Item {indice} debe ser objeto.")
+            for clave in ("etapa_id", "duracion_min"):
+                if clave not in item:
+                    raise serializers.ValidationError(f"Item {indice}: falta '{clave}'.")
+            etapa_id = item["etapa_id"]
+            duracion_min = item["duracion_min"]
+            descripcion = item.get("descripcion")
+            if not isinstance(etapa_id, int) or etapa_id <= 0:
+                raise serializers.ValidationError(
+                    f"Item {indice}: etapa_id inválido."
+                )
+            if not (isinstance(duracion_min, int) and duracion_min >= 0):
+                raise serializers.ValidationError(
+                    f"Item {indice}: duracion_min >= 0 requerida."
+                )
+            if descripcion is not None and not isinstance(descripcion, str):
+                raise serializers.ValidationError(
+                    f"Item {indice}: descripcion debe ser string o null."
+                )
+            if not EtapaProduccion.objects.filter(pk=etapa_id).exists():
+                raise serializers.ValidationError(
+                    f"Item {indice}: etapa_id no existe."
+                )
+        return value
 
 
 class EtapaProduccionSerializer(serializers.ModelSerializer):
