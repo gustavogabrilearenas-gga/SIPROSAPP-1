@@ -2,12 +2,14 @@
 
 from django.db.models import Count
 from rest_framework import filters, permissions, viewsets
+from rest_framework.parsers import FormParser, MultiPartParser
 
 from backend.core.permissions import IsAdmin, IsAdminOrSupervisor
 
 from .models import (
     Ubicacion,
     Maquina,
+    MaquinaAttachment,
     Producto,
     Formula,
     EtapaProduccion,
@@ -18,6 +20,7 @@ from .models import (
 from .serializers import (
     UbicacionSerializer,
     MaquinaSerializer,
+    MaquinaAttachmentSerializer,
     ProductoSerializer,
     FormulaSerializer,
     EtapaProduccionSerializer,
@@ -88,6 +91,21 @@ class MaquinaViewSet(viewsets.ModelViewSet):
         else:
             perm_classes = [IsAdmin]
         return [perm() for perm in perm_classes]
+
+
+class MaquinaAttachmentViewSet(viewsets.ModelViewSet):
+    queryset = MaquinaAttachment.objects.all()
+    serializer_class = MaquinaAttachmentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def perform_create(self, serializer):
+        request = getattr(self, "request", None)
+        user = request.user if request and request.user.is_authenticated else None
+        file_obj = request.FILES.get("archivo") if request else None
+        content_type = getattr(file_obj, "content_type", "") if file_obj else ""
+        size = getattr(file_obj, "size", None) if file_obj else None
+        serializer.save(subido_por=user, content_type=content_type, tamano_bytes=size)
 
 
 class ProductoViewSet(viewsets.ModelViewSet):

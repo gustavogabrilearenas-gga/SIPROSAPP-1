@@ -2,6 +2,7 @@
 Modelos de los catálogos maestros del sistema.
 """
 
+from django.conf import settings
 from django.core.validators import RegexValidator
 from django.db import models
 
@@ -88,6 +89,50 @@ class Maquina(models.Model):
     
     def __str__(self):
         return f"{self.codigo} - {self.nombre}"
+
+
+def maquina_attachment_path(instance, filename):
+    """Ruta dinámica para almacenar archivos asociados a máquinas."""
+
+    return f"maquinas/{instance.maquina_id}/{filename}"
+
+
+class MaquinaAttachment(models.Model):
+    """Archivos adjuntos cargados para una máquina específica."""
+
+    maquina = models.ForeignKey(
+        "catalogos.Maquina",
+        on_delete=models.CASCADE,
+        related_name="adjuntos",
+    )
+    archivo = models.FileField(upload_to=maquina_attachment_path, max_length=500)
+    nombre = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Nombre legible (opcional)",
+    )
+    descripcion = models.TextField(blank=True)
+    subido_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+    )
+    tamano_bytes = models.BigIntegerField(null=True, blank=True)
+    content_type = models.CharField(max_length=100, blank=True)
+    creado = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Adjunto de máquina"
+        verbose_name_plural = "Adjuntos de máquina"
+        ordering = ["-creado"]
+
+    def __str__(self):
+        if self.nombre:
+            return self.nombre
+        if self.archivo:
+            return self.archivo.name.split("/")[-1]
+        return "adjunto"
 
 
 class Producto(models.Model):
