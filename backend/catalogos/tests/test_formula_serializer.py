@@ -53,6 +53,28 @@ class FormulaSerializerValidationTests(TestCase):
 
         self.assertTrue(serializer.is_valid(), serializer.errors)
 
+    def test_version_formats_allowed(self):
+        for version in ["1", "1.1", "1.2.3"]:
+            with self.subTest(version=version):
+                payload = self._base_payload()
+                payload["version"] = version
+                serializer = FormulaSerializer(data=payload)
+
+                self.assertTrue(serializer.is_valid(), serializer.errors)
+
+    def test_version_invalid_format_rejected(self):
+        for version in ["1.", "1.a", "1..2"]:
+            with self.subTest(version=version):
+                payload = self._base_payload()
+                payload["version"] = version
+                serializer = FormulaSerializer(data=payload)
+
+                self.assertFalse(serializer.is_valid())
+                self.assertIn(
+                    "Use formato de versión como 1, 1.1 o 1.2.3 (solo números y puntos).",
+                    serializer.errors["version"][0],
+                )
+
     def test_invalid_ingredientes_structure_raises_error(self):
         payload = self._base_payload()
         payload["ingredientes"] = "invalid"

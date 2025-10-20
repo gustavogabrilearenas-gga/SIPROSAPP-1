@@ -68,8 +68,8 @@ class FormulaAdminForm(forms.ModelForm):
 class FormulaAdmin(admin.ModelAdmin):
     form = FormulaAdminForm
     list_display = ('codigo', 'version', 'producto', 'activa')
-    search_fields = ('codigo', 'producto__nombre')
-    list_filter = ('activa',)
+    search_fields = ('codigo', 'version', 'producto__nombre')
+    list_filter = ('activa', 'producto')
     raw_id_fields = ('producto',)
     fieldsets = (
         (

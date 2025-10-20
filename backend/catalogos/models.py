@@ -2,7 +2,14 @@
 Modelos de los catálogos maestros del sistema.
 """
 
+from django.core.validators import RegexValidator
 from django.db import models
+
+
+SEMVER_MINIMO = RegexValidator(
+    regex=r"^\d+(?:\.\d+){0,2}$",
+    message="Use formato de versión como 1, 1.1 o 1.2.3 (solo números y puntos).",
+)
 
 
 class Ubicacion(models.Model):
@@ -128,16 +135,9 @@ class Producto(models.Model):
 
 class Formula(models.Model):
     """Recetas de producción (Master Formula)"""
-    
-    VERSION_CHOICES = [
-        ('1.0', '1.0'),
-        ('1.1', '1.1'),
-        ('2.0', '2.0'),
-        ('3.0', '3.0'),
-    ]
-    
+
     codigo = models.CharField(max_length=20, unique=True, db_index=True)
-    version = models.CharField(max_length=10, choices=VERSION_CHOICES)
+    version = models.CharField(max_length=16, validators=[SEMVER_MINIMO])
     producto = models.ForeignKey(Producto, on_delete=models.PROTECT, related_name='formulas')
     descripcion = models.TextField(blank=True)
     activa = models.BooleanField(default=True)
@@ -163,7 +163,7 @@ class Formula(models.Model):
         ]
     
     def __str__(self):
-        return f"{self.codigo} v{self.version} - {self.producto.nombre}"
+        return f"{self.codigo} v{self.version}"
 
 
 class Parametro(models.Model):
