@@ -14,7 +14,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from backend.core.throttles import LoginRateThrottle, RegisterRateThrottle
-from backend.usuarios.serializers import UserSerializer
+from backend.core.user_serializers import BasicUserSerializer as UserSerializer
 
 
 UserModel = apps.get_model(settings.AUTH_USER_MODEL)

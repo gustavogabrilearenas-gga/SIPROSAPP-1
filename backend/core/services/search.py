@@ -1,4 +1,4 @@
-"""Servicios de búsqueda global."""
+# Servicio placeholder; ampliar cuando haya dominios indexados.
 
 from dataclasses import dataclass
 from typing import Dict, List
