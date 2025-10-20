@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -42,7 +42,6 @@ class RegistroProduccionAPITests(APITestCase):
         inicio = timezone.now()
         fin = inicio + timedelta(hours=2)
         payload = {
-            "fecha_produccion": date.today().isoformat(),
             "maquina": self.maquina.id,
             "producto": self.producto.id,
             "formula": self.formula.id,
@@ -56,13 +55,18 @@ class RegistroProduccionAPITests(APITestCase):
         return payload
 
     def test_creacion_registro_autocompleta_usuario_y_timestamp(self):
-        response = self.client.post(self.list_url, self._registro_payload(), format="json")
+        payload = self._registro_payload()
+        response = self.client.post(self.list_url, payload, format="json")
 
         self.assertEqual(response.status_code, 201)
         data = response.json()
         self.assertEqual(data["registrado_por"], self.user.id)
         self.assertIn("registrado_en", data)
         self.assertIsNotNone(data["registrado_en"])
+        self.assertEqual(
+            data["fecha_produccion"],
+            timezone.localtime(self._parse_datetime(data["hora_inicio"])).date().isoformat(),
+        )
 
         registro = RegistroProduccion.objects.get(id=data["id"])
         self.assertEqual(registro.registrado_por, self.user)
@@ -106,33 +110,34 @@ class RegistroProduccionAPITests(APITestCase):
             ubicacion=self.ubicacion,
         )
 
+        inicio_1 = timezone.make_aware(datetime(2024, 1, 1, 8, 0))
+        inicio_2 = timezone.make_aware(datetime(2024, 1, 2, 9, 0))
         RegistroProduccion.objects.create(
-            fecha_produccion=date(2024, 1, 1),
             maquina=self.maquina,
             producto=self.producto,
             formula=self.formula,
             unidad_medida=RegistroProduccion.UnidadMedida.KG,
             cantidad_producida=Decimal("50.000"),
-            hora_inicio=timezone.now(),
-            hora_fin=timezone.now() + timedelta(hours=1),
+            hora_inicio=inicio_1,
+            hora_fin=inicio_1 + timedelta(hours=1),
             registrado_por=self.user,
         )
         RegistroProduccion.objects.create(
-            fecha_produccion=date(2024, 1, 2),
             maquina=otra_maquina,
             producto=otro_producto,
             formula=otra_formula,
             unidad_medida=RegistroProduccion.UnidadMedida.COMPRIMIDOS,
             cantidad_producida=Decimal("80.000"),
-            hora_inicio=timezone.now(),
-            hora_fin=timezone.now() + timedelta(hours=1),
+            hora_inicio=inicio_2,
+            hora_fin=inicio_2 + timedelta(hours=1),
             registrado_por=self.user,
         )
 
         response = self.client.get(
             self.list_url,
             {
-                "fecha_produccion": "2024-01-01",
+                "fecha_after": "2024-01-01",
+                "fecha_before": "2024-01-01",
                 "maquina": self.maquina.id,
                 "producto": self.producto.id,
             },
@@ -149,7 +154,6 @@ class RegistroProduccionAPITests(APITestCase):
         inicio = timezone.now()
         fin = inicio + timedelta(hours=1)
         registro = RegistroProduccion.objects.create(
-            fecha_produccion=date.today(),
             maquina=self.maquina,
             producto=self.producto,
             formula=self.formula,
@@ -195,3 +199,8 @@ class RegistroProduccionAPITests(APITestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("formula", response.json())
+
+    @staticmethod
+    def _parse_datetime(value: str) -> datetime:
+        cleaned = value.replace("Z", "+00:00")
+        return datetime.fromisoformat(cleaned)

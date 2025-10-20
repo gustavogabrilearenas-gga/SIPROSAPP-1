@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib import admin
@@ -50,7 +50,6 @@ class RegistroProduccionAdminTests(TestCase):
         inicio = timezone.now()
         fin = inicio + timedelta(hours=1)
         registro = RegistroProduccion(
-            fecha_produccion=date.today(),
             maquina=self.maquina,
             producto=self.producto,
             formula=self.formula,

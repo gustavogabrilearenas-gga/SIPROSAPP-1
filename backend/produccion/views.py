@@ -22,7 +22,7 @@ class RegistroProduccionViewSet(viewsets.ModelViewSet):
         filters.SearchFilter,
     )
     filterset_class = RegistroProduccionFilter
-    ordering_fields = ("fecha_produccion", "registrado_en", "cantidad_producida")
+    ordering_fields = ("hora_inicio", "registrado_en", "cantidad_producida")
     search_fields = (
         "observaciones",
         "producto__nombre",

@@ -6,6 +6,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import CheckConstraint, F, Q
+from django.utils import timezone
 
 
 class RegistroProduccion(models.Model):
@@ -17,7 +18,6 @@ class RegistroProduccion(models.Model):
         LITROS = "LITROS", "Litros"
         BLISTERS = "BLISTERS", "Blisters"
 
-    fecha_produccion = models.DateField()
     maquina = models.ForeignKey(
         "catalogos.Maquina",
         on_delete=models.PROTECT,
@@ -56,9 +56,9 @@ class RegistroProduccion(models.Model):
     )
 
     class Meta:
-        ordering = ("-registrado_en", "-fecha_produccion", "-id")
+        ordering = ("-registrado_en", "-hora_inicio", "-id")
         indexes = [
-            models.Index(fields=["fecha_produccion"]),
+            models.Index(fields=["hora_inicio"]),
             models.Index(fields=["maquina"]),
             models.Index(fields=["producto"]),
             models.Index(fields=["registrado_en"]),
@@ -95,6 +95,14 @@ class RegistroProduccion(models.Model):
         if not kwargs.pop("skip_validation", False):
             self.full_clean()
         return super().save(*args, **kwargs)
+
+    @property
+    def fecha_produccion(self):
+        """Retorna la fecha derivada a partir del inicio."""
+
+        if self.hora_inicio:
+            return timezone.localtime(self.hora_inicio).date()
+        return None
 
     def __str__(self) -> str:  # pragma: no cover - representación legible simple
         return f"Registro #{self.pk or 'nuevo'} - {self.producto}"
