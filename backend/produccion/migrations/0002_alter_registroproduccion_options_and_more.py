@@ -4,6 +4,16 @@ from django.conf import settings
 from django.db import migrations, models
 
 
+def ensure_registroproduccion_table(apps, schema_editor):
+    """Garantiza que la tabla exista antes de manipular sus constraints."""
+
+    model = apps.get_model("produccion", "RegistroProduccion")
+    table_name = model._meta.db_table
+    existing_tables = schema_editor.connection.introspection.table_names()
+    if table_name not in existing_tables:
+        schema_editor.create_model(model)
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -13,6 +23,10 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunPython(
+            ensure_registroproduccion_table,
+            migrations.RunPython.noop,
+        ),
         migrations.AlterModelOptions(
             name="registroproduccion",
             options={
