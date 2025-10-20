@@ -2,7 +2,16 @@
 
 from rest_framework import serializers
 
-from .models import EtapaProduccion, Formula, Maquina, Producto, Turno, Ubicacion, Funcion
+from .models import (
+    EtapaProduccion,
+    Formula,
+    Maquina,
+    Parametro,
+    Producto,
+    Turno,
+    Ubicacion,
+    Funcion,
+)
 
 
 class UbicacionSerializer(serializers.ModelSerializer):
@@ -28,6 +37,12 @@ class FuncionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Funcion
         fields = ["id", "codigo", "nombre", "descripcion", "activa"]
+
+
+class ParametroSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Parametro
+        fields = ["id", "codigo", "nombre", "descripcion", "unidad", "activo"]
 
 
 class MaquinaSerializer(serializers.ModelSerializer):
@@ -116,6 +131,12 @@ class EtapaProduccionSerializer(serializers.ModelSerializer):
     """Etapas con detalle de máquinas permitidas."""
 
     maquinas_permitidas_nombres = serializers.SerializerMethodField()
+    parametros = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=Parametro.objects.filter(activo=True), required=False
+    )
+    parametros_nombres = serializers.SlugRelatedField(
+        many=True, read_only=True, slug_field="nombre", source="parametros"
+    )
 
     class Meta:
         model = EtapaProduccion
@@ -124,14 +145,13 @@ class EtapaProduccionSerializer(serializers.ModelSerializer):
             "codigo",
             "nombre",
             "descripcion",
-            "duracion_tipica",
-            "requiere_validacion",
             "maquinas_permitidas",
             "maquinas_permitidas_nombres",
             "activa",
             "parametros",
+            "parametros_nombres",
         ]
-        read_only_fields = ["id", "maquinas_permitidas_nombres"]
+        read_only_fields = ["id", "maquinas_permitidas_nombres", "parametros_nombres"]
 
     def get_maquinas_permitidas_nombres(self, obj):
         return [{"id": maquina.id, "nombre": str(maquina)} for maquina in obj.maquinas_permitidas.all()]

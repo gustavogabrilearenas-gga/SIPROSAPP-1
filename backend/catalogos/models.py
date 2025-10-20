@@ -3,7 +3,7 @@ Modelos de los catálogos maestros del sistema.
 """
 
 from django.db import models
-from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.validators import MinValueValidator
 
 
 class Ubicacion(models.Model):
@@ -189,28 +189,43 @@ class Formula(models.Model):
         return f"{self.codigo} v{self.version} - {self.producto.nombre}"
 
 
+class Parametro(models.Model):
+    """Catálogo minimalista de parámetros de proceso/registro."""
+
+    codigo = models.CharField(max_length=30, unique=True, db_index=True, verbose_name="Código")
+    nombre = models.CharField(max_length=120)
+    descripcion = models.TextField(blank=True)
+    unidad = models.CharField(max_length=20, blank=True, help_text="Ej: kg, min, °C")
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["nombre"]
+        verbose_name = "Parámetro"
+        verbose_name_plural = "Parámetros"
+
+    def __str__(self) -> str:
+        return self.nombre
+
+
 class EtapaProduccion(models.Model):
     """Catálogo de etapas del proceso productivo"""
-    
+
     codigo = models.CharField(max_length=20, unique=True, db_index=True)
     nombre = models.CharField(max_length=100)
     descripcion = models.TextField(blank=True)
-    duracion_tipica = models.IntegerField(
-        validators=[MinValueValidator(1)],
-        help_text="Duración típica en minutos"
-    )
-    requiere_validacion = models.BooleanField(default=False)
     maquinas_permitidas = models.ManyToManyField(
         Maquina,
         related_name='etapas_produccion',
         blank=True,
     )
     activa = models.BooleanField(default=True)
-    parametros = models.JSONField(
-        default=list,
-        help_text="Lista de parámetros a controlar: [{nombre, tipo, min, max, unidad}]",
+    parametros = models.ManyToManyField(
+        "catalogos.Parametro",
+        blank=True,
+        related_name="etapas",
+        verbose_name="Parámetros",
     )
-    
+
     class Meta:
         verbose_name = "Etapa de Producción"
         verbose_name_plural = "Etapas de Producción"
@@ -218,13 +233,7 @@ class EtapaProduccion(models.Model):
         indexes = [
             models.Index(fields=['codigo', 'activa']),
         ]
-        constraints = [
-            models.CheckConstraint(
-                check=models.Q(duracion_tipica__gt=0),
-                name='etapa_duracion_positiva'
-            ),
-        ]
-    
+
     def __str__(self):
         return f"{self.codigo} - {self.nombre}"
 

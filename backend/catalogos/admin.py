@@ -2,7 +2,23 @@
 Admin de catalogos
 """
 from django.contrib import admin
-from .models import Ubicacion, Maquina, Producto, Formula, EtapaProduccion, Turno, Funcion
+from .models import (
+    Ubicacion,
+    Maquina,
+    Producto,
+    Formula,
+    EtapaProduccion,
+    Turno,
+    Funcion,
+    Parametro,
+)
+
+
+@admin.register(Parametro)
+class ParametroAdmin(admin.ModelAdmin):
+    list_display = ("codigo", "nombre", "unidad", "activo")
+    search_fields = ("codigo", "nombre", "unidad")
+    list_filter = ("activo",)
 
 
 @admin.register(Ubicacion)
@@ -44,10 +60,15 @@ class FormulaAdmin(admin.ModelAdmin):
 
 @admin.register(EtapaProduccion)
 class EtapaProduccionAdmin(admin.ModelAdmin):
-    list_display = ('codigo', 'nombre', 'duracion_tipica', 'requiere_validacion', 'activa')
-    search_fields = ('codigo', 'nombre')
-    list_filter = ('requiere_validacion', 'activa')
-    filter_horizontal = ('maquinas_permitidas',)
+    list_display = ("codigo", "nombre", "activa")
+    search_fields = ("codigo", "nombre")
+    list_filter = ("activa",)
+    filter_horizontal = ("maquinas_permitidas", "parametros")
+    fieldsets = (
+        (None, {"fields": ("codigo", "nombre", "activa")}),
+        ("Definición", {"fields": ("descripcion", "maquinas_permitidas")}),
+        ("Parámetros", {"fields": ("parametros",)}),
+    )
 
 
 @admin.register(Turno)
