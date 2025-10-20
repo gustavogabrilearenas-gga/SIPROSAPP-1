@@ -4,6 +4,7 @@ from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
+from backend.usuarios.models import UserProfile
 from .forms import UserWithProfileCreationForm, UserWithProfileChangeForm
 
 User = get_user_model()
@@ -100,6 +101,41 @@ class CustomUserAdmin(BaseUserAdmin):
             },
         ),
     )
+
+    def get_form(self, request, obj=None, **kwargs):
+        """Envuelve widgets de FKs para mostrar acciones relacionadas."""
+
+        BaseForm = super().get_form(request, obj, **kwargs)
+
+        admin_site = self.admin_site
+        rel_funcion = UserProfile._meta.get_field("funcion").remote_field
+        rel_turno = UserProfile._meta.get_field("turno_habitual").remote_field
+
+        class FormWithRelated(BaseForm):
+            def __init__(self, *args, **kw):
+                super().__init__(*args, **kw)
+
+                if "funcion" in self.fields:
+                    self.fields["funcion"].widget = admin.widgets.RelatedFieldWidgetWrapper(
+                        self.fields["funcion"].widget,
+                        rel_funcion,
+                        admin_site,
+                        can_add_related=True,
+                        can_change_related=True,
+                        can_view_related=True,
+                    )
+
+                if "turno_habitual" in self.fields:
+                    self.fields["turno_habitual"].widget = admin.widgets.RelatedFieldWidgetWrapper(
+                        self.fields["turno_habitual"].widget,
+                        rel_turno,
+                        admin_site,
+                        can_add_related=True,
+                        can_change_related=True,
+                        can_view_related=True,
+                    )
+
+        return FormWithRelated
 
 
 admin.site.unregister(User)
