@@ -23,9 +23,9 @@ class ParametroAdmin(admin.ModelAdmin):
 
 @admin.register(Ubicacion)
 class UbicacionAdmin(admin.ModelAdmin):
-    list_display = ('codigo', 'nombre', 'planta', 'activa')
+    list_display = ('codigo', 'nombre', 'activa')
     search_fields = ('codigo', 'nombre')
-    list_filter = ('planta', 'activa')
+    list_filter = ('activa',)
 
 
 @admin.register(Funcion)
@@ -39,7 +39,7 @@ class FuncionAdmin(admin.ModelAdmin):
 class MaquinaAdmin(admin.ModelAdmin):
     list_display = ('codigo', 'nombre', 'tipo', 'ubicacion', 'activa')
     search_fields = ('codigo', 'nombre', 'fabricante', 'modelo')
-    list_filter = ('tipo', 'activa', 'requiere_calificacion')
+    list_filter = ('tipo', 'activa')
     raw_id_fields = ('ubicacion',)
 
 
