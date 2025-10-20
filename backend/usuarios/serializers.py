@@ -39,8 +39,10 @@ class UserProfileSerializer(serializers.ModelSerializer):
     """Serializer de perfil de usuario."""
 
     usuario = UserSerializer(source="user", read_only=True)
-    area_display = serializers.CharField(source="get_area_display", read_only=True)
-    turno_display = serializers.CharField(source="get_turno_habitual_display", read_only=True)
+    funcion_id = serializers.PrimaryKeyRelatedField(source="funcion", read_only=True)
+    funcion_nombre = serializers.CharField(source="funcion.nombre", read_only=True)
+    turno_id = serializers.PrimaryKeyRelatedField(source="turno_habitual", read_only=True)
+    turno_nombre = serializers.CharField(source="turno_habitual.nombre", read_only=True)
 
     class Meta:
         model = UserProfile
@@ -48,10 +50,10 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "id",
             "usuario",
             "legajo",
-            "area",
-            "area_display",
-            "turno_habitual",
-            "turno_display",
+            "funcion_id",
+            "funcion_nombre",
+            "turno_id",
+            "turno_nombre",
             "telefono",
             "fecha_ingreso",
             "activo",
@@ -69,8 +71,18 @@ class UsuarioDetalleSerializer(serializers.ModelSerializer):
 
     # Campos del perfil para facilitar edición
     legajo = serializers.CharField(required=False, allow_blank=True)
-    area = serializers.CharField(required=False, allow_blank=True)
-    turno_habitual = serializers.CharField(required=False, allow_blank=True)
+    funcion_id = serializers.PrimaryKeyRelatedField(
+        queryset=apps.get_model("catalogos", "Funcion").objects.all(),
+        source="funcion",
+        required=False,
+        allow_null=True,
+    )
+    turno_id = serializers.PrimaryKeyRelatedField(
+        queryset=apps.get_model("catalogos", "Turno").objects.all(),
+        source="turno_habitual",
+        required=False,
+        allow_null=True,
+    )
     telefono = serializers.CharField(required=False, allow_blank=True)
     fecha_ingreso = serializers.DateField(required=False, allow_null=True)
 
@@ -90,8 +102,8 @@ class UsuarioDetalleSerializer(serializers.ModelSerializer):
             "last_login",
             "profile",
             "legajo",
-            "area",
-            "turno_habitual",
+            "funcion_id",
+            "turno_id",
             "telefono",
             "fecha_ingreso",
         ]
@@ -131,8 +143,16 @@ class UsuarioDetalleSerializer(serializers.ModelSerializer):
 
         if profile_instance:
             data["legajo"] = profile_instance.legajo or ""
-            data["area"] = profile_instance.area or ""
-            data["turno_habitual"] = profile_instance.turno_habitual or ""
+            data["funcion_id"] = profile_instance.funcion_id
+            data["funcion_nombre"] = (
+                profile_instance.funcion.nombre if profile_instance.funcion else ""
+            )
+            data["turno_id"] = profile_instance.turno_habitual_id
+            data["turno_nombre"] = (
+                profile_instance.turno_habitual.nombre
+                if profile_instance.turno_habitual
+                else ""
+            )
             data["telefono"] = profile_instance.telefono or ""
             data["fecha_ingreso"] = (
                 profile_instance.fecha_ingreso.isoformat()
@@ -141,8 +161,10 @@ class UsuarioDetalleSerializer(serializers.ModelSerializer):
             )
         else:
             data["legajo"] = ""
-            data["area"] = ""
-            data["turno_habitual"] = ""
+            data["funcion_id"] = None
+            data["funcion_nombre"] = ""
+            data["turno_id"] = None
+            data["turno_nombre"] = ""
             data["telefono"] = ""
             data["fecha_ingreso"] = None
 
@@ -153,8 +175,8 @@ class UsuarioDetalleSerializer(serializers.ModelSerializer):
 
         profile_data = {
             "legajo": validated_data.pop("legajo", ""),
-            "area": validated_data.pop("area", ""),
-            "turno_habitual": validated_data.pop("turno_habitual", ""),
+            "funcion": validated_data.pop("funcion", None),
+            "turno_habitual": validated_data.pop("turno_habitual", None),
             "telefono": validated_data.pop("telefono", ""),
             "fecha_ingreso": validated_data.pop("fecha_ingreso", None),
             "activo": validated_data.pop("activo", True),
@@ -182,7 +204,7 @@ class UsuarioDetalleSerializer(serializers.ModelSerializer):
 
         profile_data = {
             "legajo": validated_data.pop("legajo", None),
-            "area": validated_data.pop("area", None),
+            "funcion": validated_data.pop("funcion", None),
             "turno_habitual": validated_data.pop("turno_habitual", None),
             "telefono": validated_data.pop("telefono", None),
             "fecha_ingreso": validated_data.pop("fecha_ingreso", None),
@@ -190,7 +212,13 @@ class UsuarioDetalleSerializer(serializers.ModelSerializer):
 
         if is_self_update:
             allowed_user_fields = ["first_name", "last_name", "email"]
-            allowed_profile_fields = ["legajo", "area", "turno_habitual", "telefono"]
+            allowed_profile_fields = [
+                "legajo",
+                "funcion",
+                "turno_habitual",
+                "telefono",
+                "fecha_ingreso",
+            ]
 
             filtered_validated_data = {
                 k: v for k, v in validated_data.items() if k in allowed_user_fields
@@ -213,8 +241,8 @@ class UsuarioDetalleSerializer(serializers.ModelSerializer):
             for attr, value in filtered_profile_data.items():
                 if attr == "fecha_ingreso":
                     setattr(profile, attr, value if value else None)
-                elif value is not None:
-                    setattr(profile, attr, value if value is not None else "")
+                else:
+                    setattr(profile, attr, value)
             profile.save()
 
         return instance
@@ -227,8 +255,18 @@ class UsuarioPerfilSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
 
     legajo = serializers.CharField(required=False, allow_blank=True)
-    area = serializers.CharField(required=False, allow_blank=True)
-    turno_habitual = serializers.CharField(required=False, allow_blank=True)
+    funcion_id = serializers.PrimaryKeyRelatedField(
+        queryset=apps.get_model("catalogos", "Funcion").objects.all(),
+        source="funcion",
+        required=False,
+        allow_null=True,
+    )
+    turno_id = serializers.PrimaryKeyRelatedField(
+        queryset=apps.get_model("catalogos", "Turno").objects.all(),
+        source="turno_habitual",
+        required=False,
+        allow_null=True,
+    )
     telefono = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
@@ -242,8 +280,8 @@ class UsuarioPerfilSerializer(serializers.ModelSerializer):
             "full_name",
             "profile",
             "legajo",
-            "area",
-            "turno_habitual",
+            "funcion_id",
+            "turno_id",
             "telefono",
         ]
         read_only_fields = ["id"]
@@ -253,12 +291,31 @@ class UsuarioPerfilSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
+        profile_instance = getattr(instance, "user_profile", None)
+
+        if profile_instance:
+            data["funcion_id"] = profile_instance.funcion_id
+            data["funcion_nombre"] = (
+                profile_instance.funcion.nombre if profile_instance.funcion else ""
+            )
+            data["turno_id"] = profile_instance.turno_habitual_id
+            data["turno_nombre"] = (
+                profile_instance.turno_habitual.nombre
+                if profile_instance.turno_habitual
+                else ""
+            )
+        else:
+            data["funcion_id"] = None
+            data["funcion_nombre"] = ""
+            data["turno_id"] = None
+            data["turno_nombre"] = ""
+
         return data
 
     def update(self, instance, validated_data):
         profile_data = {
             "legajo": validated_data.pop("legajo", None),
-            "area": validated_data.pop("area", None),
+            "funcion": validated_data.pop("funcion", None),
             "turno_habitual": validated_data.pop("turno_habitual", None),
             "telefono": validated_data.pop("telefono", None),
         }
@@ -271,8 +328,10 @@ class UsuarioPerfilSerializer(serializers.ModelSerializer):
         profile = UserProfile.objects.filter(user=instance).first()
         if profile:
             for attr, value in profile_data.items():
-                if value is not None:
-                    setattr(profile, attr, value if value is not None else "")
+                if attr == "fecha_ingreso":
+                    setattr(profile, attr, value if value else None)
+                elif value is not None:
+                    setattr(profile, attr, value)
             profile.save()
 
         return instance
@@ -313,8 +372,18 @@ class CrearUsuarioSerializer(serializers.ModelSerializer):
     password_confirmacion = serializers.CharField(write_only=True, required=True)
 
     legajo = serializers.CharField(required=False, allow_blank=True)
-    area = serializers.CharField(required=False, allow_blank=True)
-    turno_habitual = serializers.CharField(required=False, allow_blank=True)
+    funcion_id = serializers.PrimaryKeyRelatedField(
+        queryset=apps.get_model("catalogos", "Funcion").objects.all(),
+        source="funcion",
+        required=False,
+        allow_null=True,
+    )
+    turno_id = serializers.PrimaryKeyRelatedField(
+        queryset=apps.get_model("catalogos", "Turno").objects.all(),
+        source="turno_habitual",
+        required=False,
+        allow_null=True,
+    )
     telefono = serializers.CharField(required=False, allow_blank=True)
     fecha_ingreso = serializers.DateField(required=False, allow_null=True)
 
@@ -330,8 +399,8 @@ class CrearUsuarioSerializer(serializers.ModelSerializer):
             "is_staff",
             "is_superuser",
             "legajo",
-            "area",
-            "turno_habitual",
+            "funcion_id",
+            "turno_id",
             "telefono",
             "fecha_ingreso",
         ]
@@ -340,17 +409,6 @@ class CrearUsuarioSerializer(serializers.ModelSerializer):
         if data["password"] != data["password_confirmacion"]:
             raise serializers.ValidationError(
                 {"password_confirmacion": "Las contraseñas no coinciden"}
-            )
-
-        turno = data.get("turno_habitual")
-        if turno and turno not in dict(UserProfile.TURNO_CHOICES).keys():
-            raise serializers.ValidationError(
-                {
-                    "turno_habitual": (
-                        "Valor inválido. Debe ser uno de: "
-                        f"{', '.join(dict(UserProfile.TURNO_CHOICES).keys())}"
-                    )
-                }
             )
 
         try:
@@ -367,8 +425,8 @@ class CrearUsuarioSerializer(serializers.ModelSerializer):
 
         profile_data = {
             "legajo": validated_data.pop("legajo", ""),
-            "area": validated_data.pop("area", ""),
-            "turno_habitual": validated_data.pop("turno_habitual", ""),
+            "funcion": validated_data.pop("funcion", None),
+            "turno_habitual": validated_data.pop("turno_habitual", None),
             "telefono": validated_data.pop("telefono", ""),
             "fecha_ingreso": validated_data.pop("fecha_ingreso", None),
             "activo": True,

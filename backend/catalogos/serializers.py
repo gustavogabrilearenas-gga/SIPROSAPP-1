@@ -2,7 +2,7 @@
 
 from rest_framework import serializers
 
-from .models import EtapaProduccion, Formula, Maquina, Producto, Turno, Ubicacion
+from .models import EtapaProduccion, Formula, Maquina, Producto, Turno, Ubicacion, Funcion
 
 
 class UbicacionSerializer(serializers.ModelSerializer):
@@ -22,6 +22,12 @@ class UbicacionSerializer(serializers.ModelSerializer):
             "maquinas_count",
         ]
         read_only_fields = ["id", "maquinas_count"]
+
+
+class FuncionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Funcion
+        fields = ["id", "codigo", "nombre", "descripcion", "activa"]
 
 
 class MaquinaSerializer(serializers.ModelSerializer):

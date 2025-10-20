@@ -10,31 +10,28 @@ from django.utils.functional import cached_property
 class UserProfile(models.Model):
     """Perfil extendido de usuario con datos específicos de SIPROSA."""
 
-    AREA_CHOICES = [
-        ("PRODUCCION", "Producción"),
-        ("MANTENIMIENTO", "Mantenimiento"),
-        ("ALMACEN", "Almacén"),
-        ("CALIDAD", "Calidad"),
-        ("ADMINISTRACION", "Administración"),
-    ]
-
-    TURNO_CHOICES = [
-        ("M", "Mañana"),
-        ("T", "Tarde"),
-        ("N", "Noche"),
-        ("R", "Rotativo"),
-    ]
-
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='user_profile',
         verbose_name='Usuario'
     )
-    legajo = models.CharField(max_length=20, unique=True, verbose_name="Legajo", null=True, blank=True)
-    area = models.CharField(max_length=20, choices=AREA_CHOICES, null=True, blank=True)
-    turno_habitual = models.CharField(max_length=2, choices=TURNO_CHOICES, null=True, blank=True)
-    telefono = models.CharField(max_length=20, blank=True)
+    legajo = models.CharField(max_length=50, blank=True)
+    funcion = models.ForeignKey(
+        "catalogos.Funcion",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="usuarios",
+    )
+    turno_habitual = models.ForeignKey(
+        "catalogos.Turno",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="usuarios",
+    )
+    telefono = models.CharField(max_length=50, blank=True)
     fecha_ingreso = models.DateField(null=True, blank=True)
     activo = models.BooleanField(default=True)
     foto_perfil = models.ImageField(upload_to="perfiles/", null=True, blank=True)

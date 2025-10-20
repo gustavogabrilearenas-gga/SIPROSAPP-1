@@ -1,6 +1,5 @@
 """Configuración del admin para el dominio de usuarios."""
 
-from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
@@ -13,38 +12,61 @@ User = get_user_model()
 
 class UserProfileInline(admin.StackedInline):
     """Configuración inline para el perfil de usuario."""
+
     model = UserProfile
+    fk_name = "user"
     can_delete = False
-    verbose_name = "Perfil SIPROSA"
-    verbose_name_plural = "Perfiles SIPROSA"
     max_num = 1
     min_num = 1
-    fk_name = "user"
     fields = [
         "legajo",
-        "area",
-        "turno_habitual", 
+        "funcion",
+        "turno_habitual",
         "telefono",
         "fecha_ingreso",
         "activo",
         "foto_perfil",
     ]
-
-    def get_formset(self, request, obj=None, **kwargs):
-        """Override to ensure the inline is properly initialized."""
-        formset = super().get_formset(request, obj, **kwargs)
-        formset.form.base_fields["area"].widget = admin.widgets.AdminRadioSelect(attrs={"class": "radiolist"})
-        formset.form.base_fields["turno_habitual"].widget = admin.widgets.AdminRadioSelect(attrs={"class": "radiolist inline"})
-        return formset
+    radio_fields = {
+        "funcion": admin.VERTICAL,
+        "turno_habitual": admin.HORIZONTAL,
+    }
 
 
 class CustomUserAdmin(BaseUserAdmin):
     """Configuración personalizada para el modelo User."""
+
     inlines = [UserProfileInline]
-    list_display = ["username", "email", "first_name", "last_name", "is_staff", "is_active"]
-    list_filter = ["is_staff", "is_superuser", "is_active", "groups"]
-    search_fields = ["username", "first_name", "last_name", "email"]
+    list_display = [
+        "username",
+        "email",
+        "first_name",
+        "last_name",
+        "get_legajo",
+        "is_staff",
+        "is_active",
+    ]
+    search_fields = [
+        "username",
+        "first_name",
+        "last_name",
+        "email",
+        "user_profile__legajo",
+        "user_profile__funcion__nombre",
+    ]
+    list_filter = [
+        "is_staff",
+        "is_superuser",
+        "is_active",
+        "groups",
+        "user_profile__funcion",
+    ]
     ordering = ["username"]
+
+    @admin.display(description="Legajo", ordering="user_profile__legajo")
+    def get_legajo(self, obj):
+        profile = getattr(obj, "user_profile", None)
+        return profile.legajo if profile and profile.legajo else ""
 
     def save_model(self, request, obj, form, change):
         """Asegura que el guardado del usuario y su perfil ocurra en una transacción."""

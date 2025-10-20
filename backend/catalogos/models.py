@@ -16,15 +16,32 @@ class Ubicacion(models.Model):
     activa = models.BooleanField(default=True)
     
     class Meta:
-        verbose_name = "Ubicación"
-        verbose_name_plural = "Ubicaciones"
-        ordering = ['codigo']
+        verbose_name = "Ubicación física"
+        verbose_name_plural = "Ubicaciones físicas"
+        ordering = ["planta", "nombre"]
         indexes = [
             models.Index(fields=['codigo', 'activa']),
         ]
-    
+
     def __str__(self):
         return f"{self.codigo} - {self.nombre}"
+
+
+class Funcion(models.Model):
+    """Funciones/áreas organizacionales (Producción, Calidad, etc.)."""
+
+    codigo = models.CharField(max_length=20, unique=True, verbose_name="Código", db_index=True)
+    nombre = models.CharField(max_length=100)
+    descripcion = models.TextField(blank=True, verbose_name="Descripción")
+    activa = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "Función"
+        verbose_name_plural = "Funciones"
+        ordering = ["nombre"]
+
+    def __str__(self):
+        return self.nombre
 
 
 class Maquina(models.Model):

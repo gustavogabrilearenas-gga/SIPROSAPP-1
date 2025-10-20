@@ -2,7 +2,7 @@
 Admin de catalogos
 """
 from django.contrib import admin
-from .models import Ubicacion, Maquina, Producto, Formula, EtapaProduccion, Turno
+from .models import Ubicacion, Maquina, Producto, Formula, EtapaProduccion, Turno, Funcion
 
 
 @admin.register(Ubicacion)
@@ -10,6 +10,13 @@ class UbicacionAdmin(admin.ModelAdmin):
     list_display = ('codigo', 'nombre', 'planta', 'activa')
     search_fields = ('codigo', 'nombre')
     list_filter = ('planta', 'activa')
+
+
+@admin.register(Funcion)
+class FuncionAdmin(admin.ModelAdmin):
+    list_display = ("codigo", "nombre", "activa")
+    search_fields = ("codigo", "nombre")
+    list_filter = ("activa",)
 
 
 @admin.register(Maquina)
