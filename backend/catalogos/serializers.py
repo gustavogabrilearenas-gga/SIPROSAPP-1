@@ -7,6 +7,7 @@ Funcion = apps.get_model("catalogos", "Funcion")
 Ubicacion = apps.get_model("catalogos", "Ubicacion")
 Parametro = apps.get_model("catalogos", "Parametro")
 Maquina = apps.get_model("catalogos", "Maquina")
+MaquinaAttachment = apps.get_model("catalogos", "MaquinaAttachment")
 Producto = apps.get_model("catalogos", "Producto")
 Formula = apps.get_model("catalogos", "Formula")
 EtapaProduccion = apps.get_model("catalogos", "EtapaProduccion")
@@ -72,6 +73,35 @@ class MaquinaSerializer(serializers.ModelSerializer):
             "documentos",
         ]
         read_only_fields = ["id", "ubicacion_nombre", "tipo_display"]
+
+
+class MaquinaAttachmentSerializer(serializers.ModelSerializer):
+    url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = MaquinaAttachment
+        fields = [
+            "id",
+            "maquina",
+            "nombre",
+            "descripcion",
+            "url",
+            "content_type",
+            "tamano_bytes",
+            "creado",
+            "subido_por",
+            "archivo",
+        ]
+        read_only_fields = [
+            "url",
+            "content_type",
+            "tamano_bytes",
+            "creado",
+            "subido_por",
+        ]
+
+    def get_url(self, obj):
+        return obj.archivo.url if obj.archivo else None
 
 
 class ProductoSerializer(serializers.ModelSerializer):
