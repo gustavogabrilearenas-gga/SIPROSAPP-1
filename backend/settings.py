@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     "backend.core",
     "backend.catalogos",
     "backend.usuarios",
+    "backend.observaciones",
 ]
 
 MIDDLEWARE = [
