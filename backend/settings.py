@@ -126,6 +126,10 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_PAGINATION_CLASS": "backend.pagination.DefaultPageNumberPagination",
     "PAGE_SIZE": 50,
+    "DEFAULT_THROTTLE_RATES": {
+        "login": "5/min",
+        "register": "3/min",
+    },
 }
 
 SIMPLE_JWT = {
