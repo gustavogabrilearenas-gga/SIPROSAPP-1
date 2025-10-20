@@ -32,6 +32,8 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         "last_name",
         "email",
         "profile__legajo",
+        "profile__dni",
+        "profile__funcion__nombre",
     ]
     ordering_fields = ["username", "date_joined", "last_login", "is_active"]
 

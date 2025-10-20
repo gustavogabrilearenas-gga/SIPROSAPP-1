@@ -10,6 +10,8 @@ from .models import UserProfile
 
 
 UserModel = apps.get_model(settings.AUTH_USER_MODEL)
+Funcion = apps.get_model("catalogos", "Funcion")
+Turno = apps.get_model("catalogos", "Turno")
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -50,6 +52,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "id",
             "usuario",
             "legajo",
+            "dni",
             "funcion_id",
             "funcion_nombre",
             "turno_id",
@@ -70,15 +73,16 @@ class UsuarioDetalleSerializer(serializers.ModelSerializer):
     is_active = serializers.BooleanField(read_only=True)
 
     # Campos del perfil para facilitar edición
-    legajo = serializers.CharField(required=False, allow_blank=True)
+    legajo = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    dni = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     funcion_id = serializers.PrimaryKeyRelatedField(
-        queryset=apps.get_model("catalogos", "Funcion").objects.all(),
+        queryset=Funcion.objects.filter(activa=True),
         source="funcion",
         required=False,
         allow_null=True,
     )
     turno_id = serializers.PrimaryKeyRelatedField(
-        queryset=apps.get_model("catalogos", "Turno").objects.all(),
+        queryset=Turno.objects.filter(activo=True),
         source="turno_habitual",
         required=False,
         allow_null=True,
@@ -102,6 +106,7 @@ class UsuarioDetalleSerializer(serializers.ModelSerializer):
             "last_login",
             "profile",
             "legajo",
+            "dni",
             "funcion_id",
             "turno_id",
             "telefono",
@@ -116,6 +121,11 @@ class UsuarioDetalleSerializer(serializers.ModelSerializer):
             "is_staff",
             "is_superuser",
         ]
+        extra_kwargs = {
+            "email": {"required": True},
+            "first_name": {"required": True},
+            "last_name": {"required": True},
+        }
 
     def get_full_name(self, obj):
         return obj.get_full_name() or obj.username
@@ -143,6 +153,7 @@ class UsuarioDetalleSerializer(serializers.ModelSerializer):
 
         if profile_instance:
             data["legajo"] = profile_instance.legajo or ""
+            data["dni"] = profile_instance.dni or ""
             data["funcion_id"] = profile_instance.funcion_id
             data["funcion_nombre"] = (
                 profile_instance.funcion.nombre if profile_instance.funcion else ""
@@ -161,6 +172,7 @@ class UsuarioDetalleSerializer(serializers.ModelSerializer):
             )
         else:
             data["legajo"] = ""
+            data["dni"] = ""
             data["funcion_id"] = None
             data["funcion_nombre"] = ""
             data["turno_id"] = None
@@ -170,11 +182,21 @@ class UsuarioDetalleSerializer(serializers.ModelSerializer):
 
         return data
 
+    @staticmethod
+    def _clean_optional_text(value):
+        if value is None:
+            return None
+        if isinstance(value, str):
+            value = value.strip()
+            return value or None
+        return value
+
     def create(self, validated_data):
         """Crear usuario con perfil."""
 
         profile_data = {
-            "legajo": validated_data.pop("legajo", ""),
+            "legajo": self._clean_optional_text(validated_data.pop("legajo", None)),
+            "dni": self._clean_optional_text(validated_data.pop("dni", None)),
             "funcion": validated_data.pop("funcion", None),
             "turno_habitual": validated_data.pop("turno_habitual", None),
             "telefono": validated_data.pop("telefono", ""),
@@ -204,6 +226,7 @@ class UsuarioDetalleSerializer(serializers.ModelSerializer):
 
         profile_data = {
             "legajo": validated_data.pop("legajo", None),
+            "dni": validated_data.pop("dni", None),
             "funcion": validated_data.pop("funcion", None),
             "turno_habitual": validated_data.pop("turno_habitual", None),
             "telefono": validated_data.pop("telefono", None),
@@ -214,6 +237,7 @@ class UsuarioDetalleSerializer(serializers.ModelSerializer):
             allowed_user_fields = ["first_name", "last_name", "email"]
             allowed_profile_fields = [
                 "legajo",
+                "dni",
                 "funcion",
                 "turno_habitual",
                 "telefono",
@@ -241,6 +265,8 @@ class UsuarioDetalleSerializer(serializers.ModelSerializer):
             for attr, value in filtered_profile_data.items():
                 if attr == "fecha_ingreso":
                     setattr(profile, attr, value if value else None)
+                elif attr in {"legajo", "dni"}:
+                    setattr(profile, attr, self._clean_optional_text(value))
                 else:
                     setattr(profile, attr, value)
             profile.save()
@@ -254,15 +280,16 @@ class UsuarioPerfilSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer(read_only=True)
     full_name = serializers.SerializerMethodField()
 
-    legajo = serializers.CharField(required=False, allow_blank=True)
+    legajo = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    dni = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     funcion_id = serializers.PrimaryKeyRelatedField(
-        queryset=apps.get_model("catalogos", "Funcion").objects.all(),
+        queryset=Funcion.objects.filter(activa=True),
         source="funcion",
         required=False,
         allow_null=True,
     )
     turno_id = serializers.PrimaryKeyRelatedField(
-        queryset=apps.get_model("catalogos", "Turno").objects.all(),
+        queryset=Turno.objects.filter(activo=True),
         source="turno_habitual",
         required=False,
         allow_null=True,
@@ -280,11 +307,17 @@ class UsuarioPerfilSerializer(serializers.ModelSerializer):
             "full_name",
             "profile",
             "legajo",
+            "dni",
             "funcion_id",
             "turno_id",
             "telefono",
         ]
         read_only_fields = ["id"]
+        extra_kwargs = {
+            "email": {"required": True},
+            "first_name": {"required": True},
+            "last_name": {"required": True},
+        }
 
     def get_full_name(self, obj):
         return obj.get_full_name() or obj.username
@@ -304,17 +337,20 @@ class UsuarioPerfilSerializer(serializers.ModelSerializer):
                 if profile_instance.turno_habitual
                 else ""
             )
+            data["dni"] = profile_instance.dni or ""
         else:
             data["funcion_id"] = None
             data["funcion_nombre"] = ""
             data["turno_id"] = None
             data["turno_nombre"] = ""
+            data["dni"] = ""
 
         return data
 
     def update(self, instance, validated_data):
         profile_data = {
             "legajo": validated_data.pop("legajo", None),
+            "dni": validated_data.pop("dni", None),
             "funcion": validated_data.pop("funcion", None),
             "turno_habitual": validated_data.pop("turno_habitual", None),
             "telefono": validated_data.pop("telefono", None),
@@ -330,6 +366,9 @@ class UsuarioPerfilSerializer(serializers.ModelSerializer):
             for attr, value in profile_data.items():
                 if attr == "fecha_ingreso":
                     setattr(profile, attr, value if value else None)
+                elif attr in {"legajo", "dni"} and value is not None:
+                    cleaned = value.strip() if isinstance(value, str) else value
+                    setattr(profile, attr, cleaned or None)
                 elif value is not None:
                     setattr(profile, attr, value)
             profile.save()
@@ -371,15 +410,16 @@ class CrearUsuarioSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, min_length=4)
     password_confirmacion = serializers.CharField(write_only=True, required=True)
 
-    legajo = serializers.CharField(required=False, allow_blank=True)
+    legajo = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    dni = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     funcion_id = serializers.PrimaryKeyRelatedField(
-        queryset=apps.get_model("catalogos", "Funcion").objects.all(),
+        queryset=Funcion.objects.filter(activa=True),
         source="funcion",
         required=False,
         allow_null=True,
     )
     turno_id = serializers.PrimaryKeyRelatedField(
-        queryset=apps.get_model("catalogos", "Turno").objects.all(),
+        queryset=Turno.objects.filter(activo=True),
         source="turno_habitual",
         required=False,
         allow_null=True,
@@ -399,11 +439,17 @@ class CrearUsuarioSerializer(serializers.ModelSerializer):
             "is_staff",
             "is_superuser",
             "legajo",
+            "dni",
             "funcion_id",
             "turno_id",
             "telefono",
             "fecha_ingreso",
         ]
+        extra_kwargs = {
+            "email": {"required": True},
+            "first_name": {"required": True},
+            "last_name": {"required": True},
+        }
 
     def validate(self, data):
         if data["password"] != data["password_confirmacion"]:
@@ -423,8 +469,17 @@ class CrearUsuarioSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data.pop("password_confirmacion")
 
+        def _clean_optional_text(value):
+            if value is None:
+                return None
+            if isinstance(value, str):
+                value = value.strip()
+                return value or None
+            return value
+
         profile_data = {
-            "legajo": validated_data.pop("legajo", ""),
+            "legajo": _clean_optional_text(validated_data.pop("legajo", None)),
+            "dni": _clean_optional_text(validated_data.pop("dni", None)),
             "funcion": validated_data.pop("funcion", None),
             "turno_habitual": validated_data.pop("turno_habitual", None),
             "telefono": validated_data.pop("telefono", ""),
