@@ -11,6 +11,7 @@ from .views import (
     EtapaProduccionViewSet,
     TurnoViewSet,
     FuncionViewSet,
+    ParametroViewSet,
 )
 
 router = DefaultRouter()
@@ -21,6 +22,7 @@ router.register('formulas', FormulaViewSet)
 router.register('etapas-produccion', EtapaProduccionViewSet)
 router.register('turnos', TurnoViewSet)
 router.register('funciones', FuncionViewSet)
+router.register('parametros', ParametroViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),

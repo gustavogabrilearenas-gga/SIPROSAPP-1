@@ -13,6 +13,7 @@ from .models import (
     EtapaProduccion,
     Turno,
     Funcion,
+    Parametro,
 )
 from .serializers import (
     UbicacionSerializer,
@@ -22,7 +23,22 @@ from .serializers import (
     EtapaProduccionSerializer,
     TurnoSerializer,
     FuncionSerializer,
+    ParametroSerializer,
 )
+
+
+class ParametroViewSet(viewsets.ModelViewSet):
+    queryset = Parametro.objects.all()
+    serializer_class = ParametroSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["codigo", "nombre", "unidad"]
+    ordering_fields = ["nombre", "codigo", "unidad"]
+
+    def get_permissions(self):
+        if self.action in {"create", "update", "partial_update", "destroy"}:
+            return [IsAdmin()]
+        return super().get_permissions()
 
 
 class UbicacionViewSet(viewsets.ModelViewSet):
@@ -138,7 +154,7 @@ class EtapaProduccionViewSet(viewsets.ModelViewSet):
     """Gestión de etapas de producción."""
 
     queryset = (
-        EtapaProduccion.objects.prefetch_related('maquinas_permitidas')
+        EtapaProduccion.objects.prefetch_related('maquinas_permitidas', 'parametros')
         .all()
         .order_by('codigo')
     )
