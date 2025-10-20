@@ -5,10 +5,8 @@ from django.conf import settings
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from backend.usuarios.models import UserProfile
-
-
 UserModel = apps.get_model(settings.AUTH_USER_MODEL)
+UserProfile = apps.get_model("usuarios", "UserProfile")
 
 
 @receiver(post_save, sender=UserModel)

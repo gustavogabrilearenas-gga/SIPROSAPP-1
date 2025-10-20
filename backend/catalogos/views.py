@@ -12,6 +12,7 @@ from .models import (
     Formula,
     EtapaProduccion,
     Turno,
+    Funcion,
 )
 from .serializers import (
     UbicacionSerializer,
@@ -20,6 +21,7 @@ from .serializers import (
     FormulaSerializer,
     EtapaProduccionSerializer,
     TurnoSerializer,
+    FuncionSerializer,
 )
 
 
@@ -165,3 +167,17 @@ class TurnoViewSet(viewsets.ModelViewSet):
         else:
             perm_classes = [IsAdmin]
         return [perm() for perm in perm_classes]
+
+
+class FuncionViewSet(viewsets.ModelViewSet):
+    queryset = Funcion.objects.all()
+    serializer_class = FuncionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["codigo", "nombre"]
+    ordering_fields = ["nombre", "codigo"]
+
+    def get_permissions(self):
+        if self.action in {"create", "update", "partial_update", "destroy"}:
+            return [IsAdmin()]
+        return super().get_permissions()
