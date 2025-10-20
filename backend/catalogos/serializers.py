@@ -26,7 +26,6 @@ class UbicacionSerializer(serializers.ModelSerializer):
             "codigo",
             "nombre",
             "descripcion",
-            "planta",
             "activa",
             "maquinas_count",
         ]
@@ -69,7 +68,6 @@ class MaquinaSerializer(serializers.ModelSerializer):
             "capacidad_nominal",
             "unidad_capacidad",
             "activa",
-            "requiere_calificacion",
             "fecha_instalacion",
             "imagen",
             "documentos",

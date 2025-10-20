@@ -12,13 +12,12 @@ class Ubicacion(models.Model):
     codigo = models.CharField(max_length=20, unique=True, verbose_name="Código", db_index=True)
     nombre = models.CharField(max_length=100)
     descripcion = models.TextField(blank=True, verbose_name="Descripción")
-    planta = models.IntegerField(default=0)
     activa = models.BooleanField(default=True)
-    
+
     class Meta:
         verbose_name = "Ubicación física"
         verbose_name_plural = "Ubicaciones físicas"
-        ordering = ["planta", "nombre"]
+        ordering = ["nombre"]
         indexes = [
             models.Index(fields=['codigo', 'activa']),
         ]
@@ -67,7 +66,6 @@ class Maquina(models.Model):
     capacidad_nominal = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     unidad_capacidad = models.CharField(max_length=20, blank=True, help_text="ej: comprimidos/hora, kg/batch")
     activa = models.BooleanField(default=True)
-    requiere_calificacion = models.BooleanField(default=False, verbose_name="Requiere Calificación")
     fecha_instalacion = models.DateField(null=True, blank=True, verbose_name="Fecha de Instalación")
     imagen = models.ImageField(upload_to='maquinas/', null=True, blank=True)
     documentos = models.JSONField(default=list, help_text="Lista de documentos: [{nombre, url}]")
