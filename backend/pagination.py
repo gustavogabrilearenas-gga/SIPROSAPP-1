@@ -1,4 +1,4 @@
-"""Paginación personalizada para la API."""
+# Política de paginación por defecto.
 
 from rest_framework.pagination import PageNumberPagination
 

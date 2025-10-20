@@ -1,53 +1,150 @@
-"""
-Serializers para los modelos de catálogos
-"""
+"""Serializadores del dominio de catálogos."""
+
 from rest_framework import serializers
-from .models import Ubicacion, Maquina, Producto, Formula, EtapaProduccion, Turno
+
+from .models import EtapaProduccion, Formula, Maquina, Producto, Turno, Ubicacion
 
 
 class UbicacionSerializer(serializers.ModelSerializer):
+    """Ubicaciones con contador de máquinas asociadas."""
+
+    maquinas_count = serializers.IntegerField(read_only=True)
+
     class Meta:
         model = Ubicacion
-        fields = '__all__'
+        fields = [
+            "id",
+            "codigo",
+            "nombre",
+            "descripcion",
+            "planta",
+            "activa",
+            "maquinas_count",
+        ]
+        read_only_fields = ["id", "maquinas_count"]
 
 
 class MaquinaSerializer(serializers.ModelSerializer):
-    ubicacion_nombre = serializers.CharField(source='ubicacion.nombre', read_only=True)
-    
+    """Máquinas con datos derivados útiles para listados."""
+
+    ubicacion_nombre = serializers.CharField(source="ubicacion.nombre", read_only=True)
+    tipo_display = serializers.CharField(source="get_tipo_display", read_only=True)
+
     class Meta:
         model = Maquina
-        fields = '__all__'
+        fields = [
+            "id",
+            "codigo",
+            "nombre",
+            "tipo",
+            "tipo_display",
+            "fabricante",
+            "modelo",
+            "numero_serie",
+            "año_fabricacion",
+            "ubicacion",
+            "ubicacion_nombre",
+            "descripcion",
+            "capacidad_nominal",
+            "unidad_capacidad",
+            "activa",
+            "requiere_calificacion",
+            "fecha_instalacion",
+            "imagen",
+            "documentos",
+        ]
+        read_only_fields = ["id", "ubicacion_nombre", "tipo_display"]
 
 
 class ProductoSerializer(serializers.ModelSerializer):
+    """Productos con etiquetas legibles para las opciones."""
+
+    tipo_display = serializers.CharField(source="get_tipo_display", read_only=True)
+    presentacion_display = serializers.CharField(source="get_presentacion_display", read_only=True)
+
     class Meta:
         model = Producto
-        fields = '__all__'
+        fields = [
+            "id",
+            "codigo",
+            "nombre",
+            "tipo",
+            "tipo_display",
+            "presentacion",
+            "presentacion_display",
+            "concentracion",
+            "descripcion",
+            "activo",
+            "imagen",
+            "documentos",
+        ]
+        read_only_fields = ["id", "tipo_display", "presentacion_display"]
 
 
 class FormulaSerializer(serializers.ModelSerializer):
-    producto_nombre = serializers.CharField(source='producto.nombre', read_only=True)
-    
+    """Fórmulas con descripción del producto relacionado."""
+
+    producto_nombre = serializers.CharField(source="producto.nombre", read_only=True)
+
     class Meta:
         model = Formula
-        fields = '__all__'
+        fields = [
+            "id",
+            "codigo",
+            "version",
+            "producto",
+            "producto_nombre",
+            "descripcion",
+            "tamaño_lote",
+            "unidad",
+            "tiempo_total",
+            "activa",
+            "aprobada",
+            "ingredientes",
+            "etapas",
+        ]
+        read_only_fields = ["id", "producto_nombre"]
 
 
 class EtapaProduccionSerializer(serializers.ModelSerializer):
+    """Etapas con detalle de máquinas permitidas."""
+
     maquinas_permitidas_nombres = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = EtapaProduccion
-        fields = '__all__'
-    
-    def get_maquinas_permitidas_nombres(self, obj):
-        return [
-            {'id': maq.id, 'nombre': str(maq)}
-            for maq in obj.maquinas_permitidas.all()
+        fields = [
+            "id",
+            "codigo",
+            "nombre",
+            "descripcion",
+            "duracion_tipica",
+            "requiere_validacion",
+            "maquinas_permitidas",
+            "maquinas_permitidas_nombres",
+            "activa",
+            "parametros",
         ]
+        read_only_fields = ["id", "maquinas_permitidas_nombres"]
+
+    def get_maquinas_permitidas_nombres(self, obj):
+        return [{"id": maquina.id, "nombre": str(maquina)} for maquina in obj.maquinas_permitidas.all()]
 
 
 class TurnoSerializer(serializers.ModelSerializer):
+    """Turnos con descripción auxiliar del nombre."""
+
+    nombre_display = serializers.CharField(source="nombre", read_only=True)
+
     class Meta:
         model = Turno
-        fields = '__all__'
+        fields = [
+            "id",
+            "codigo",
+            "nombre",
+            "nombre_display",
+            "hora_inicio",
+            "hora_fin",
+            "activo",
+        ]
+        read_only_fields = ["id", "nombre_display"]
