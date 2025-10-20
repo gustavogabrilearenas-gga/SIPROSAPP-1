@@ -1,7 +1,9 @@
 """Modelos del dominio de usuarios."""
 
 from django.conf import settings
+from django.core.validators import RegexValidator
 from django.db import models
+from django.db.models import Q
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils.functional import cached_property
@@ -16,7 +18,20 @@ class UserProfile(models.Model):
         related_name='user_profile',
         verbose_name='Usuario'
     )
-    legajo = models.CharField(max_length=50, blank=True)
+    legajo = models.CharField(max_length=50, blank=True, null=True, db_index=True)
+    dni = models.CharField(
+        max_length=12,
+        unique=True,
+        null=True,
+        blank=True,
+        db_index=True,
+        validators=[
+            RegexValidator(
+                r"^\d{7,12}$",
+                "DNI debe tener 7 a 12 dígitos",
+            )
+        ],
+    )
     funcion = models.ForeignKey(
         "catalogos.Funcion",
         null=True,
@@ -41,6 +56,13 @@ class UserProfile(models.Model):
         verbose_name_plural = "Perfiles de Usuarios"
         ordering = ["user__username"]
         app_label = "usuarios"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["legajo"],
+                name="usuarios_userprofile_legajo_unico",
+                condition=Q(legajo__isnull=False) & ~Q(legajo=""),
+            )
+        ]
 
     @cached_property
     def nombre_completo(self):
