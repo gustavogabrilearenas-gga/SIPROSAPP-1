@@ -123,7 +123,7 @@ class ProductoViewSet(viewsets.ModelViewSet):
 class FormulaViewSet(viewsets.ModelViewSet):
     """Gestión de fórmulas por producto y vigencia."""
 
-    queryset = Formula.objects.select_related('producto', 'aprobada_por').all()
+    queryset = Formula.objects.select_related('producto').all()
     serializer_class = FormulaSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['producto__nombre', 'version']
