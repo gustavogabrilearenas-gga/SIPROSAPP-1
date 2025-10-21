@@ -1,6 +1,25 @@
 version: '3.8'
 
 services:
+  # Frontend Next.js
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: siprosapp-frontend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    networks:
+      - siprosapp-network
+    restart: unless-stopped
+
   # Backend Django
   api:
     build:
