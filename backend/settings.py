@@ -32,6 +32,8 @@ INSTALLED_APPS = [
     "backend.catalogos",
     "backend.usuarios",
     "backend.observaciones",
+    "backend.produccion",
+    "backend.mantenimiento",
 ]
 
 MIDDLEWARE = [
@@ -99,6 +101,9 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [
+    BASE_DIR / "backend" / "catalogos" / "static",
+]
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 

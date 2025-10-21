@@ -93,8 +93,12 @@ class Maquina(models.Model):
 
 def maquina_attachment_path(instance, filename):
     """Ruta dinámica para almacenar archivos asociados a máquinas."""
-
     return f"maquinas/{instance.maquina_id}/{filename}"
+
+
+def producto_attachment_path(instance, filename):
+    """Ruta dinámica para almacenar archivos asociados a productos."""
+    return f"productos/{instance.producto_id}/{filename}"
 
 
 class MaquinaAttachment(models.Model):
@@ -162,7 +166,6 @@ class Producto(models.Model):
     descripcion = models.TextField(blank=True)
     activo = models.BooleanField(default=True)
     imagen = models.ImageField(upload_to='productos/', null=True, blank=True)
-    documentos = models.JSONField(default=list, help_text="Lista de documentos: [{nombre, url}]")
     
     class Meta:
         verbose_name = "Producto"
@@ -178,6 +181,62 @@ class Producto(models.Model):
         return f"{self.codigo} - {self.nombre} ({self.concentracion})"
 
 
+class ProductoAttachment(models.Model):
+    """Archivos adjuntos cargados para un producto específico."""
+
+    producto = models.ForeignKey(
+        "catalogos.Producto",
+        on_delete=models.CASCADE,
+        related_name="adjuntos",
+    )
+    archivo = models.FileField(upload_to=producto_attachment_path, max_length=500)
+    nombre = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Nombre legible (opcional)",
+    )
+    descripcion = models.TextField(blank=True)
+    subido_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+    )
+    tamano_bytes = models.BigIntegerField(null=True, blank=True)
+    content_type = models.CharField(max_length=100, blank=True)
+    creado = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Adjunto de producto"
+        verbose_name_plural = "Adjuntos de producto"
+        ordering = ["-creado"]
+
+    def __str__(self):
+        if self.nombre:
+            return self.nombre
+        if self.archivo:
+            return self.archivo.name.split("/")[-1]
+        return "adjunto"
+
+
+class FormulaEtapa(models.Model):
+    """Relación entre Formula y EtapaProduccion con campos adicionales"""
+    
+    formula = models.ForeignKey('Formula', on_delete=models.CASCADE)
+    etapa = models.ForeignKey('EtapaProduccion', on_delete=models.PROTECT)
+    orden = models.PositiveSmallIntegerField(default=0)
+    descripcion = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['orden']
+        unique_together = ['formula', 'orden']
+        verbose_name = "Etapa de fórmula"
+        verbose_name_plural = "Etapas de fórmula"
+
+    def __str__(self):
+        return f"{self.formula} - {self.etapa}"
+
+
 class Formula(models.Model):
     """Recetas de producción (Master Formula)"""
 
@@ -191,10 +250,10 @@ class Formula(models.Model):
         blank=True,
         help_text="Lista de ingredientes: [{material_id, cantidad, unidad}]"
     )
-    etapas = models.JSONField(
-        default=list,
-        blank=True,
-        help_text="Lista de etapas: [{etapa_id, duracion_min, descripcion}]"
+    etapas = models.ManyToManyField(
+        'EtapaProduccion',
+        through=FormulaEtapa,
+        related_name='formulas'
     )
     
     class Meta:

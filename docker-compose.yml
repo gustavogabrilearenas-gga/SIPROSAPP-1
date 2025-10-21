@@ -23,8 +23,8 @@ services:
       - DB_PORT=5432
       - SECRET_KEY=django-insecure-dev-key-change-in-production-123456789
       - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0,api
-      - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:8000
-      - CSRF_TRUSTED_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:8000
+      - CORS_ALLOWED_ORIGINS=http://localhost:8000
+      - CSRF_TRUSTED_ORIGINS=http://localhost:8000
       - THROTTLE_RATE_ANON=100/hour
       - THROTTLE_RATE_USER=1000/hour
       - LOGIN_THROTTLE_RATE=10/min
@@ -35,30 +35,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    networks:
-      - siprosapp-network
-    restart: unless-stopped
-
-  # Frontend Next.js
-  web:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.dev
-    container_name: siprosapp-web
-    volumes:
-      - ./frontend:/app
-      - web-node-modules:/app/node_modules  # ← NOMBRADO (persiste)
-      - web-next-cache:/app/.next         # ← NOMBRADO (persiste)
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=development
-      # El navegador usa esta URL pública (visible en el bundle) para llamar al backend
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
-      # Next.js del lado del servidor resuelve el backend vía la red interna de Docker
-      - NEXT_PUBLIC_API_URL_SERVER=http://api:8000
-    depends_on:
-      - api
     networks:
       - siprosapp-network
     restart: unless-stopped
@@ -87,8 +63,6 @@ services:
 
 volumes:
   postgres-data:       # ← Datos de PostgreSQL
-  web-node-modules:    # ← Persiste las dependencias npm
-  web-next-cache:      # ← Persiste el caché de Next.js
 
 networks:
   siprosapp-network:

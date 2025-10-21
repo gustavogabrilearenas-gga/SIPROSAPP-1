@@ -22,7 +22,13 @@ if apps.is_installed('backend.usuarios'):
     urlpatterns.append(path('api/usuarios/', include('backend.usuarios.urls')))
 
 if apps.is_installed('backend.observaciones'):
-    urlpatterns.append(path('api/', include('backend.observaciones.urls')))
+    urlpatterns.append(path('api/observaciones/', include('backend.observaciones.urls')))
+
+if apps.is_installed('backend.produccion'):
+    urlpatterns.append(path('api/produccion/', include('backend.produccion.urls')))
+
+if apps.is_installed('backend.mantenimiento'):
+    urlpatterns.append(path('api/mantenimiento/', include('backend.mantenimiento.urls')))
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
