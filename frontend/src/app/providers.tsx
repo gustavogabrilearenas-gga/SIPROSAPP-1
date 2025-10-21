@@ -1,0 +1,13 @@
+"use client";
+import { ChakraProvider } from "@chakra-ui/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ReactNode, useState } from "react";
+
+export default function Providers({ children }: { children: ReactNode }) {
+  const [qc] = useState(() => new QueryClient());
+  return (
+    <ChakraProvider>
+      <QueryClientProvider client={qc}>{children}</QueryClientProvider>
+    </ChakraProvider>
+  );
+}
