@@ -30,5 +30,8 @@ if apps.is_installed('backend.produccion'):
 if apps.is_installed('backend.mantenimiento'):
     urlpatterns.append(path('api/mantenimiento/', include('backend.mantenimiento.urls')))
 
+if apps.is_installed('backend.incidentes'):
+    urlpatterns.append(path('api/incidentes/', include('backend.incidentes.urls')))
+
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

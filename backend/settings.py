@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "backend.observaciones",
     "backend.produccion",
     "backend.mantenimiento",
+    "backend.incidentes",
 ]
 
 MIDDLEWARE = [
