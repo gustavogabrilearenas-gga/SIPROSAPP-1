@@ -133,6 +133,16 @@ class FormulaSerializer(serializers.ModelSerializer):
     """Fórmulas con descripción del producto relacionado."""
 
     producto_nombre = serializers.CharField(source="producto.nombre", read_only=True)
+    ingredientes = serializers.ListField(
+        child=serializers.DictField(),
+        write_only=True,
+        error_messages={"not_a_list": "Debe ser una lista."},
+    )
+    etapas = serializers.ListField(
+        child=serializers.DictField(),
+        write_only=True,
+        error_messages={"not_a_list": "Debe ser una lista."},
+    )
 
     class Meta:
         model = Formula
@@ -189,20 +199,20 @@ class FormulaSerializer(serializers.ModelSerializer):
         for indice, item in enumerate(value):
             if not isinstance(item, dict):
                 raise serializers.ValidationError(f"Item {indice} debe ser objeto.")
-            for clave in ("etapa_id", "duracion_min"):
-                if clave not in item:
-                    raise serializers.ValidationError(f"Item {indice}: falta '{clave}'.")
+            if "etapa_id" not in item:
+                raise serializers.ValidationError(f"Item {indice}: falta 'etapa_id'.")
             etapa_id = item["etapa_id"]
-            duracion_min = item["duracion_min"]
+            duracion_min = item.get("duracion_min")
             descripcion = item.get("descripcion")
             if not isinstance(etapa_id, int) or etapa_id <= 0:
                 raise serializers.ValidationError(
                     f"Item {indice}: etapa_id inválido."
                 )
-            if not (isinstance(duracion_min, int) and duracion_min >= 0):
-                raise serializers.ValidationError(
-                    f"Item {indice}: duracion_min >= 0 requerida."
-                )
+            if duracion_min is not None:
+                if not (isinstance(duracion_min, int) and duracion_min >= 0):
+                    raise serializers.ValidationError(
+                        f"Item {indice}: duracion_min >= 0 requerida."
+                    )
             if descripcion is not None and not isinstance(descripcion, str):
                 raise serializers.ValidationError(
                     f"Item {indice}: descripcion debe ser string o null."
