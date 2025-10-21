@@ -24,8 +24,5 @@ if apps.is_installed('backend.usuarios'):
 if apps.is_installed('backend.observaciones'):
     urlpatterns.append(path('api/', include('backend.observaciones.urls')))
 
-if apps.is_installed('backend.produccion'):
-    urlpatterns.append(path('produccion/', include('backend.produccion.urls')))
-
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

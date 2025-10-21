@@ -32,15 +32,7 @@ INSTALLED_APPS = [
     "backend.catalogos",
     "backend.usuarios",
     "backend.observaciones",
-    "backend.produccion",
 ]
-
-try:  # pragma: no cover - opcional si la dependencia está disponible
-    import django_filters  # noqa: F401
-except ModuleNotFoundError:  # pragma: no cover
-    django_filters = None
-else:  # pragma: no cover
-    INSTALLED_APPS.append("django_filters")
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
