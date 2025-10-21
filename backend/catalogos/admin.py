@@ -237,8 +237,6 @@ class ProductoAdmin(admin.ModelAdmin):
     )
 
 
-from .widgets import JSONEditorWidget
-
 class FormulaEtapaInline(admin.TabularInline):
     model = FormulaEtapa
     extra = 1
@@ -247,22 +245,11 @@ class FormulaEtapaInline(admin.TabularInline):
     min_num = 1
     ordering = ['orden']
 
-
-class FormulaAdminForm(forms.ModelForm):
-    class Meta:
-        model = Formula
-        fields = '__all__'
-        widgets = {
-            'ingredientes': JSONEditorWidget(schema='ingredientes'),
-        }
-
 @admin.register(Formula)
 class FormulaAdmin(admin.ModelAdmin):
-    form = FormulaAdminForm
     list_display = ('codigo', 'version', 'producto', 'activa')
     search_fields = ('codigo', 'version', 'producto__nombre')
     list_filter = ('activa', 'producto')
-    raw_id_fields = ('producto',)
     inlines = [FormulaEtapaInline]
     fieldsets = (
         (
@@ -274,7 +261,6 @@ class FormulaAdmin(admin.ModelAdmin):
                     'producto',
                     'descripcion',
                     'activa',
-                    'ingredientes',
                 )
             },
         ),

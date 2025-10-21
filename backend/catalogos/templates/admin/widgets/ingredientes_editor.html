@@ -1,17 +1,5 @@
-<div id="{{ widget.attrs.id }}" class="ingredientes-widget">
-    <div class="ingredientes-list"></div>
-    <div class="ingrediente-add-form">
-        <div class="ingrediente-fields">
-            <input type="text" class="material-id" placeholder="Material ID">
-            <input type="text" class="cantidad" placeholder="Cantidad">
-            <input type="text" class="unidad" placeholder="Unidad">
-        </div>
-        <button type="button" class="add-ingrediente">Agregar Ingrediente</button>
-    </div>
+{# Widget minimalista para ingredientes #}
+<div class="field-ingredientes">
+    <div class="ingredientes-container"></div>
+    <textarea name="{{ widget.name }}" {% include "django/forms/widgets/attrs.html" %}>{{ widget.value|default_if_none:"[]" }}</textarea>
 </div>
-<textarea name="{{ widget.name }}" style="display:none;" {% include "django/forms/widgets/attrs.html" %}>{{ widget.value|default_if_none:"[]" }}</textarea>
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        initIngredientesWidget("{{ widget.attrs.id }}");
-    });
-</script>

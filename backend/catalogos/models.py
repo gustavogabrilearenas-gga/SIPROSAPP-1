@@ -245,11 +245,6 @@ class Formula(models.Model):
     producto = models.ForeignKey(Producto, on_delete=models.PROTECT, related_name='formulas')
     descripcion = models.TextField(blank=True)
     activa = models.BooleanField(default=True)
-    ingredientes = models.JSONField(
-        default=list,
-        blank=True,
-        help_text="Lista de ingredientes: [{material_id, cantidad, unidad}]"
-    )
     etapas = models.ManyToManyField(
         'EtapaProduccion',
         through=FormulaEtapa,
