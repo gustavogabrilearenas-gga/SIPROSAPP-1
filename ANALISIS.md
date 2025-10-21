@@ -2,200 +2,282 @@
 
 ## Árbol del repositorio
 ```text
-.dockerignore
-.env.dev
-.gitattributes
-.gitignore
-agents.md
-backend/
-    Dockerfile
-    __init__.py
+./
+    .dockerignore
+    .env.dev
+    .gitattributes
+    .gitignore
+    ANALISIS.md
     agents.md
-    asgi.py
-    catalogos/
+    docker-compose.yml
+    manage.py
+    requirements.txt
+    backend/
+        Dockerfile
         __init__.py
-        admin.py
-        apps.py
-        migrations/
-            0001_initial.py
-            0002_remove_formulaetapa_duracion_min.py
-            0003_remove_ingredientes_field.py
-            __init__.py
-        models.py
-        serializers.py
-        static/
-            admin/
-                css/
-                    etapas-widget.css
-                    json-editor.css
-                js/
-                    etapas-widget.js
-                    json-editor.js
-        templates/
-            admin/
-                widgets/
-                    etapas_editor.html
-                    ingredientes_editor.html
-                    json_editor.html
-        tests/
-            __init__.py
-            test_formula_serializer.py
-            test_maquinas_api.py
+        agents.md
+        asgi.py
+        entrypoint.sh
+        load_test_data.py
+        pagination.py
+        settings.py
         urls.py
-        views.py
-        widgets.py
-    core/
-        __init__.py
-        admin.py
-        apps.py
-        auth_views.py
-        choices.py
-        management/
+        wsgi.py
+        observaciones/
             __init__.py
-            commands/
+            admin.py
+            apps.py
+            models.py
+            serializers.py
+            urls.py
+            views.py
+            migrations/
+                0001_initial.py
                 __init__.py
-                create_superuser_if_none.py
-        migrations/
+            tests/
+                __init__.py
+                test_api.py
+        incidentes/
             __init__.py
-        mixins.py
-        models.py
-        permissions.py
-        services/
+            admin.py
+            apps.py
+            models.py
+            serializers.py
+            urls.py
+            views.py
+            migrations/
+                0001_initial.py
+                __init__.py
+            tests/
+                __init__.py
+                test_api.py
+        core/
             __init__.py
-            search.py
-        signals.py
-        tests/
+            admin.py
+            apps.py
+            auth_views.py
+            choices.py
+            mixins.py
+            models.py
+            permissions.py
+            signals.py
+            throttles.py
+            urls.py
+            user_serializers.py
+            views.py
+            services/
+                __init__.py
+                search.py
+            management/
+                __init__.py
+                commands/
+                    __init__.py
+                    create_superuser_if_none.py
+            migrations/
+                __init__.py
+            tests/
+                __init__.py
+                test_permissions.py
+        mantenimiento/
             __init__.py
-            test_permissions.py
-        throttles.py
-        urls.py
-        user_serializers.py
-        views.py
-    entrypoint.sh
-    incidentes/
-        __init__.py
-        admin.py
-        apps.py
-        migrations/
-            0001_initial.py
+            admin.py
+            apps.py
+            models.py
+            serializers.py
+            urls.py
+            views.py
+            migrations/
+                0001_initial.py
+                __init__.py
+        catalogos/
             __init__.py
-        models.py
-        serializers.py
-        tests/
+            admin.py
+            apps.py
+            models.py
+            serializers.py
+            urls.py
+            views.py
+            widgets.py
+            static/
+                admin/
+                    css/
+                        etapas-widget.css
+                        json-editor.css
+                    js/
+                        etapas-widget.js
+                        json-editor.js
+            templates/
+                admin/
+                    widgets/
+                        etapas_editor.html
+                        ingredientes_editor.html
+                        json_editor.html
+            migrations/
+                0001_initial.py
+                0002_remove_formulaetapa_duracion_min.py
+                0003_remove_ingredientes_field.py
+                __init__.py
+            tests/
+                __init__.py
+                test_formula_serializer.py
+                test_maquinas_api.py
+        produccion/
             __init__.py
-            test_api.py
-        urls.py
-        views.py
-    load_test_data.py
-    mantenimiento/
-        __init__.py
-        admin.py
-        apps.py
-        migrations/
-            0001_initial.py
+            admin.py
+            apps.py
+            models.py
+            serializers.py
+            urls.py
+            views.py
+            migrations/
+                0001_initial.py
+                __init__.py
+        usuarios/
             __init__.py
-        models.py
-        serializers.py
-        urls.py
-        views.py
-    observaciones/
-        __init__.py
-        admin.py
-        apps.py
-        migrations/
-            0001_initial.py
-            __init__.py
-        models.py
-        serializers.py
-        tests/
-            __init__.py
-            test_api.py
-        urls.py
-        views.py
-    pagination.py
-    produccion/
-        __init__.py
-        admin.py
-        apps.py
-        migrations/
-            0001_initial.py
-            __init__.py
-        models.py
-        serializers.py
-        urls.py
-        views.py
-    settings.py
-    urls.py
-    usuarios/
-        __init__.py
-        admin.py
-        apps.py
-        forms.py
-        migrations/
-            0001_initial.py
-            __init__.py
-        models.py
-        serializers.py
-        urls.py
-        views.py
-    wsgi.py
-docker-compose.yml
-manage.py
-requirements.txt
+            admin.py
+            apps.py
+            forms.py
+            models.py
+            serializers.py
+            urls.py
+            views.py
+            migrations/
+                0001_initial.py
+                __init__.py
+    .vs/
+        ProjectSettings.json
+        VSWorkspaceState.json
+        slnx.sqlite
+        SIPROSAPP-1/
+            v17/
+                .wsuo
+                DocumentLayout.json
+            FileContentIndex/
+                e83b8f94-f11b-4633-838b-5406665994f0.vsidx
 ```
 
-## Visión general del backend
-- El proyecto organiza un backend Django/DRF modular con apps de dominio claras (core, catálogos, usuarios, observaciones, producción, mantenimiento e incidentes) declaradas en la configuración junto con DRF y CORS.【F:backend/settings.py†L22-L142】
-- Se mantiene el modelo de usuario nativo (`auth.User`) y se delegan los datos extendidos a `UserProfile`, lo que simplifica la migración pero obliga a revisar accesos que asumen atributos personalizados.【F:backend/settings.py†L111-L142】【F:backend/usuarios/models.py†L12-L79】
-- La autenticación usa JWT (SimpleJWT) con throttling dedicado para login/registro, alineado con la política de seguridad declarada en `REST_FRAMEWORK` y `SIMPLE_JWT`.【F:backend/settings.py†L129-L153】【F:backend/core/throttles.py†L1-L16】
-- Existe un `health_check` HTTP básico y un endpoint de búsqueda global que actualmente delega en un servicio placeholder que siempre devuelve listas vacías, por lo que la funcionalidad está incompleta aunque la interfaz ya está cableada.【F:backend/core/views.py†L13-L66】【F:backend/core/services/search.py†L1-L25】
-- La suite de tests integrada actualmente falla: hay errores por campos inexistentes en catálogos y por permisos demasiado restrictivos en incidentes, lo que impide considerar la rama como estable sin intervención.【5be54b†L1-L85】
+## Resumen ejecutivo
+- Arquitectura modular en Django/DRF con apps bien separadas por dominio y configuración mínima para despliegue local o en contenedores.
+- Seguridad basada en JWT, throttles y roles reutilizables; la autenticación y paginación están listas, pero la vista `/api/auth/me/` accede a campos inexistentes del perfil y puede romper la experiencia.
+- Los catálogos concentran la mayor parte de las inconsistencias: serializers y filtros hacen referencia a campos removidos, lo que bloqueará flujos CRUD reales y afecta cualquier UI que consuma esos endpoints.
+- Las apps de observaciones e incidentes están casi listas para producción; mantenimiento y producción necesitan alinear modelos con serializers antes de exponerlos al frontend.
+- La suite de pruebas automatizadas pasa, lo que da confianza en permisos básicos y endpoints principales, pero las pruebas actuales no detectan los desajustes entre modelos y serializers.
 
-## Análisis por módulo
+## Configuración base y plataforma
+### Ajustes generales
+- `backend/settings.py` carga variables desde `.env`, ofrece fallback a SQLite y habilita CORS en modo `DEBUG`, lo que simplifica la etapa inicial de integración.【F:backend/settings.py†L3-L167】
+- La paginación por defecto expone `page_size` configurable hasta 200 ítems, suficiente para una UI minimalista.【F:backend/pagination.py†L1-L11】
 
+### Ruteo y servicios transversales
+- `backend/urls.py` organiza los routers por app y expone un health check reutilizable, permitiendo que cualquier cliente verifique disponibilidad.【F:backend/urls.py†L1-L37】
+- El endpoint de búsqueda global existe pero el servicio asociado devuelve respuestas vacías; cualquier frontend debería tratarlo como placeholder.【F:backend/core/views.py†L13-L44】【F:backend/core/services/search.py†L1-L25】
+
+### Seguridad y autenticación
+- JWT provisto por SimpleJWT con refresco rotativo y throttles diferenciados para login y registro; los comandos de autenticación están centralizados en `core/auth_views.py`.
+- `me_view` intenta serializar `profile.area` y `profile.get_area_display()`, atributos que ya no están en `UserProfile`. Esto provocará un `AttributeError` para usuarios con perfil y debe corregirse antes de exponer el endpoint al frontend.【F:backend/core/auth_views.py†L101-L124】【F:backend/usuarios/models.py†L12-L79】
+- El comando `create_superuser_if_none` permite bootstrap automatizado del admin a partir de variables de entorno, útil para despliegues en Docker.【F:backend/core/management/commands/create_superuser_if_none.py†L1-L63】
+
+## Cobertura de pruebas y estado
+- Se ejecutaron 24 tests con éxito (`python manage.py test`); los warnings `Bad Request` y `Method Not Allowed` provienen de casos negativos previstos en los tests y no representan fallas reales.【757a7e†L1-L7】
+- La cobertura actual se enfoca en permisos del núcleo, serializers de fórmulas y API de máquinas/incidentes/observaciones. No hay pruebas que validen los serializers desalineados de producción o catálogos, por lo que estos bugs permanecen ocultos.
+
+## Análisis por aplicación
 ### Core
-- `core.auth_views` cubre login, logout, refresh, registro y `/me`, respetando los throttles y devolviendo metadatos útiles; sin embargo, el serializer de `/me` intenta acceder a `profile.area`, atributo que ya no existe en `UserProfile`, lo que produciría un `AttributeError` cuando el perfil está presente.【F:backend/core/auth_views.py†L94-L124】【F:backend/usuarios/models.py†L12-L52】
-- El paquete de permisos centraliza lógica de roles (admin, supervisor, operario, calidad) y refleja buenas prácticas al documentar las reglas y al incluir `is_staff` en `is_admin`. Las clases de permiso reutilizan esa lógica para componer combinaciones comunes.【F:backend/core/permissions.py†L1-L90】
-- `core.mixins` ofrece utilidades genéricas (`TimeWindowMixin`, `SafeMethodPermissionMixin`, `QueryParamFilterMixin`) que fomentan reutilización, aunque ninguna app las usa actualmente; conviene evaluar su eliminación o adopción para reducir código muerto.【F:backend/core/mixins.py†L1-L44】
+**Fortalezas**
+- Endpoints de login/logout/refresh/registro listos para usarse con JWT y throttles específicos.【F:backend/core/auth_views.py†L23-L200】
+- Permisos reutilizables (`IsAdmin`, `IsAdminOrSupervisor`, etc.) encapsulan la lógica de roles y consideran `is_staff`, alineando API con lo que espera el panel de administración.【F:backend/core/permissions.py†L7-L90】
+
+**Riesgos y pendientes**
+- `me_view` falla al acceder a `profile.area`; se requiere ajustar el serializer o reintroducir el campo en el modelo antes de integrarlo con la UI.【F:backend/core/auth_views.py†L101-L114】【F:backend/usuarios/models.py†L12-L79】
+- `core.mixins.QueryParamFilterMixin` y `TimeWindowMixin` no se usan en el código; conviene eliminarlos o adoptarlos para evitar mantenimiento innecesario.【F:backend/core/mixins.py†L1-L59】
 
 ### Usuarios
-- `UserProfile` agrega DNI validado, legajo opcional único, función, turno y metadatos, creando perfiles automáticamente mediante una señal al crear usuarios nativos; esto mantiene encapsulados los datos de RR.HH.【F:backend/usuarios/models.py†L12-L79】
-- `UsuarioViewSet` ofrece endpoints de autogestión (`me`, `update_me`, `cambiar_mi_password`) y acciones administrativas con permisos dinámicos que permiten a cada usuario editar solo sus datos mientras reserva el resto a administradores.【F:backend/usuarios/views.py†L20-L127】
-- Los serializers contemplan la sincronización entre usuario base y perfil, limpian campos opcionales y validan contraseñas nuevas, lo que demuestra atención a consistencia; no obstante, no hay tests específicos que cubran estos flujos complejos.
+**Fortalezas**
+- `UsuarioViewSet` expone acciones de autogestión (`me`, `update_me`, `cambiar_mi_password`) además de gestión administrativa con permisos dinámicos, listos para consumir desde frontend.【F:backend/usuarios/views.py†L20-L127】
+- Serializers sincronizan usuario y perfil, limpian campos opcionales y validan contraseñas nuevas con confirmación.【F:backend/usuarios/serializers.py†L17-L240】
+
+**Riesgos y pendientes**
+- `search_fields` usa prefijo `profile__` que no existe (debería ser `user_profile__`); las búsquedas fallarán silenciosamente.【F:backend/usuarios/views.py†L28-L37】【F:backend/usuarios/models.py†L12-L79】
+- Falta protección contra autodesactivación en la API (ya existe en el formulario admin). Evaluar replicar esa validación en el serializer si el frontend permitirá edición de permisos.
 
 ### Catálogos
-- Los modelos definen catálogos clave (ubicaciones, máquinas, productos, fórmulas, etapas, parámetros y turnos) con índices, choices y validaciones, mostrando diseño cuidadoso del dominio.【F:backend/catalogos/models.py†L16-L315】
-- **Inconsistencias críticas**:
-  - `ProductoSerializer` expone un campo `documentos`, pero el modelo `Producto` no lo define (sólo existe en `Maquina`), provocando errores cuando el serializer se instancie.【F:backend/catalogos/serializers.py†L107-L129】【F:backend/catalogos/models.py†L142-L181】
-  - `FormulaSerializer` espera campos `ingredientes` y `etapas` en la instancia del modelo; tras la migración 0003, el campo `ingredientes` fue eliminado y la relación `etapas` es ManyToMany, por lo que el serializer queda desalineado y rompe al inicializarse (como muestran los tests).【F:backend/catalogos/serializers.py†L132-L214】【F:backend/catalogos/models.py†L240-L265】【5be54b†L1-L85】
-  - `ProductoViewSet` filtra por `principio_activo` y `forma_farmaceutica`, atributos que el modelo no posee (`concentracion` y `presentacion` son los campos disponibles), dejando filtros inoperantes y confusos para los consumidores.【F:backend/catalogos/views.py†L111-L131】【F:backend/catalogos/models.py†L142-L181】
-  - `FormulaViewSet` intenta ordenar por `fecha_vigencia_desde`, inexistente en el modelo `Formula`, lo que causará errores al ejecutar consultas con ordenación explícita.【F:backend/catalogos/views.py†L141-L168】【F:backend/catalogos/models.py†L240-L265】
-- El módulo de widgets/admin incluye archivos estáticos para editores personalizados, coherentes con la intención de proveer interfaces ricas desde el admin.
+**Fortalezas**
+- Modelos contemplan índices y validaciones para ubicaciones, máquinas, productos, fórmulas y turnos, proporcionando una base sólida del dominio.【F:backend/catalogos/models.py†L16-L315】
+- Tests de API para máquinas verifican filtros (`activa`, `tipo`) y performance con `assertNumQueries`, útil para evitar regresiones.【F:backend/catalogos/tests/test_maquinas_api.py†L14-L90】
+
+**Inconsistencias críticas**
+- `ProductoSerializer` publica un campo `documentos` que no existe en `Producto`; cualquier respuesta o validación provocará error de atributo.【F:backend/catalogos/serializers.py†L107-L129】【F:backend/catalogos/models.py†L142-L181】
+- `ProductoViewSet` filtra por `principio_activo` y `forma_farmaceutica`, atributos ausentes en el modelo (`tipo` y `presentacion` son los reales). Los filtros devolverán resultados vacíos y confusos para la UI.【F:backend/catalogos/views.py†L111-L131】【F:backend/catalogos/models.py†L142-L181】
+- `FormulaSerializer` espera listas `ingredientes` y `etapas`, pero el modelo solo mantiene la relación `etapas` y la migración 0003 eliminó la columna `ingredientes`; falta implementar lógica de creación/actualización con modelos intermedios, de lo contrario el serializer no podrá persistir datos reales.【F:backend/catalogos/serializers.py†L132-L194】【F:backend/catalogos/migrations/0003_remove_ingredientes_field.py†L1-L17】
+- `FormulaViewSet` declara `ordering_fields = ['fecha_vigencia_desde']` que no existe en el modelo `Formula`, ocasionando errores si el frontend intenta ordenar por ese campo.【F:backend/catalogos/views.py†L141-L168】【F:backend/catalogos/models.py†L240-L265】
+- `load_test_data.py` importa `catalogos` sin el prefijo `backend`, por lo que falla cuando se ejecuta desde la raíz del proyecto; además intenta establecer `duracion_min` en `FormulaEtapa`, campo eliminado por migraciones recientes.【F:backend/load_test_data.py†L1-L121】【F:backend/catalogos/migrations/0002_remove_formulaetapa_duracion_min.py†L1-L17】
 
 ### Observaciones
-- API sencilla y coherente: `ObservacionGeneralViewSet` obliga autenticación, asigna el autor automáticamente y bloquea update/delete, exponiendo sólo creación y lectura paginada, en línea con un historial inmutable.【F:backend/observaciones/views.py†L9-L24】
-- Los tests de API cubren creación, respeto de campos de sólo lectura y paginación, asegurando que la implementación responda a los casos de uso declarados.【F:backend/observaciones/tests/test_api.py†L12-L74】
+**Fortalezas**
+- Modelo y serializer minimalistas, con `perform_create` que asigna automáticamente el autor y bloquea updates/deletes, perfecto para un log inmutable.【F:backend/observaciones/models.py†L1-L20】【F:backend/observaciones/views.py†L9-L22】【F:backend/observaciones/serializers.py†L1-L10】
+- Tests cubren creación, validación de campos de solo lectura y paginación.【F:backend/observaciones/tests/test_api.py†L12-L74】
+
+**Riesgos**
+- Los tests provocan `Method Not Allowed` en logs (esperado), pero conviene ajustar la configuración del logger si se desea un output más limpio en CI.
 
 ### Incidentes
-- El modelo captura atributos básicos de un incidente y valida coherencia (fechas y acciones correctivas), reutilizando el serializer para exponer detalle de la máquina asociada.【F:backend/incidentes/models.py†L1-L34】【F:backend/incidentes/serializers.py†L5-L38】
-- El `IncidenteViewSet` restringe el acceso a usuarios administradores combinando `IsAuthenticated` con `IsAdmin`, pero los tests esperan que cualquier usuario autenticado pueda reportar incidentes, lo que produce respuestas 403 y fallos en la suite; se debe alinear la política de permisos (probablemente permitir creación a operarios/supervisores).【F:backend/incidentes/views.py†L7-L14】【F:backend/incidentes/tests/test_api.py†L30-L65】【5be54b†L1-L85】
-- También se definen `filterset_fields` sin registrar `DjangoFilterBackend`, por lo que los filtros declarativos nunca se activarán.
+**Fortalezas**
+- Serializer valida coherencia de fechas y exige acciones correctivas cuando corresponde; la vista aplica autenticación básica y ordenación por fechas.【F:backend/incidentes/serializers.py†L5-L38】【F:backend/incidentes/views.py†L1-L14】
+- Tests de API verifican creación exitosa y mensajes de error esperados para escenarios inválidos.【F:backend/incidentes/tests/test_api.py†L31-L65】
+
+**Riesgos y pendientes**
+- Se definen `filterset_fields` y `search_fields` pero no se agregan `filter_backends`; los filtros nunca se aplicarán. Añadir `DjangoFilterBackend` (y dependencia) o eliminar esos atributos para evitar confusión.【F:backend/incidentes/views.py†L7-L14】
 
 ### Producción
-- `RegistroProduccionEtapa` muestra un modelado detallado por etapa con validaciones robustas sobre tiempos, maquinaria y estado de completitud.【F:backend/produccion/models.py†L10-L97】
-- El modelo `RegistroProduccion` presenta duplicación de campos `producto` y `formula`, y carece de atributos como `hora_inicio`, `maquina`, `unidad_medida`, `cantidad_producida` y `turno` que el serializer y la vista esperan, lo que hará fallar cualquier CRUD real.【F:backend/produccion/models.py†L99-L188】【F:backend/produccion/serializers.py†L12-L29】【F:backend/produccion/views.py†L11-L23】
-- La vista usa `select_related` y filtros sobre relaciones inexistentes, reforzando la necesidad de normalizar el modelo/serializer antes de exponer el endpoint públicamente.
+**Fortalezas**
+- `RegistroProduccionEtapa` modela correctamente etapas con validaciones de tiempo y maquinaria, listo para integrarse con el frontend una vez que el registro maestro funcione.【F:backend/produccion/models.py†L1-L64】
+
+**Riesgos críticos**
+- `RegistroProduccion` duplica los campos `producto` y `formula` y carece de atributos como `hora_inicio`, `hora_fin`, `maquina`, `turno`, `unidad_medida` o `cantidad_producida` que el serializer y la vista esperan, por lo que cualquier request fallará con errores de atributo o columnas inexistentes.【F:backend/produccion/models.py†L68-L124】【F:backend/produccion/serializers.py†L1-L34】【F:backend/produccion/views.py†L8-L23】
+- La migración inicial solo crea campos `estado`, `producto`, `formula`, `observaciones`, `registrado_por` y `fecha_registro`; se necesitan migraciones para añadir los campos que la API expone antes de conectar un frontend.【F:backend/produccion/migrations/0001_initial.py†L18-L73】
 
 ### Mantenimiento
-- `RegistroMantenimiento` captura mantenimientos correctivos/autónomos/preventivos con validaciones de dominio (horas no futuras, descripción de anomalías obligatoria).【F:backend/mantenimiento/models.py†L8-L114】
-- Serializer y vista aplican la misma regla de descripción para anomalías y autocompletan el usuario que registra; sin embargo, al igual que en incidentes/producción, se declaran `filterset_fields` sin configurar backend de filtros, por lo que conviene incorporar `django_filters` o retirar esos atributos.【F:backend/mantenimiento/serializers.py†L6-L42】【F:backend/mantenimiento/views.py†L8-L23】
+**Fortalezas**
+- Modelo con validaciones estrictas (horas no futuras, descripción de anomalías obligatoria) y serializer que completa automáticamente el usuario registrador, listo para integrarse tras ajustes menores.【F:backend/mantenimiento/models.py†L1-L78】【F:backend/mantenimiento/serializers.py†L1-L34】
 
-### Usuarios
-- Los serializers administran correctamente la sincronización usuario/perfil, normalizando campos opcionales y validando contraseñas (incluida confirmación). Las acciones diferenciadas (`CrearUsuarioSerializer`, `UsuarioPerfilSerializer`, `CambiarPasswordSerializer`) cubren los distintos flujos administrativos.【F:backend/usuarios/serializers.py†L1-L247】
-- Las pruebas existentes sólo cubren permisos base (`core/tests/test_permissions.py`); sería deseable añadir casos específicos de estos serializers y viewsets para detectar regresiones como el acceso a atributos eliminados.【F:backend/core/tests/test_permissions.py†L1-L79】
+**Riesgos y pendientes**
+- Al igual que en incidentes, la vista declara `filterset_fields`, `search_fields` y `ordering_fields` sin configurar `filter_backends`; los filtros no se activarán hasta agregar `DjangoFilterBackend` en `DEFAULT_FILTER_BACKENDS` o localmente.【F:backend/mantenimiento/views.py†L8-L37】
 
-## Scripts y utilidades
-- `load_test_data.py` inicializa datos de ejemplo pero importa `catalogos` sin el prefijo de paquete (`backend.catalogos`), por lo que fallará al ejecutarse desde la raíz del proyecto; debe ajustarse el import antes de usarse en entornos reales.【F:backend/load_test_data.py†L9-L118】
+## Scripts, utilidades y datos
+- `load_test_data.py` necesita ajustes de import y campos eliminados como se detalla arriba.
+- Existe un directorio `.vs/` con artefactos de Visual Studio en el repo; conviene eliminarlo o agregarlo a `.gitignore` para mantener el repositorio limpio.
 
-## Pruebas automatizadas
-- La ejecución de `python manage.py test` actualmente termina con 9 errores y 3 fallos derivados de las inconsistencias señaladas (campos inexistentes en catálogos y permisos 403 en incidentes), lo que confirma la urgencia de corregir esas áreas antes de integrar nuevos cambios.【5be54b†L1-L85】
+## Preparación para el frontend MVP
+**Listo**
+- Autenticación, permisos, observaciones e incidentes tienen endpoints consistentes y probados.
+- Catálogos de ubicaciones/máquinas/turnos/fun-ciones funcionan correctamente en lectura y filtros básicos, útiles para poblar selectores iniciales.
+
+**No listo**
+- Endpoint `/api/auth/me/` falla con perfiles existentes.
+- CRUD de productos y fórmulas presenta errores serios (campos inexistentes, filtros inválidos), bloqueando cualquier UI que necesite gestionar maestros clave.
+- API de producción está incompleta: el modelo no soporta los campos que la UI necesitará registrar.
+- Mantenimiento/incidentes requieren habilitar filtros declarados para ofrecer una experiencia consistente en la UI.
+- `load_test_data.py` no puede ejecutar sin errores, por lo que no hay datos de ejemplo listos para que un frontend los consuma.
+
+**Recomendación**: Antes de iniciar un desarrollo frontend—even minimalista—deberían resolverse los puntos rojos anteriores. De lo contrario, la UI chocará con errores 500/400 al consumir productos, fórmulas y producción, y la vista `/api/auth/me/` fallará al cargar el perfil del usuario. El backend aún necesita una ronda de estabilización para alcanzar un MVP robusto.
+
+## Lista priorizada de ajustes recomendados
+1. Corregir `me_view` y los `search_fields` de usuarios para eliminar referencias a campos inexistentes.
+2. Alinear serializers/vistas de catálogos con los modelos (`documentos`, filtros de productos, carga de fórmulas) y completar la lógica de persistencia para ingredientes/etapas.
+3. Normalizar `RegistroProduccion` y su serializer/vista, creando las migraciones faltantes.
+4. Activar `DjangoFilterBackend` (o retirar configuraciones) en incidentes y mantenimiento para que los filtros expuestos al frontend funcionen.
+5. Reparar `load_test_data.py` o proveer fixtures equivalentes y limpiar el directorio `.vs/` del repositorio.
+
+## Toolbox frontend recomendado
+Para alcanzar un look profesional y altamente personalizable sin incrementar en exceso la complejidad, se recomienda un stack basado en React con los siguientes componentes especializados:
+
+- **Framework**: **Next.js 14 + React 18 + TypeScript**. Ofrece SSR/SSG opcional para vistas públicas futuras, routing basado en archivos, optimizaciones de performance integradas y excelente DX. El backend actual expone una API REST convencional que Next.js consume fácilmente vía `fetch` o `react-query`.
+- **UI Kit y theming**: **Ant Design 5** o **Chakra UI** (elegir uno). Ambos aportan un diseño corporativo consistente, dark mode nativo, layout responsivo y componentes complejos (tables, forms, modals, steps) sin partir de cero. Ant Design destaca por su estética empresarial lista para producción; Chakra facilita personalizar tokens de diseño.
+- **Tablas y listas de datos**: **TanStack Table (React Table) + Ant Design Table wrapper** para soportar paginación, ordenamiento y filtros alineados con la API DRF paginada.
+- **Gestión de estado remoto**: **TanStack Query (React Query)** para cachear respuestas, manejar reintentos y sincronizar estados de loading/error con el backend.
+- **Formularios avanzados**: **React Hook Form** integrado con los componentes del UI kit; valida en cliente con `Yup`/`Zod` y refleja errores de DRF en tiempo real.
+- **Gráficos e indicadores**: **Apache ECharts** o **Tremor + Tailwind** para dashboards de producción/mantenimiento. Proporcionan gráficos interactivos (líneas, áreas, gauge) y soportan temas personalizados.
+- **Visualización de procesos**: Integrar **React Flow** o **Mermaid** embebido para mapear etapas de fórmulas y flujos de producción si se requiere en la tesis.
+- **Internacionalización y accesibilidad**: **react-intl** o **next-intl** para soportar múltiples idiomas, y aprovechar las guías de accesibilidad ya incluidas en Ant Design/Chakra.
+
+Con este toolbox se cubren componentes críticos (tableros, formularios complejos, modales, notificaciones) manteniendo coherencia visual y escalabilidad. Además, todos los paquetes cuentan con documentación extensa y comunidades activas, apropiadas para un MVP desarrollado por un perfil no especializado en frontend pero que busca resultados profesionales.
