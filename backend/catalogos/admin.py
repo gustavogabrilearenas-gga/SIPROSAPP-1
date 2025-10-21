@@ -248,8 +248,17 @@ class FormulaEtapaInline(admin.TabularInline):
     ordering = ['orden']
 
 
+class FormulaAdminForm(forms.ModelForm):
+    class Meta:
+        model = Formula
+        fields = '__all__'
+        widgets = {
+            'ingredientes': JSONEditorWidget(schema='ingredientes'),
+        }
+
 @admin.register(Formula)
 class FormulaAdmin(admin.ModelAdmin):
+    form = FormulaAdminForm
     list_display = ('codigo', 'version', 'producto', 'activa')
     search_fields = ('codigo', 'version', 'producto__nombre')
     list_filter = ('activa', 'producto')
