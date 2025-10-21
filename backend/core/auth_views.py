@@ -11,6 +11,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from backend.core.throttles import LoginRateThrottle, RegisterRateThrottle
@@ -82,9 +83,14 @@ def logout_view(request):
     refresh_token = request.data.get('refresh')
 
     if refresh_token:
-        # Se ignora el procesamiento del token ya que el sistema de blacklist
-        # fue eliminado.
-        pass
+        try:
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+        except TokenError:
+            return Response(
+                {'error': 'Refresh token inválido o expirado'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
     return Response({
         'message': 'Logout exitoso'
@@ -106,9 +112,13 @@ def me_view(request):
     if profile:
         user_data['profile'] = {
             'legajo': profile.legajo,
-            'area': profile.area,
-            'area_display': profile.get_area_display() if profile.area else None,
-            'turno_habitual': profile.turno_habitual,
+            'dni': profile.dni,
+            'funcion': profile.funcion_id,
+            'funcion_nombre': profile.funcion.nombre if profile.funcion else None,
+            'turno_habitual': profile.turno_habitual_id,
+            'turno_habitual_nombre': (
+                profile.turno_habitual.nombre if profile.turno_habitual else None
+            ),
             'telefono': profile.telefono,
             'activo': profile.activo,
         }
@@ -158,10 +168,15 @@ def refresh_token_view(request):
 @throttle_classes([RegisterRateThrottle])
 def register_view(request):
     """
-    Registro de nuevo usuario (OPCIONAL - solo para demo)
+    Registro de nuevo usuario (solo disponible para entornos controlados)
     POST /api/auth/register/
     Body: { "username": "...", "password": "...", "email": "...", "first_name": "...", "last_name": "..." }
     """
+    if not settings.ALLOW_USER_SELF_REGISTRATION:
+        return Response(
+            {'error': 'El registro de usuarios está deshabilitado'},
+            status=status.HTTP_403_FORBIDDEN,
+        )
     username = request.data.get('username')
     password = request.data.get('password')
     email = request.data.get('email', '')

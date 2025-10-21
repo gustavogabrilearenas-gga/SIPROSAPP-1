@@ -27,6 +27,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
+    "drf_spectacular",
     "corsheaders",
     "backend.core",
     "backend.catalogos",
@@ -139,18 +141,34 @@ REST_FRAMEWORK = {
         "login": "5/min",
         "register": "3/min",
     },
+    "DEFAULT_SCHEMA_CLASS": "rest_framework.schemas.openapi.AutoSchema",
 }
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=8),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "ROTATE_REFRESH_TOKENS": True,
-    "BLACKLIST_AFTER_ROTATION": False,
+    "BLACKLIST_AFTER_ROTATION": True,
     "UPDATE_LAST_LOGIN": True,
     "ALGORITHM": "HS256",
     "SIGNING_KEY": SECRET_KEY,
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "SIPROSA Backend API",
+    "DESCRIPTION": "Esquema OpenAPI para el backend minimalista de SIPROSA.",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+}
+
+ALLOW_USER_SELF_REGISTRATION = (
+    os.getenv("ALLOW_USER_SELF_REGISTRATION")
+    or ("true" if DEBUG else "false")
+).lower() == "true"
+
+LOG_FILE_PATH = os.getenv("LOG_FILE_PATH")
+ENABLE_GLOBAL_SEARCH = os.getenv("ENABLE_GLOBAL_SEARCH", "false").lower() == "true"
 
 LOGGING = {
     "version": 1,
@@ -165,3 +183,13 @@ LOGGING = {
         "level": "INFO",
     },
 }
+
+if LOG_FILE_PATH:
+    LOGGING["handlers"]["file"] = {
+        "class": "logging.handlers.RotatingFileHandler",
+        "filename": LOG_FILE_PATH,
+        "maxBytes": 5 * 1024 * 1024,
+        "backupCount": 3,
+        "encoding": "utf-8",
+    }
+    LOGGING["root"]["handlers"].append("file")

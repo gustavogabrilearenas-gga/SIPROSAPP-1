@@ -1,5 +1,6 @@
 # URLs del núcleo (no monta dominios)
 
+from django.conf import settings
 from django.urls import path
 
 from .auth_views import (
@@ -9,7 +10,7 @@ from .auth_views import (
     refresh_token_view,
     register_view,
 )
-from .views import BusquedaGlobalView, health_check
+from .views import health_check
 
 urlpatterns = [
     path('health/', health_check, name='health_check'),
@@ -18,5 +19,9 @@ urlpatterns = [
     path('auth/me/', me_view, name='me'),
     path('auth/refresh/', refresh_token_view, name='refresh_token'),
     path('auth/register/', register_view, name='register'),
-    path('buscar/', BusquedaGlobalView.as_view(), name='busqueda_global'),
 ]
+
+if settings.ENABLE_GLOBAL_SEARCH:
+    from .views import BusquedaGlobalView
+
+    urlpatterns.append(path('buscar/', BusquedaGlobalView.as_view(), name='busqueda_global'))

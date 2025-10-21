@@ -53,7 +53,7 @@ class UbicacionViewSet(viewsets.ModelViewSet):
     serializer_class = UbicacionSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['codigo', 'nombre']
-    ordering_fields = ['codigo', 'nombre', 'tipo']
+    ordering_fields = ['codigo', 'nombre']
 
     def get_permissions(self):
         if self.request.method in permissions.SAFE_METHODS:
@@ -109,20 +109,24 @@ class MaquinaAttachmentViewSet(viewsets.ModelViewSet):
 
 
 class ProductoViewSet(viewsets.ModelViewSet):
-    """Gestión de productos con filtros por forma y estado."""
+    """Gestión de productos con filtros por tipo, presentación y estado."""
 
     queryset = Producto.objects.all().order_by('codigo')
     serializer_class = ProductoSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['codigo', 'nombre', 'principio_activo']
-    ordering_fields = ['codigo', 'nombre']
+    search_fields = ['codigo', 'nombre', 'descripcion']
+    ordering_fields = ['codigo', 'nombre', 'tipo', 'presentacion']
 
     def get_queryset(self):
         queryset = super().get_queryset()
 
-        forma = self.request.query_params.get('forma')
-        if forma:
-            queryset = queryset.filter(forma_farmaceutica=forma.upper())
+        tipo = self.request.query_params.get('tipo')
+        if tipo:
+            queryset = queryset.filter(tipo=tipo.upper())
+
+        presentacion = self.request.query_params.get('presentacion')
+        if presentacion:
+            queryset = queryset.filter(presentacion=presentacion.upper())
 
         activo = self.request.query_params.get('activo')
         if activo is not None:
@@ -141,11 +145,15 @@ class ProductoViewSet(viewsets.ModelViewSet):
 class FormulaViewSet(viewsets.ModelViewSet):
     """Gestión de fórmulas por producto y vigencia."""
 
-    queryset = Formula.objects.select_related('producto').all()
+    queryset = (
+        Formula.objects.select_related('producto')
+        .prefetch_related('ingredientes__material', 'relaciones_etapas__etapa')
+        .all()
+    )
     serializer_class = FormulaSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['producto__nombre', 'version']
-    ordering_fields = ['fecha_vigencia_desde']
+    search_fields = ['producto__nombre', 'codigo', 'version']
+    ordering_fields = ['codigo', 'version', 'activa']
 
     def get_queryset(self):
         queryset = super().get_queryset()

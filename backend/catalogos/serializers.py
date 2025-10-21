@@ -1,6 +1,7 @@
 """Serializadores del dominio de catálogos."""
 
 from django.apps import apps
+from django.db import transaction
 from rest_framework import serializers
 
 Funcion = apps.get_model("catalogos", "Funcion")
@@ -10,6 +11,8 @@ Maquina = apps.get_model("catalogos", "Maquina")
 MaquinaAttachment = apps.get_model("catalogos", "MaquinaAttachment")
 Producto = apps.get_model("catalogos", "Producto")
 Formula = apps.get_model("catalogos", "Formula")
+FormulaEtapa = apps.get_model("catalogos", "FormulaEtapa")
+FormulaIngrediente = apps.get_model("catalogos", "FormulaIngrediente")
 EtapaProduccion = apps.get_model("catalogos", "EtapaProduccion")
 Turno = apps.get_model("catalogos", "Turno")
 
@@ -124,24 +127,56 @@ class ProductoSerializer(serializers.ModelSerializer):
             "descripcion",
             "activo",
             "imagen",
-            "documentos",
         ]
         read_only_fields = ["id", "tipo_display", "presentacion_display"]
 
 
+class FormulaIngredienteSerializer(serializers.ModelSerializer):
+    """Serializer explícito para los ingredientes de una fórmula."""
+
+    material_nombre = serializers.CharField(source="material.nombre", read_only=True)
+
+    class Meta:
+        model = FormulaIngrediente
+        fields = [
+            "id",
+            "material",
+            "material_nombre",
+            "cantidad",
+            "unidad",
+            "orden",
+            "notas",
+        ]
+        read_only_fields = ["id", "material_nombre"]
+
+
+class FormulaEtapaSerializer(serializers.ModelSerializer):
+    """Serializer para las etapas configuradas dentro de una fórmula."""
+
+    etapa_nombre = serializers.CharField(source="etapa.nombre", read_only=True)
+
+    class Meta:
+        model = FormulaEtapa
+        fields = [
+            "id",
+            "etapa",
+            "etapa_nombre",
+            "orden",
+            "descripcion",
+            "duracion_estimada_min",
+        ]
+        read_only_fields = ["id", "etapa_nombre"]
+
+
 class FormulaSerializer(serializers.ModelSerializer):
-    """Fórmulas con descripción del producto relacionado."""
+    """Fórmulas con detalle de ingredientes y etapas persistidas."""
 
     producto_nombre = serializers.CharField(source="producto.nombre", read_only=True)
-    ingredientes = serializers.ListField(
-        child=serializers.DictField(),
-        write_only=True,
-        error_messages={"not_a_list": "Debe ser una lista."},
-    )
-    etapas = serializers.ListField(
-        child=serializers.DictField(),
-        write_only=True,
-        error_messages={"not_a_list": "Debe ser una lista."},
+    ingredientes = FormulaIngredienteSerializer(many=True, required=False)
+    etapas = FormulaEtapaSerializer(
+        many=True,
+        source="relaciones_etapas",
+        required=False,
     )
 
     class Meta:
@@ -159,69 +194,87 @@ class FormulaSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "producto_nombre"]
 
-    def validate_ingredientes(self, value):
-        if not isinstance(value, list):
-            raise serializers.ValidationError("Debe ser una lista.")
-        for indice, item in enumerate(value):
-            if not isinstance(item, dict):
-                raise serializers.ValidationError(f"Item {indice} debe ser objeto.")
-            for clave in ("material_id", "cantidad", "unidad"):
-                if clave not in item:
-                    raise serializers.ValidationError(f"Item {indice}: falta '{clave}'.")
-            material_id = item["material_id"]
-            cantidad = item["cantidad"]
-            unidad = item["unidad"]
-            if not isinstance(material_id, int) or material_id <= 0:
+    def validate(self, attrs):
+        producto = attrs.get("producto") or getattr(self.instance, "producto", None)
+        ingredientes = self.initial_data.get("ingredientes") or []
+        for index, item in enumerate(ingredientes):
+            material_id = item.get("material") or item.get("material_id")
+            if not material_id:
                 raise serializers.ValidationError(
-                    f"Item {indice}: material_id inválido."
-                )
-            if not (
-                isinstance(cantidad, (int, float))
-                and not isinstance(cantidad, bool)
-                and cantidad > 0
-            ):
-                raise serializers.ValidationError(
-                    f"Item {indice}: cantidad > 0 requerida."
-                )
-            if not isinstance(unidad, str) or not unidad.strip():
-                raise serializers.ValidationError(
-                    f"Item {indice}: unidad requerida."
+                    {"ingredientes": f"Ingrediente {index}: falta material"}
                 )
             if not Producto.objects.filter(pk=material_id).exists():
                 raise serializers.ValidationError(
-                    f"Item {indice}: material_id no existe."
+                    {"ingredientes": f"Ingrediente {index}: material inexistente"}
                 )
-        return value
+            cantidad = item.get("cantidad")
+            if cantidad is None:
+                raise serializers.ValidationError(
+                    {"ingredientes": f"Ingrediente {index}: falta cantidad"}
+                )
+            try:
+                if float(cantidad) <= 0:
+                    raise ValueError
+            except (TypeError, ValueError):
+                raise serializers.ValidationError(
+                    {"ingredientes": f"Ingrediente {index}: cantidad debe ser positiva"}
+                )
+            unidad = item.get("unidad", "").strip()
+            if not unidad:
+                raise serializers.ValidationError(
+                    {"ingredientes": f"Ingrediente {index}: falta unidad"}
+                )
+            if producto and getattr(producto, "id", None) == material_id:
+                continue
+        return super().validate(attrs)
 
-    def validate_etapas(self, value):
-        if not isinstance(value, list):
-            raise serializers.ValidationError("Debe ser una lista.")
-        for indice, item in enumerate(value):
-            if not isinstance(item, dict):
-                raise serializers.ValidationError(f"Item {indice} debe ser objeto.")
-            if "etapa_id" not in item:
-                raise serializers.ValidationError(f"Item {indice}: falta 'etapa_id'.")
-            etapa_id = item["etapa_id"]
-            duracion_min = item.get("duracion_min")
-            descripcion = item.get("descripcion")
-            if not isinstance(etapa_id, int) or etapa_id <= 0:
-                raise serializers.ValidationError(
-                    f"Item {indice}: etapa_id inválido."
-                )
-            if duracion_min is not None:
-                if not (isinstance(duracion_min, int) and duracion_min >= 0):
-                    raise serializers.ValidationError(
-                        f"Item {indice}: duracion_min >= 0 requerida."
-                    )
-            if descripcion is not None and not isinstance(descripcion, str):
-                raise serializers.ValidationError(
-                    f"Item {indice}: descripcion debe ser string o null."
-                )
-            if not EtapaProduccion.objects.filter(pk=etapa_id).exists():
-                raise serializers.ValidationError(
-                    f"Item {indice}: etapa_id no existe."
-                )
-        return value
+    def create(self, validated_data):
+        ingredientes_data = validated_data.pop("ingredientes", [])
+        etapas_data = validated_data.pop("relaciones_etapas", [])
+        with transaction.atomic():
+            formula = super().create(validated_data)
+            self._replace_ingredientes(formula, ingredientes_data)
+            self._replace_etapas(formula, etapas_data)
+        return formula
+
+    def update(self, instance, validated_data):
+        ingredientes_data = validated_data.pop("ingredientes", None)
+        etapas_data = validated_data.pop("relaciones_etapas", None)
+        with transaction.atomic():
+            formula = super().update(instance, validated_data)
+            if ingredientes_data is not None:
+                self._replace_ingredientes(formula, ingredientes_data)
+            if etapas_data is not None:
+                self._replace_etapas(formula, etapas_data)
+        return formula
+
+    def _replace_ingredientes(self, formula, ingredientes_data):
+        formula.ingredientes.all().delete()
+        for index, item in enumerate(ingredientes_data):
+            material_value = item.get("material") or item.get("material_id")
+            material_id = getattr(material_value, "id", material_value)
+            FormulaIngrediente.objects.create(
+                formula=formula,
+                material_id=material_id,
+                cantidad=item.get("cantidad"),
+                unidad=item.get("unidad"),
+                orden=item.get("orden", index),
+                notas=item.get("notas", ""),
+            )
+
+    def _replace_etapas(self, formula, etapas_data):
+        formula.relaciones_etapas.all().delete()
+        for index, item in enumerate(etapas_data):
+            etapa_value = item.get("etapa") or item.get("etapa_id")
+            etapa_id = getattr(etapa_value, "id", etapa_value)
+            FormulaEtapa.objects.create(
+                formula=formula,
+                etapa_id=etapa_id,
+                orden=item.get("orden", index),
+                descripcion=item.get("descripcion", ""),
+                duracion_estimada_min=item.get("duracion_estimada_min")
+                or item.get("duracion_min"),
+            )
 
 
 class EtapaProduccionSerializer(serializers.ModelSerializer):
