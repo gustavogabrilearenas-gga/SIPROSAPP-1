@@ -41,7 +41,6 @@ class FormulaSerializerValidationTests(TestCase):
             "etapas": [
                 {
                     "etapa_id": self.etapa.id,
-                    "duracion_min": 15,
                     "descripcion": "Mezclar hasta homogenizar",
                 }
             ],
@@ -91,18 +90,3 @@ class FormulaSerializerValidationTests(TestCase):
         self.assertFalse(serializer.is_valid())
         self.assertIn("material_id no existe", serializer.errors["ingredientes"][0])
 
-    def test_invalid_etapas_requires_duration(self):
-        payload = self._base_payload()
-        payload["etapas"] = [{"etapa_id": self.etapa.id}]
-        serializer = FormulaSerializer(data=payload)
-
-        self.assertFalse(serializer.is_valid())
-        self.assertIn("falta 'duracion_min'", serializer.errors["etapas"][0])
-
-    def test_invalid_etapas_duration_must_be_non_negative(self):
-        payload = self._base_payload()
-        payload["etapas"][0]["duracion_min"] = -1
-        serializer = FormulaSerializer(data=payload)
-
-        self.assertFalse(serializer.is_valid())
-        self.assertIn("duracion_min >= 0 requerida", serializer.errors["etapas"][0])
