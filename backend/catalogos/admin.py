@@ -242,7 +242,7 @@ from .widgets import JSONEditorWidget
 class FormulaEtapaInline(admin.TabularInline):
     model = FormulaEtapa
     extra = 1
-    fields = ('etapa', 'orden', 'duracion_min', 'descripcion')
+    fields = ('etapa', 'orden', 'descripcion')
     autocomplete_fields = ['etapa']
     min_num = 1
     ordering = ['orden']
