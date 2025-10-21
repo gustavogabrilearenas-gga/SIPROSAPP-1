@@ -98,14 +98,14 @@ class RegistroProduccionEtapa(models.Model):
 
 class RegistroProduccion(models.Model):
     """Registro de producción."""
-    
+
     ESTADO_CHOICES = [
         ('CREADO', 'Creado - Pendiente de procesar'),
         ('EN_PROCESO', 'En proceso'),
         ('COMPLETADO', 'Completado'),
         ('CANCELADO', 'Cancelado'),
     ]
-    
+
     estado = models.CharField(
         max_length=20,
         choices=ESTADO_CHOICES,
@@ -122,15 +122,42 @@ class RegistroProduccion(models.Model):
         on_delete=models.PROTECT,
         related_name="registros_produccion"
     )
-    producto = models.ForeignKey(
-        "catalogos.Producto",
+    maquina = models.ForeignKey(
+        "catalogos.Maquina",
         on_delete=models.PROTECT,
-        related_name="registros_produccion"
+        related_name="registros_produccion",
+        null=True,
+        blank=True,
     )
-    formula = models.ForeignKey(
-        "catalogos.Formula",
+    turno = models.ForeignKey(
+        "catalogos.Turno",
         on_delete=models.PROTECT,
-        related_name="registros_produccion"
+        related_name="registros_produccion",
+        null=True,
+        blank=True,
+    )
+    hora_inicio = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Hora programada o real de inicio",
+    )
+    hora_fin = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Hora programada o real de finalización",
+    )
+    cantidad_producida = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(0)],
+        null=True,
+        blank=True,
+        help_text="Cantidad total fabricada en la orden",
+    )
+    unidad_medida = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="Unidad de medida de la cantidad producida",
     )
     observaciones = models.TextField(
         blank=True,
@@ -157,6 +184,8 @@ class RegistroProduccion(models.Model):
             models.Index(fields=["producto"]),
             models.Index(fields=["formula"]),
             models.Index(fields=["registrado_por"]),
+            models.Index(fields=["maquina"]),
+            models.Index(fields=["turno"]),
         ]
 
     def __str__(self):
@@ -166,14 +195,28 @@ class RegistroProduccion(models.Model):
             f"{self.get_estado_display()}"
         )
 
+    def clean(self):
+        if self.hora_inicio and self.hora_fin and self.hora_fin <= self.hora_inicio:
+            raise ValidationError(
+                {"hora_fin": "La hora de fin debe ser posterior a la hora de inicio"}
+            )
+        if self.formula_id and self.producto_id and self.formula.producto_id != self.producto_id:
+            raise ValidationError(
+                {"formula": "La fórmula seleccionada no corresponde al producto"}
+            )
+        if self.cantidad_producida is not None and self.cantidad_producida <= 0:
+            raise ValidationError(
+                {"cantidad_producida": "Debe registrar una cantidad mayor a cero"}
+            )
+
     def actualizar_estado(self):
         """Actualiza el estado basado en las etapas."""
         if not self.etapas.exists():
             return
-        
+
         etapas_completadas = self.etapas.filter(completada=True).count()
         total_etapas = self.etapas.count()
-        
+
         if etapas_completadas == 0:
             self.estado = 'CREADO'
         elif etapas_completadas == total_etapas:
@@ -182,6 +225,7 @@ class RegistroProduccion(models.Model):
             self.estado = 'EN_PROCESO'
 
     def save(self, *args, **kwargs):
+        self.clean()
         # Solo actualizar estado si ya existe el registro
         if self.pk:
             self.actualizar_estado()

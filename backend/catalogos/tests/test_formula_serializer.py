@@ -36,12 +36,13 @@ class FormulaSerializerValidationTests(TestCase):
             "descripcion": "",
             "activa": True,
             "ingredientes": [
-                {"material_id": self.material.id, "cantidad": 10.5, "unidad": "kg"}
+                {"material": self.material.id, "cantidad": "10.5", "unidad": "kg"}
             ],
             "etapas": [
                 {
-                    "etapa_id": self.etapa.id,
+                    "etapa": self.etapa.id,
                     "descripcion": "Mezclar hasta homogenizar",
+                    "duracion_estimada_min": 30,
                 }
             ],
         }
@@ -51,6 +52,9 @@ class FormulaSerializerValidationTests(TestCase):
         serializer = FormulaSerializer(data=payload)
 
         self.assertTrue(serializer.is_valid(), serializer.errors)
+        formula = serializer.save()
+        self.assertEqual(formula.ingredientes.count(), 1)
+        self.assertEqual(formula.relaciones_etapas.count(), 1)
 
     def test_version_formats_allowed(self):
         for version in ["1", "1.1", "1.2.3"]:
@@ -74,19 +78,19 @@ class FormulaSerializerValidationTests(TestCase):
                     serializer.errors["version"][0],
                 )
 
-    def test_invalid_ingredientes_structure_raises_error(self):
-        payload = self._base_payload()
-        payload["ingredientes"] = "invalid"
-        serializer = FormulaSerializer(data=payload)
-
-        self.assertFalse(serializer.is_valid())
-        self.assertIn("Debe ser una lista.", serializer.errors["ingredientes"][0])
-
     def test_invalid_ingredientes_material_must_exist(self):
         payload = self._base_payload()
-        payload["ingredientes"][0]["material_id"] = 9999
+        payload["ingredientes"][0]["material"] = 9999
         serializer = FormulaSerializer(data=payload)
 
         self.assertFalse(serializer.is_valid())
-        self.assertIn("material_id no existe", serializer.errors["ingredientes"][0])
+        self.assertIn("material", serializer.errors["ingredientes"][0])
+
+    def test_invalid_ingrediente_requires_positive_amount(self):
+        payload = self._base_payload()
+        payload["ingredientes"][0]["cantidad"] = "0"
+        serializer = FormulaSerializer(data=payload)
+
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("cantidad debe ser positiva", serializer.errors["ingredientes"][0])
 

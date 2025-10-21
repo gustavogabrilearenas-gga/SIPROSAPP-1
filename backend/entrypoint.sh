@@ -26,6 +26,9 @@ done
 echo "Aplicando migraciones..."
 python manage.py migrate --noinput
 
+echo "Recopilando archivos estáticos..."
+python manage.py collectstatic --noinput --verbosity 0
+
 echo "Creando superusuario si falta..."
 python manage.py create_superuser_if_none || true
 

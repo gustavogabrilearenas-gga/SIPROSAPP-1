@@ -3,7 +3,7 @@ Modelos de los catálogos maestros del sistema.
 """
 
 from django.conf import settings
-from django.core.validators import RegexValidator
+from django.core.validators import MinValueValidator, RegexValidator
 from django.db import models
 
 
@@ -220,12 +220,21 @@ class ProductoAttachment(models.Model):
 
 
 class FormulaEtapa(models.Model):
-    """Relación entre Formula y EtapaProduccion con campos adicionales"""
-    
-    formula = models.ForeignKey('Formula', on_delete=models.CASCADE)
+    """Relación entre Formula y EtapaProduccion con campos adicionales."""
+
+    formula = models.ForeignKey(
+        'Formula',
+        on_delete=models.CASCADE,
+        related_name='relaciones_etapas',
+    )
     etapa = models.ForeignKey('EtapaProduccion', on_delete=models.PROTECT)
     orden = models.PositiveSmallIntegerField(default=0)
     descripcion = models.TextField(blank=True)
+    duracion_estimada_min = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Duración estimada en minutos para planificación.",
+    )
 
     class Meta:
         ordering = ['orden']
@@ -263,6 +272,38 @@ class Formula(models.Model):
     
     def __str__(self):
         return f"{self.codigo} v{self.version}"
+
+
+class FormulaIngrediente(models.Model):
+    """Materiales que componen una fórmula."""
+
+    formula = models.ForeignKey(
+        Formula,
+        on_delete=models.CASCADE,
+        related_name='ingredientes',
+    )
+    material = models.ForeignKey(
+        Producto,
+        on_delete=models.PROTECT,
+        related_name='ingrediente_de_formulas',
+    )
+    cantidad = models.DecimalField(
+        max_digits=10,
+        decimal_places=3,
+        validators=[MinValueValidator(0)],
+    )
+    unidad = models.CharField(max_length=20)
+    orden = models.PositiveSmallIntegerField(default=0)
+    notas = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ['orden', 'id']
+        verbose_name = "Ingrediente de fórmula"
+        verbose_name_plural = "Ingredientes de fórmula"
+        unique_together = ['formula', 'orden', 'material']
+
+    def __str__(self):
+        return f"{self.formula.codigo} - {self.material.codigo}"
 
 
 class Parametro(models.Model):

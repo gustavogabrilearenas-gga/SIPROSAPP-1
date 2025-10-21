@@ -10,32 +10,45 @@ class RegistroProduccionSerializer(serializers.ModelSerializer):
         model = RegistroProduccion
         fields = [
             "id",
+            "estado",
+            "producto",
+            "formula",
+            "maquina",
+            "turno",
             "hora_inicio",
             "hora_fin",
-            "producto",
-            "maquina",
-            "formula",
-            "unidad_medida",
             "cantidad_producida",
+            "unidad_medida",
             "observaciones",
-            "turno",
-            "registrado_por",  # Solo para lectura
+            "registrado_por",
             "fecha_registro",
         ]
         read_only_fields = [
             "id",
-            "registrado_por",  # No se puede modificar
+            "estado",
+            "registrado_por",
             "fecha_registro",
         ]
 
     def validate(self, data):
-        """Validaciones adicionales."""
-        # Validar que la fórmula corresponda al producto
-        if data.get("formula") and data.get("producto"):
-            if data["formula"].producto_id != data["producto"].id:
-                raise serializers.ValidationError({
-                    "formula": "La fórmula debe corresponder al producto seleccionado"
-                })
+        producto = data.get("producto") or getattr(self.instance, "producto", None)
+        formula = data.get("formula") or getattr(self.instance, "formula", None)
+        hora_inicio = data.get("hora_inicio") or getattr(self.instance, "hora_inicio", None)
+        hora_fin = data.get("hora_fin") or getattr(self.instance, "hora_fin", None)
+        cantidad = data.get("cantidad_producida") or getattr(self.instance, "cantidad_producida", None)
+
+        if formula and producto and formula.producto_id != producto.id:
+            raise serializers.ValidationError(
+                {"formula": "La fórmula debe corresponder al producto seleccionado"}
+            )
+        if hora_inicio and hora_fin and hora_fin <= hora_inicio:
+            raise serializers.ValidationError(
+                {"hora_fin": "La hora de fin debe ser posterior a la hora de inicio"}
+            )
+        if cantidad is not None and cantidad <= 0:
+            raise serializers.ValidationError(
+                {"cantidad_producida": "Debe ingresar una cantidad positiva"}
+            )
         return data
 
     def create(self, validated_data):
