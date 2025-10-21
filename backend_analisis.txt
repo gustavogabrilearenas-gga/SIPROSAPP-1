@@ -1,0 +1,245 @@
+ANÁLISIS ESTRUCTURAL Y DE CALIDAD DEL PROYECTO
+=============================================
+
+1. Árbol del repositorio
+------------------------
+/workspace/SIPROSAPP-1
+├── .vs/
+│   ├── SIPROSAPP-1/
+│   │   ├── FileContentIndex/
+│   │   │   └── e83b8f94-f11b-4633-838b-5406665994f0.vsidx
+│   │   └── v17/
+│   │       ├── .wsuo
+│   │       └── DocumentLayout.json
+│   ├── ProjectSettings.json
+│   ├── VSWorkspaceState.json
+│   └── slnx.sqlite
+├── backend/
+│   ├── __init__.py
+│   ├── agents.md
+│   ├── asgi.py
+│   ├── catalogos/
+│   │   ├── __init__.py
+│   │   ├── admin.py
+│   │   ├── apps.py
+│   │   ├── migrations/
+│   │   │   ├── 0001_initial.py
+│   │   │   ├── 0002_remove_formulaetapa_duracion_min.py
+│   │   │   ├── 0003_remove_ingredientes_field.py
+│   │   │   └── __init__.py
+│   │   ├── models.py
+│   │   ├── serializers.py
+│   │   ├── static/admin/css/
+│   │   │   ├── etapas-widget.css
+│   │   │   └── json-editor.css
+│   │   ├── static/admin/js/
+│   │   │   ├── etapas-widget.js
+│   │   │   └── json-editor.js
+│   │   ├── templates/admin/widgets/
+│   │   │   ├── etapas_editor.html
+│   │   │   ├── ingredientes_editor.html
+│   │   │   └── json_editor.html
+│   │   ├── tests/
+│   │   │   ├── __init__.py
+│   │   │   ├── test_formula_serializer.py
+│   │   │   └── test_maquinas_api.py
+│   │   ├── urls.py
+│   │   ├── views.py
+│   │   └── widgets.py
+│   ├── core/
+│   │   ├── __init__.py
+│   │   ├── admin.py
+│   │   ├── apps.py
+│   │   ├── auth_views.py
+│   │   ├── choices.py
+│   │   ├── management/commands/
+│   │   │   ├── __init__.py
+│   │   │   └── create_superuser_if_none.py
+│   │   ├── migrations/__init__.py
+│   │   ├── mixins.py
+│   │   ├── models.py
+│   │   ├── permissions.py
+│   │   ├── services/search.py
+│   │   ├── signals.py
+│   │   ├── tests/
+│   │   │   ├── __init__.py
+│   │   │   └── test_permissions.py
+│   │   ├── throttles.py
+│   │   ├── urls.py
+│   │   ├── user_serializers.py
+│   │   └── views.py
+│   ├── incidentes/
+│   │   ├── __init__.py
+│   │   ├── admin.py
+│   │   ├── apps.py
+│   │   ├── migrations/
+│   │   │   ├── 0001_initial.py
+│   │   │   └── __init__.py
+│   │   ├── models.py
+│   │   ├── serializers.py
+│   │   ├── tests/
+│   │   │   ├── __init__.py
+│   │   │   └── test_api.py
+│   │   ├── urls.py
+│   │   └── views.py
+│   ├── mantenimiento/
+│   │   ├── __init__.py
+│   │   ├── admin.py
+│   │   ├── apps.py
+│   │   ├── migrations/
+│   │   │   ├── 0001_initial.py
+│   │   │   └── __init__.py
+│   │   ├── models.py
+│   │   ├── serializers.py
+│   │   ├── urls.py
+│   │   └── views.py
+│   ├── observaciones/
+│   │   ├── __init__.py
+│   │   ├── admin.py
+│   │   ├── apps.py
+│   │   ├── migrations/
+│   │   │   ├── 0001_initial.py
+│   │   │   └── __init__.py
+│   │   ├── models.py
+│   │   ├── serializers.py
+│   │   ├── tests/
+│   │   │   ├── __init__.py
+│   │   │   └── test_api.py
+│   │   ├── urls.py
+│   │   └── views.py
+│   ├── produccion/
+│   │   ├── __init__.py
+│   │   ├── admin.py
+│   │   ├── apps.py
+│   │   ├── migrations/
+│   │   │   ├── 0001_initial.py
+│   │   │   └── __init__.py
+│   │   ├── models.py
+│   │   ├── serializers.py
+│   │   ├── urls.py
+│   │   └── views.py
+│   ├── usuarios/
+│   │   ├── __init__.py
+│   │   ├── admin.py
+│   │   ├── apps.py
+│   │   ├── forms.py
+│   │   ├── migrations/
+│   │   │   ├── 0001_initial.py
+│   │   │   └── __init__.py
+│   │   ├── models.py
+│   │   ├── serializers.py
+│   │   ├── urls.py
+│   │   └── views.py
+│   ├── Dockerfile
+│   ├── entrypoint.sh
+│   ├── pagination.py
+│   ├── settings.py
+│   ├── urls.py
+│   └── wsgi.py
+├── agents.md
+├── docker-compose.yml
+├── manage.py
+├── requirements.txt
+└── backend_analisis.txt (este archivo)
+
+2. Análisis general del proyecto
+--------------------------------
+- **Tipo de proyecto**: Backend Django + Django REST Framework con JWT (SimpleJWT) y configuración preparada para PostgreSQL o SQLite. Ajustado para entorno industrial farmacéutico.
+- **Configuración**: `backend/settings.py` privilegia simplicidad (sin apps innecesarias). Carga `.env`. Define CORS y CSRF de forma dinámica, pero el comportamiento por defecto abre CORS para cualquier origen en DEBUG.
+- **Estructura**: Proyecto monolítico con múltiples apps de dominio (catálogos, producción, mantenimiento, incidentes, observaciones, usuarios). Se exponen APIs vía routers DRF en `backend/urls.py`.
+- **Deploy**: Incluye `Dockerfile`, `docker-compose.yml` y `entrypoint.sh`, sugiriendo contenedorización prevista.
+
+3. Diagnóstico transversal de calidad
+-------------------------------------
+- **Consistencia interna**: Hay discrepancias entre modelos, serializers y vistas (por ejemplo, campos inexistentes referenciados). Varias clases importan utilidades no declaradas. El dominio parece parcialmente migrado desde otro proyecto (nombres de campos que ya no existen).
+- **Buenas prácticas**: Se observan docstrings en español y validaciones manuales, pero faltan pruebas de integración y hay duplicación de lógica. El código no está listo para producción sin una revisión profunda.
+- **Pruebas**: Solo hay tests puntuales en `backend/catalogos/tests`, `backend/core/tests`, `backend/incidentes/tests` y `backend/observaciones/tests`. No cubren los flujos principales ni detectan las inconsistencias señaladas.
+
+4. Análisis por aplicación
+--------------------------
+### 4.1. `backend.core`
+- **Responsabilidad**: Autenticación, permisos comunes, búsqueda global placeholder y health check.
+- **Problemas**:
+  - `auth_views.py` usa `authenticate`, `apps`, `settings` y serializadores sin importar (falta `from django.contrib.auth import authenticate`, `from django.apps import apps`, `from django.conf import settings`). Esto rompe el login.
+  - La función `me_view` intenta acceder a `profile.area`, pero `UserProfile` no tiene ese campo.
+  - `register_view` permite autogestión de usuarios en un contexto industrial donde normalmente se restringe; podría ser intencional para demo, pero contrasta con el permiso global `IsAuthenticated`.
+  - `services/search.py` retorna datos vacíos; `BusquedaGlobalView` no expone message coherente con un MVP listo.
+
+### 4.2. `backend.catalogos`
+- **Responsabilidad**: Catálogos maestros (ubicaciones, máquinas, productos, parámetros, fórmulas, etapas, turnos, funciones).
+- **Fortalezas**:
+  - Modelos con validaciones (`RegexValidator`, `indexes`), JSONField para adjuntos y ManyToMany correctamente definidos.
+  - Serializadores implementan validaciones estructurales detalladas (listas de ingredientes, etapas, etc.).
+  - Tests para fórmulas y API de máquinas indican intención de robustez.
+- **Problemas críticos**:
+  - `Producto` no define el campo `documentos` que esperan serializadores y vistas.
+  - `Formula` no posee relación directa con “ingredientes” más allá de validaciones: no hay modelo que los persista ni mapeo claro.
+  - `ProductoViewSet` filtra por `forma` y `forma_farmaceutica`, campos inexistentes (`tipo`/`presentacion` serían los correctos).
+  - `FormulaViewSet` ordena por `fecha_vigencia_desde` inexistente.
+  - Permisos: combina `IsAdmin` e `IsAdminOrSupervisor`, pero faltan definiciones de roles “supervisor” en el sistema de usuarios.
+
+### 4.3. `backend.usuarios`
+- **Responsabilidad**: Perfil extendido sobre `AUTH_USER_MODEL` estándar y APIs de gestión.
+- **Fortalezas**: Serializadores separados para admin y usuario final, validaciones de contraseña, señales para crear perfiles.
+- **Problemas**:
+  - `views.py` usa `apps` sin importar (`from django.apps import apps`).
+  - `UsuarioViewSet` referencia `profile__legajo` y `profile__dni` en `search_fields`, pero el `related_name` real es `user_profile` (`models.UserProfile`). Debería ser `user_profile__legajo`.
+  - Permisos: `IsAdmin` personalizado se usa, pero no se verifica membership a grupos reales. Falta prueba.
+  - Serializadores replican lógica de limpieza; podría centralizarse.
+
+### 4.4. `backend.observaciones`
+- **Responsabilidad**: Registro de observaciones generales.
+- **Estado**: Modelos y viewsets simples, con API solo de lectura/creación (update/delete bloqueados).
+- **Observaciones**: Implementación consistente; se apalanca `perform_create` para asociar usuario.
+
+### 4.5. `backend.produccion`
+- **Responsabilidad**: Control de registros de producción.
+- **Problemas severos**:
+  - En `models.RegistroProduccion`, se duplica declaración de campos `producto` y `formula` (probable copy-paste), lo cual rompe migraciones.
+  - Falta relación con turno, máquina, cantidad que sí esperan serializer y viewset (`hora_inicio`, `hora_fin`, `maquina`, `unidad_medida`, `cantidad_producida`, `turno`). Es probable que esas columnas existieran en una versión anterior, pero ahora solo están en `RegistroProduccionEtapa`.
+  - `RegistroProduccionSerializer` incluye campos inexistentes y, al crearse, asigna `registrado_por` desde request (correcto) pero fallará por campos faltantes.
+  - `RegistroProduccionViewSet` intenta `select_related("maquina", "turno")` y filtrar por ellos, inexistentes.
+  - No hay tests que cubran este dominio.
+
+### 4.6. `backend.mantenimiento`
+- **Responsabilidad**: Registros de mantenimiento.
+- **Estado**: Modelos y serializer consistentes entre sí.
+- **Observaciones**: `clean()` valida horarios y anomalías. `save()` invoca `clean()` manualmente (correcto aunque redundante porque `Model.clean()` se ejecuta en forms). API es estándar.
+
+### 4.7. `backend.incidentes`
+- **Responsabilidad**: Registro de incidentes/paradas.
+- **Fortalezas**: Modelo bien definido con choices y timestamps.
+- **Problemas**:
+  - `serializers.py` importa `MaquinaSerializer` desde `backend.catalogos.serializers`, generando dependencia circular si se expande. Podría usarse un serializer simple para evitar acoplamiento.
+  - `validate` compara `fecha_fin <= fecha_inicio` (correcto), pero si `fecha_fin` no se envía, `None <= fecha_inicio` fallará. Falta chequeo de nulos.
+
+5. Coherencia, mantenibilidad y buenas prácticas
+-----------------------------------------------
+- **Inconsistencias de modelos/serializers**: Varias APIs no funcionarían al ejecutarse (usuarios, producción, catálogos). La base de datos no respalda los contratos REST expuestos.
+- **Faltan imports esenciales**: `auth_views` y `usuarios.views` fallan inmediatamente.
+- **Duplicidad de campos**: `RegistroProduccion` declara `producto` y `formula` dos veces; esto invalida migraciones y dificulta admin.
+- **Permisos y seguridad**: Mezcla de permisos personalizados y default sin documentación de roles. `register_view` permitiría crear usuarios sin restricción si se expone.
+- **Documentación**: Docstrings ayudan, pero no existe README explicativo ni guía para front-end.
+- **Cobertura de tests**: Muy limitada; no detecta fallas graves.
+
+6. ¿Listo para comenzar el frontend MVP?
+----------------------------------------
+Bajo un criterio minimalista (tesis de Ing. Industrial) la respuesta es **no**. Razones:
+1. **APIs críticas no operativas**: Endpoints de autenticación, usuarios, catálogos y producción arrojarían errores por imports faltantes o campos inexistentes.
+2. **Contratos inestables**: Serializadores referencian campos ausentes; cualquier consumo desde frontend fallará o devolverá respuestas incompletas.
+3. **Datos base incompletos**: No hay fixtures ni scripts para poblar catálogos esenciales, lo cual dificulta pruebas de interfaz.
+4. **Cobertura de tests insuficiente**: Sin garantías básicas, montar un frontend encima expondría fallos funcionales en etapas tardías.
+5. **Ausencia de documentación funcional**: El front necesitaría saber qué endpoints y campos usar; actualmente la referencia es inexacta.
+
+7. Recomendaciones inmediatas antes de avanzar con frontend
+-----------------------------------------------------------
+1. **Corregir imports y dependencias rotas** en `backend/core/auth_views.py` y `backend/usuarios/views.py`; alinear campos de perfil usados (`area` vs `funcion`).
+2. **Reconciliar modelos y serializers** de `catalogos`, `produccion` y `usuarios`:
+   - Definir campos faltantes (`documentos`, `unidad_medida`, etc.) o ajustar serializers/vistas.
+   - Revisar migraciones para evitar duplicados.
+3. **Ajustar filtros y ordering** a campos reales (`forma_farmaceutica` → `tipo`, etc.).
+4. **Agregar pruebas de integración** que creen objetos vía API para detectar errores.
+5. **Documentar endpoints vigentes** y eliminar placeholders si aún no hay lógica (`global_search`).
+6. **Preparar datos semilla** mínimos para catálogos básicos (maquinas, funciones, turnos).
+
+Hasta ejecutar esas tareas, construir el frontend generaría retrabajo continuo.
