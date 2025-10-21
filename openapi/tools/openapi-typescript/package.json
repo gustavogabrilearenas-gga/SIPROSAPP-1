@@ -1,0 +1,8 @@
+{
+  "name": "openapi-typescript",
+  "version": "0.0.0-local",
+  "bin": {
+    "openapi-typescript": "cli.js"
+  },
+  "type": "commonjs"
+}
