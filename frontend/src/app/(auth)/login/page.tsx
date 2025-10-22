@@ -39,18 +39,40 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
+      const trimmedEmail = email.trim();
+      const payload: { password: string; username?: string; email?: string } = {
+        password,
+      };
+
+      if (trimmedEmail) {
+        payload.username = trimmedEmail;
+        payload.email = trimmedEmail;
+      }
+
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
-        const data = await response.json().catch(() => undefined);
-        const message = toUserMessage({
-          status: response.status,
-          message: (data as { detail?: string })?.detail ?? 'Credenciales inválidas',
-        });
+        let data: unknown;
+        try {
+          data = await response.json();
+        } catch (err) {
+          data = undefined;
+        }
+
+        const details =
+          typeof data === 'object' && data !== null
+            ? (data as { detail?: string; error?: string; message?: string }).detail ??
+              (data as { detail?: string; error?: string; message?: string }).error ??
+              (data as { detail?: string; error?: string; message?: string }).message
+            : undefined;
+
+        const message =
+          details ?? toUserMessage({ status: response.status, message: details ?? 'Credenciales inválidas' });
+
         setError(message);
         return;
       }

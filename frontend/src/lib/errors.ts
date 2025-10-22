@@ -6,12 +6,14 @@ export const isApiError = (e: unknown): e is ApiError =>
 export const toUserMessage = (e: unknown): string => {
   if (isApiError(e)) {
     const status = e.status;
-    if (status === 400) return 'Datos inválidos';
-    if (status === 401) return 'Sesión expirada';
-    if (status === 403) return 'No autorizado';
-    if (status === 404) return 'No encontrado';
-    if (status >= 500) return 'Error del servidor';
-    return e.message || 'Error inesperado';
+    const message = typeof e.message === 'string' && e.message.trim() ? e.message.trim() : undefined;
+
+    if (status === 400) return message ?? 'Datos inválidos';
+    if (status === 401) return message ?? 'Sesión expirada';
+    if (status === 403) return message ?? 'No autorizado';
+    if (status === 404) return message ?? 'No encontrado';
+    if (status >= 500) return message ?? 'Error del servidor';
+    return message ?? 'Error inesperado';
   }
   return 'Error inesperado';
 };

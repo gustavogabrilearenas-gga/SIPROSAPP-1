@@ -30,16 +30,31 @@ def login_view(request):
     Endpoint de login
     POST /api/auth/login/
     Body: { "username": "...", "password": "..." }
+    También acepta { "email": "...", "password": "..." }
     """
-    username = request.data.get('username')
+    raw_username = request.data.get('username')
+    email = request.data.get('email')
     password = request.data.get('password')
-    
-    if not username or not password:
+
+    identifier = raw_username or email
+
+    if not identifier or not password:
         return Response(
             {'error': 'Por favor proporcione usuario y contraseña'},
             status=status.HTTP_400_BAD_REQUEST
         )
-    
+
+    username = identifier
+
+    if not raw_username and email:
+        try:
+            user_obj = UserModel.objects.get(email__iexact=email)
+            username = user_obj.get_username()
+        except UserModel.DoesNotExist:
+            username = identifier
+        except UserModel.MultipleObjectsReturned:
+            username = identifier
+
     user = authenticate(username=username, password=password)
     
     if user is None:
