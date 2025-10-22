@@ -11,6 +11,7 @@ import type {
   Funcion,
   Incidente,
   Maquina,
+  ObservacionGeneral,
   Producto,
   RegistroMantenimiento,
   RegistroProduccion,
@@ -431,6 +432,14 @@ const api = {
 
   async updateMaquina(id: number | string, data: Record<string, unknown>) {
     return patch(`catalogos/maquinas/${id}/`, data)
+  },
+
+  async getObservacionesGenerales(params?: Record<string, unknown>) {
+    return get<PaginatedResponse<ObservacionGeneral>>('observaciones/observaciones/', { params })
+  },
+
+  async createObservacionGeneral(data: { texto: string }) {
+    return post<ObservacionGeneral>('observaciones/observaciones/', data)
   },
 
   async getProduccionRegistros(params?: Record<string, unknown>) {
