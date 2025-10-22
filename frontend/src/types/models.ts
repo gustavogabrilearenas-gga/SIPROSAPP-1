@@ -204,6 +204,13 @@ export interface Incidente {
   modified: string
 }
 
+export interface ObservacionGeneral {
+  id: number
+  texto: string
+  fecha_hora: string
+  creado_por: number
+}
+
 export interface ApiListResponse<T> {
   count: number
   next: string | null
