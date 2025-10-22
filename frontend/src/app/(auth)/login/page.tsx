@@ -1,8 +1,12 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
+  Alert,
+  AlertDescription,
+  AlertIcon,
+  AlertTitle,
   Box,
   Button,
   Flex,
@@ -12,127 +16,102 @@ import {
   Input,
   Stack,
   Text,
-  Alert,
-  AlertIcon,
-} from "@chakra-ui/react";
+} from '@chakra-ui/react';
 
-export default function LoginPage() {
+import StateError from '@/components/feedback/StateError';
+import { toUserMessage } from '@/lib/errors';
+
+const LoginPage = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [serverError, setServerError] = useState<string | null>(null);
 
-  const nextUrl = searchParams.get("next") ?? "/";
+  const nextPath = searchParams.get('next') ?? '/';
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setLoading(true);
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setError(null);
+    setServerError(null);
+    setLoading(true);
+
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError((data?.detail as string) ?? "No se pudo iniciar sesión");
-      } else {
-        router.push(nextUrl);
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => undefined);
+        const message = toUserMessage({
+          status: response.status,
+          message: (data as { detail?: string })?.detail ?? 'Credenciales inválidas',
+        });
+        setError(message);
+        return;
       }
+
+      router.push(nextPath);
+      router.refresh();
     } catch (err) {
-      setError("Error de red. Intenta nuevamente.");
+      setServerError(toUserMessage(err));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Flex
-      minH="100vh"
-      align="center"
-      justify="center"
-      bg="gray.900"
-      bgGradient="linear(to-b, gray.900, blue.900)"
-      px={4}
-    >
-      <Box
-        bg="gray.800"
-        p={10}
-        rounded="xl"
-        shadow="2xl"
-        w="full"
-        maxW="md"
-        borderWidth={1}
-        borderColor="blue.500"
-        position="relative"
-        _before={{
-          content: '""',
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          borderRadius: "xl",
-          padding: "2px",
-          background: "linear-gradient(45deg, blue.400, purple.500)",
-          WebkitMask:
-            "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-          WebkitMaskComposite: "xor",
-          maskComposite: "exclude",
-        }}
-      >
-        <Stack spacing={8} as="form" onSubmit={handleSubmit}>
-          <Stack spacing={3} textAlign="center">
-            <Heading size="lg" bgGradient="linear(to-r, blue.400, purple.400)" bgClip="text">
-              SIPROSA MES
-            </Heading>
-            <Text fontSize="lg" color="gray.400" fontWeight="medium">
-              Sistema de Gestión de Manufactura
-            </Text>
-            <Text color="gray.500" fontSize="sm">
-              Inicia sesión para continuar
-            </Text>
+    <Flex minH="100vh" align="center" justify="center" bgGradient="linear(to-br, gray.900, blue.900)" px={4}>
+      <Box as="form" onSubmit={handleSubmit} bg="gray.800" p={{ base: 8, md: 12 }} rounded="2xl" shadow="2xl" w="full" maxW="lg">
+        <Stack spacing={8}>
+          <Stack spacing={2} textAlign="center" color="gray.100">
+            <Heading size="lg">SIPROSA MES</Heading>
+            <Text color="gray.300">Sistema Integrado de Producción</Text>
           </Stack>
 
-          {error && (
+          {serverError && (
+            <StateError message={serverError} onRetry={() => setServerError(null)} />
+          )}
+
+          {error && !serverError && (
             <Alert status="error" borderRadius="md" bg="red.900" color="white">
               <AlertIcon />
-              {error}
+              <Box>
+                <AlertTitle>Inicio de sesión fallido</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Box>
             </Alert>
           )}
 
           <Stack spacing={4}>
             <FormControl isRequired>
-              <FormLabel color="gray.300">Usuario</FormLabel>
+              <FormLabel color="gray.300">Correo electrónico</FormLabel>
               <Input
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Ingresa tu usuario"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="tu.usuario@siprosa.ar"
                 bg="gray.700"
                 border="none"
                 color="white"
-                _placeholder={{ color: "gray.400" }}
-                _hover={{ bg: "gray.600" }}
-                _focus={{ bg: "gray.600", borderColor: "blue.400" }}
+                _placeholder={{ color: 'gray.400' }}
               />
             </FormControl>
-
             <FormControl isRequired>
               <FormLabel color="gray.300">Contraseña</FormLabel>
               <Input
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Ingresa tu contraseña"
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="••••••••"
                 bg="gray.700"
                 border="none"
                 color="white"
-                _placeholder={{ color: "gray.400" }}
-                _hover={{ bg: "gray.600" }}
-                _focus={{ bg: "gray.600", borderColor: "blue.400" }}
+                _placeholder={{ color: 'gray.400' }}
               />
             </FormControl>
           </Stack>
@@ -141,16 +120,9 @@ export default function LoginPage() {
             type="submit"
             colorScheme="blue"
             size="lg"
-            fontSize="md"
+            fontWeight="semibold"
             isLoading={loading}
             loadingText="Ingresando"
-            bgGradient="linear(to-r, blue.400, purple.500)"
-            _hover={{
-              bgGradient: "linear(to-r, blue.500, purple.600)",
-            }}
-            _active={{
-              bgGradient: "linear(to-r, blue.600, purple.700)",
-            }}
           >
             Ingresar
           </Button>
@@ -158,4 +130,6 @@ export default function LoginPage() {
       </Box>
     </Flex>
   );
-}
+};
+
+export default LoginPage;
