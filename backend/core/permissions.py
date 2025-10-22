@@ -23,6 +23,10 @@ def is_admin(user) -> bool:
         user.is_superuser or user.is_staff or _is_in(user, "Administrador")
     )
 
+def is_superuser(user) -> bool:
+    return user.is_authenticated and user.is_superuser
+
+
 def is_supervisor(user) -> bool:
     return _is_in(user, "Supervisor")
 
@@ -39,6 +43,11 @@ class IsAdmin(BasePermission):
         return is_admin(request.user)
 
 
+class IsSuperuser(BasePermission):
+    def has_permission(self, request, view):
+        return is_superuser(request.user)
+
+
 class IsSupervisor(BasePermission):
     def has_permission(self, request, view):
         return is_supervisor(request.user)
@@ -53,6 +62,12 @@ class IsAdminOrSupervisor(BasePermission):
     def has_permission(self, request, view):
         u = request.user
         return is_admin(u) or is_supervisor(u)
+
+
+class IsSuperuserOrSupervisor(BasePermission):
+    def has_permission(self, request, view):
+        u = request.user
+        return is_superuser(u) or is_supervisor(u)
 
 
 class IsAdminOrOperario(BasePermission):

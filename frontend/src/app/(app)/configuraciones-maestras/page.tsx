@@ -10,11 +10,14 @@ import {
   Layers,
   Clock,
   MapPin,
+  Loader2,
   type LucideIcon,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ProtectedRoute } from '@/components/protected-route'
+import { useMasterConfigAccess } from '@/hooks/use-master-config-access'
+import { AccessDenied } from '@/components/access-denied'
 
 type MasterModule = {
   name: string
@@ -62,9 +65,24 @@ const modules = masterModules.filter((module) => !disabledModuleHrefs.has(module
 
 export default function ConfiguracionPage() {
   const router = useRouter()
+  const { status } = useMasterConfigAccess()
 
   const handleCardClick = (href: string) => {
     router.push(href)
+  }
+
+  if (status === 'loading') {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center text-blue-600">
+        <Loader2 className="mr-2 h-6 w-6 animate-spin" /> Verificando permisos...
+      </div>
+    )
+  }
+
+  if (status === 'forbidden') {
+    return (
+      <AccessDenied description="Sólo supervisores y administradores pueden acceder a las configuraciones maestras." />
+    )
   }
 
   return (

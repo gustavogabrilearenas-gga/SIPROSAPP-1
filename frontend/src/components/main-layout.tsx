@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/stores/auth-store';
+import { canAccessMasterConfig } from '@/lib/auth-utils';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -62,11 +63,16 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
         </div>
         <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto">
           {navItems
-            .filter(item => {
+            .filter((item) => {
               // Ocultar "Gestión de Usuarios" a los no-admin
               if (item.href === '/configuracion/usuarios' && !user?.is_staff && !user?.is_superuser) {
                 return false;
               }
+
+              if (item.href.startsWith('/configuraciones-maestras') && !canAccessMasterConfig(user)) {
+                return false;
+              }
+
               return true;
             })
             .map((item) => (
