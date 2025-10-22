@@ -1,71 +1,76 @@
-import axios, { AxiosError, AxiosRequestConfig } from 'axios';
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 export type ApiError = { status: number; message: string; details?: unknown };
-
-type RetriableConfig = AxiosRequestConfig & { _retry?: boolean };
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE ?? '/drf/api',
   withCredentials: true,
 });
 
+// Control de refresh concurrente
 let isRefreshing = false;
+let refreshQueue: Array<() => void> = [];
+
+function enqueueRefreshWaiter() {
+  return new Promise<void>((resolve) => {
+    refreshQueue.push(resolve);
+  });
+}
+function flushRefreshQueue() {
+  refreshQueue.forEach((res) => res());
+  refreshQueue = [];
+}
 
 api.interceptors.response.use(
-  (response) => response,
+  (r) => r,
   async (error: AxiosError) => {
-    const original = (error.config ?? {}) as RetriableConfig;
-    const status = error.response?.status;
+    const status = error.response?.status ?? 0;
+    const original = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
 
-    if (status === 401 && !original._retry) {
+    // Solo 401 no reintentado aún
+    if (status === 401 && original && !original._retry) {
       original._retry = true;
-      if (!isRefreshing) {
-        isRefreshing = true;
-        try {
-          await fetch('/api/auth/token', {
-            method: 'POST',
-            credentials: 'include',
-          });
-        } finally {
-          isRefreshing = false;
-        }
-      } else {
-        await new Promise((resolve) => setTimeout(resolve, 200));
+
+      if (isRefreshing) {
+        // Espera a que termine un refresh en curso y reintenta
+        await enqueueRefreshWaiter();
+        return api(original);
       }
 
-      return api(original);
+      isRefreshing = true;
+      try {
+        // Llama el endpoint Next que refresca cookies contra DRF
+        const resp = await fetch('/api/auth/token', { method: 'POST' });
+        // Independiente del resultado, soltar la cola
+        flushRefreshQueue();
+
+        if (resp.ok) {
+          // Reintenta una sola vez
+          return api(original);
+        }
+      } finally {
+        isRefreshing = false;
+      }
     }
 
-    const data = error.response?.data as { detail?: unknown } | undefined;
-    const err: ApiError = {
-      status: status ?? 0,
+    const apiErr: ApiError = {
+      status,
       message:
-        (typeof data?.detail === 'string' && data.detail) ||
+        (error.response?.data as any)?.detail ||
+        (error.response?.data as any)?.message ||
         error.message ||
         'Error inesperado',
-      details: data,
+      details: error.response?.data,
     };
-
-    return Promise.reject(err);
-  },
+    return Promise.reject(apiErr);
+  }
 );
 
-export const get = async <T>(url: string, config?: AxiosRequestConfig): Promise<T> =>
-  (await api.get<T>(url, config)).data;
-
-export const post = async <T>(
-  url: string,
-  body?: unknown,
-  config?: AxiosRequestConfig,
-): Promise<T> => (await api.post<T>(url, body, config)).data;
-
-export const put = async <T>(
-  url: string,
-  body?: unknown,
-  config?: AxiosRequestConfig,
-): Promise<T> => (await api.put<T>(url, body, config)).data;
-
-export const del = async <T>(url: string, config?: AxiosRequestConfig): Promise<T> =>
-  (await api.delete<T>(url, config)).data;
+export const get = async <T>(url: string, config?: any): Promise<T> => (await api.get<T>(url, config)).data;
+export const post = async <T>(url: string, body?: any, config?: any): Promise<T> =>
+  (await api.post<T>(url, body, config)).data;
+export const put = async <T>(url: string, body?: any, config?: any): Promise<T> =>
+  (await api.put<T>(url, body, config)).data;
+export const del = async <T>(url: string, config?: any): Promise<T> => (await api.delete<T>(url, config)).data;
 
 export default api;
