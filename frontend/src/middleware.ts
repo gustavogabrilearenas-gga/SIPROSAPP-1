@@ -1,22 +1,22 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-const PUBLIC_PATHS = ["/login", "/api/auth"];
+const PUBLIC_PREFIXES = ['/login', '/api/auth'];
 
-export async function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
-  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) return NextResponse.next();
+export function middleware(req: NextRequest) {
+  const { pathname, search } = req.nextUrl;
+  const isPublic = PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));
+  const hasAccess = req.cookies.has('access');
 
-  const access = req.cookies.get("access")?.value;
-  if (!access) {
+  if (!isPublic && !hasAccess) {
     const url = req.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("next", pathname);
+    url.pathname = '/login';
+    url.searchParams.set('next', pathname + search);
     return NextResponse.redirect(url);
   }
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/((?!_next|favicon.ico|assets).*)"],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };
