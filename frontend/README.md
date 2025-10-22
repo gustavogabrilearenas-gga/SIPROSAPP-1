@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# SIPROSA MES - Frontend
 
-## Getting Started
+Frontend desarrollado con Next.js 14 para el Sistema de Gestión de Manufactura de SIPROSA.
 
-First, run the development server:
+## 🚀 Tecnologías
+
+- **Next.js 14** - Framework React con App Router
+- **TypeScript** - Tipado estático
+- **Tailwind CSS** - Estilos y diseño
+- **Zustand** - Gestión de estado global
+- **TanStack Query** - Manejo de datos de API
+- **React Hook Form** - Formularios y validación
+- **Lucide React** - Iconos
+
+## 📦 Instalación
 
 ```bash
+# Instalar dependencias
+npm install
+
+# Iniciar servidor de desarrollo
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# Construir para producción
+npm run build
+
+# Iniciar servidor de producción
+npm start
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🌐 Desarrollo
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+El frontend se ejecuta en `http://localhost:3000` y se conecta con el backend vía la variable de entorno `NEXT_PUBLIC_API_URL`.
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+Configuración rápida:
 
-## Learn More
+```powershell
+cd frontend
+copy .env.example .env.local
+# Editar .env.local si es necesario (por ejemplo, NEXT_PUBLIC_API_URL)
+notepad .env.local
+npm install
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+Notas:
+- Si Next corre dentro de Docker Compose y el backend es el servicio `api`, puedes usar `NEXT_PUBLIC_API_URL_SERVER=http://api:8000`.
+- Si las peticiones desde el navegador reciben errores CORS, revisa `backend/settings.py` y asegúrate que `CORS_ALLOWED_ORIGINS` incluya el origen del frontend (por ejemplo `http://localhost:3000`).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 📁 Estructura
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+```
+src/
+├── app/                 # App Router de Next.js
+├── components/          # Componentes reutilizables
+│   └── ui/             # Componentes base de UI
+├── lib/                # Utilidades y configuración
+├── stores/             # Stores de Zustand
+├── types/              # Definiciones de tipos TypeScript
+└── utils/              # Funciones auxiliares
+```
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.

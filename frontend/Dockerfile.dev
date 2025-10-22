@@ -1,0 +1,28 @@
+# ============================================
+# Dockerfile para SIPROSA MES - Frontend (Desarrollo)
+# ============================================
+
+FROM node:18-alpine
+
+# Instalar dependencias necesarias para desarrollo
+RUN apk add --no-cache libc6-compat
+
+WORKDIR /app
+
+# Copiar archivos de configuración
+COPY package*.json ./
+COPY postcss.config.js ./
+COPY tailwind.config.js ./
+
+# Generar package-lock.json si no existe e instalar dependencias
+RUN npm install
+
+# Exponer puerto
+EXPOSE 3000
+
+# Variables de entorno para desarrollo
+ENV PORT 3000
+ENV NODE_ENV development
+
+# Comando para iniciar en modo desarrollo (hot reload)
+CMD ["npm", "run", "dev"]
