@@ -1,2 +1,0 @@
-Objetivo: Mantener el backend minimalista, estable y claro, sin complejidad innecesaria, listo para enchufar módulos de dominio.
-Ámbito: Únicamente esta rama. No propagar cambios a otras ramas salvo indicación explícita.
