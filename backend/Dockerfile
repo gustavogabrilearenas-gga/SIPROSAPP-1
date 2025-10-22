@@ -28,9 +28,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project files
 COPY . .
 
-# Copy and set permissions for entrypoint (ruta relativa al contexto: la raíz del repo)
+# Copy entrypoint script and fix line endings
 COPY backend/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
 
 # Create non-root user
 RUN useradd --create-home --shell /bin/bash django \
@@ -50,4 +50,3 @@ ENTRYPOINT ["/entrypoint.sh"]
 
 # Run the application in development mode
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
-

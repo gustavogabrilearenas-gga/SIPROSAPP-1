@@ -11,8 +11,6 @@ WORKDIR /app
 
 # Copiar archivos de configuración
 COPY package*.json ./
-COPY postcss.config.js ./
-COPY tailwind.config.js ./
 
 # Generar package-lock.json si no existe e instalar dependencias
 RUN npm install
