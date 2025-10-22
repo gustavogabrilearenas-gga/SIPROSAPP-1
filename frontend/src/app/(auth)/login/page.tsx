@@ -1,47 +1,135 @@
 'use client';
-import { useState } from 'react';
+
+import { FormEvent, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import {
+  Alert,
+  AlertDescription,
+  AlertIcon,
+  AlertTitle,
+  Box,
+  Button,
+  Flex,
+  FormControl,
+  FormLabel,
+  Heading,
+  Input,
+  Stack,
+  Text,
+} from '@chakra-ui/react';
+
+import StateError from '@/components/feedback/StateError';
 import { toUserMessage } from '@/lib/errors';
 
-export default function LoginPage() {
+const LoginPage = () => {
   const router = useRouter();
-  const sp = useSearchParams();
-  const next = sp.get('next') || '/';
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [serverError, setServerError] = useState<string | null>(null);
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  const nextPath = searchParams.get('next') ?? '/';
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setError(null);
+    setServerError(null);
+    setLoading(true);
+
     try {
-      const resp = await fetch('/api/auth/login', {
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      if (!resp.ok) throw { status: resp.status, message: await resp.text() };
-      router.push(next);
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => undefined);
+        const message = toUserMessage({
+          status: response.status,
+          message: (data as { detail?: string })?.detail ?? 'Credenciales inválidas',
+        });
+        setError(message);
+        return;
+      }
+
+      router.push(nextPath);
+      router.refresh();
     } catch (err) {
-      setError(toUserMessage(err));
+      setServerError(toUserMessage(err));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <main style={{ maxWidth: 360, margin: '64px auto' }}>
-      <h1>Ingresar</h1>
-      <form onSubmit={onSubmit}>
-        <label htmlFor="email">Email</label>
-        <input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required />
-        <label htmlFor="password">Contraseña</label>
-        <input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} required />
-        {error && <p role="alert">{error}</p>}
-        <button type="submit" disabled={loading}>{loading ? 'Ingresando…' : 'Ingresar'}</button>
-      </form>
-    </main>
+    <Flex minH="100vh" align="center" justify="center" bgGradient="linear(to-br, gray.900, blue.900)" px={4}>
+      <Box as="form" onSubmit={handleSubmit} bg="gray.800" p={{ base: 8, md: 12 }} rounded="2xl" shadow="2xl" w="full" maxW="lg">
+        <Stack spacing={8}>
+          <Stack spacing={2} textAlign="center" color="gray.100">
+            <Heading size="lg">SIPROSA MES</Heading>
+            <Text color="gray.300">Sistema Integrado de Producción</Text>
+          </Stack>
+
+          {serverError && (
+            <StateError message={serverError} onRetry={() => setServerError(null)} />
+          )}
+
+          {error && !serverError && (
+            <Alert status="error" borderRadius="md" bg="red.900" color="white">
+              <AlertIcon />
+              <Box>
+                <AlertTitle>Inicio de sesión fallido</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Box>
+            </Alert>
+          )}
+
+          <Stack spacing={4}>
+            <FormControl isRequired>
+              <FormLabel color="gray.300">Correo electrónico</FormLabel>
+              <Input
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="tu.usuario@siprosa.ar"
+                bg="gray.700"
+                border="none"
+                color="white"
+                _placeholder={{ color: 'gray.400' }}
+              />
+            </FormControl>
+            <FormControl isRequired>
+              <FormLabel color="gray.300">Contraseña</FormLabel>
+              <Input
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="••••••••"
+                bg="gray.700"
+                border="none"
+                color="white"
+                _placeholder={{ color: 'gray.400' }}
+              />
+            </FormControl>
+          </Stack>
+
+          <Button
+            type="submit"
+            colorScheme="blue"
+            size="lg"
+            fontWeight="semibold"
+            isLoading={loading}
+            loadingText="Ingresando"
+          >
+            Ingresar
+          </Button>
+        </Stack>
+      </Box>
+    </Flex>
   );
-}
+};
+
+export default LoginPage;

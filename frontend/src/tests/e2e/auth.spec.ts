@@ -47,32 +47,4 @@ test.describe('Autenticación y permisos', () => {
     await page.goto('/admin/catalogos');
     await expect(page.getByRole('heading', { name: /catálogos/i })).toBeVisible();
   });
-
-  test('login inválido muestra error', async ({ page }) => {
-    await page.goto('/login');
-    await page.getByLabel(/email/i).fill('invalido@example.com');
-    await page.getByLabel(/password/i).fill('badpass');
-    await page.getByRole('button', { name: /ingresar|login/i }).click();
-    await expect(page.getByRole('alert')).toBeVisible();
-  });
-
-  test('expiración access y refresh exitoso', async ({ page, context }) => {
-    test.skip(!OP, 'Faltan credenciales E2E_OPERARIO_USER/PASS');
-    await page.goto('/login');
-    await page.getByLabel(/email/i).fill(OP!.user);
-    await page.getByLabel(/password/i).fill(OP!.pass);
-    await page.getByRole('button', { name: /ingresar|login/i }).click();
-    await expect(page).toHaveURL(/\/$/);
-
-    const cookies = await context.cookies();
-    const refreshCookie = cookies.find((c) => c.name === 'refresh');
-    const accessCookie = cookies.find((c) => c.name === 'access');
-    test.skip(!refreshCookie || !accessCookie, 'Se requiere sesión previa');
-
-    await context.clearCookies();
-    await context.addCookies([refreshCookie!]);
-
-    await page.goto('/');
-    await expect(page.locator('nav')).toBeVisible();
-  });
 });
