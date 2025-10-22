@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, User, Save, Eye, EyeOff } from 'lucide-react'
+import { X, User, Save, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { UsuarioDetalle } from '@/types/models'
-import { api } from '@/lib/api'
+import type { Funcion, Turno, UsuarioDetalle } from '@/types/models'
+import { api, handleApiError } from '@/lib/api'
 import { toast } from '@/hooks/use-toast'
 
 interface UsuarioFormModalProps {
@@ -25,8 +25,9 @@ export default function UsuarioFormModal({ isOpen, onClose, onSuccess, usuario }
     is_staff: false,
     is_superuser: false,
     legajo: '',
-    area: '',
-    turno_habitual: '',
+    dni: '',
+    funcion_id: '',
+    turno_id: '',
     telefono: '',
     fecha_ingreso: '',
   })
@@ -35,46 +36,78 @@ export default function UsuarioFormModal({ isOpen, onClose, onSuccess, usuario }
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [funciones, setFunciones] = useState<Funcion[]>([])
+  const [turnos, setTurnos] = useState<Turno[]>([])
+  const [loadingOptions, setLoadingOptions] = useState(false)
+
+  const formatDateInput = (value: string | null | undefined) =>
+    value ? value.slice(0, 10) : ''
 
   useEffect(() => {
-    if (isOpen) {
-      if (usuario) {
-        // Modo edición
-        setFormData({
-          username: usuario.username || '',
-          email: usuario.email || '',
-          first_name: usuario.first_name || '',
-          last_name: usuario.last_name || '',
-          password: '',
-          password_confirmacion: '',
-          is_staff: usuario.is_staff || false,
-          is_superuser: usuario.is_superuser || false,
-          legajo: usuario.legajo || '',
-          area: usuario.area || '',
-          turno_habitual: usuario.turno_habitual || '',
-          telefono: usuario.telefono || '',
-          fecha_ingreso: usuario.fecha_ingreso || '',
-        })
-      } else {
-        // Modo creación - resetear formulario
-        setFormData({
-          username: '',
-          email: '',
-          first_name: '',
-          last_name: '',
-          password: '',
-          password_confirmacion: '',
-          is_staff: false,
-          is_superuser: false,
-          legajo: '',
-          area: '',
-          turno_habitual: '',
-          telefono: '',
-          fecha_ingreso: '',
-        })
-      }
-      setError(null)
+    if (!isOpen) {
+      return
     }
+
+    const loadCatalogs = async () => {
+      setLoadingOptions(true)
+      try {
+        const [funcionesResponse, turnosResponse] = await Promise.all([
+          api.getFunciones({ page_size: 100 }),
+          api.getTurnos({ page_size: 100 }),
+        ])
+
+        setFunciones(funcionesResponse.results ?? [])
+        setTurnos(turnosResponse.results ?? [])
+      } catch (error) {
+        const { message } = handleApiError(error)
+        toast({
+          title: 'Error al cargar catálogos',
+          description: message || 'Revisá tu conexión e intentá nuevamente.',
+          variant: 'destructive',
+        })
+      } finally {
+        setLoadingOptions(false)
+      }
+    }
+
+    void loadCatalogs()
+
+    if (usuario) {
+      setFormData({
+        username: usuario.username || '',
+        email: usuario.email || '',
+        first_name: usuario.first_name || '',
+        last_name: usuario.last_name || '',
+        password: '',
+        password_confirmacion: '',
+        is_staff: usuario.is_staff || false,
+        is_superuser: usuario.is_superuser || false,
+        legajo: usuario.legajo || '',
+        dni: usuario.dni || '',
+        funcion_id: usuario.funcion_id ? String(usuario.funcion_id) : '',
+        turno_id: usuario.turno_id ? String(usuario.turno_id) : '',
+        telefono: usuario.telefono || '',
+        fecha_ingreso: formatDateInput(usuario.fecha_ingreso),
+      })
+    } else {
+      setFormData({
+        username: '',
+        email: '',
+        first_name: '',
+        last_name: '',
+        password: '',
+        password_confirmacion: '',
+        is_staff: false,
+        is_superuser: false,
+        legajo: '',
+        dni: '',
+        funcion_id: '',
+        turno_id: '',
+        telefono: '',
+        fecha_ingreso: '',
+      })
+    }
+    setError(null)
   }, [isOpen, usuario])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -108,32 +141,41 @@ export default function UsuarioFormModal({ isOpen, onClose, onSuccess, usuario }
         if (formData.password !== formData.password_confirmacion) {
           throw new Error('Las contraseñas no coinciden')
         }
-      } else {
-        // En modo edición, solo validar si se proporciona contraseña
-        if (formData.password && formData.password.length < 8) {
-          throw new Error('La contraseña debe tener al menos 8 caracteres')
-        }
-        if (formData.password && formData.password !== formData.password_confirmacion) {
-          throw new Error('Las contraseñas no coinciden')
-        }
       }
 
       // Preparar datos para enviar
-      const dataToSend: any = {
+      const trimmedLegajo = formData.legajo.trim()
+      const trimmedTelefono = formData.telefono.trim()
+      const trimmedDni = formData.dni.trim()
+
+      const dataToSend: Record<string, unknown> = {
         username: formData.username.trim(),
         email: formData.email.trim(),
         first_name: formData.first_name.trim(),
         last_name: formData.last_name.trim(),
         is_staff: formData.is_staff,
         is_superuser: formData.is_superuser,
-        legajo: formData.legajo.trim(),
-        area: formData.area,
-        turno_habitual: formData.turno_habitual,
-        telefono: formData.telefono.trim(),
+        legajo: trimmedLegajo,
+        telefono: trimmedTelefono,
+        dni: trimmedDni,
+      }
+
+      if (formData.funcion_id) {
+        dataToSend.funcion_id = Number(formData.funcion_id)
+      } else if (usuario) {
+        dataToSend.funcion_id = null
+      }
+
+      if (formData.turno_id) {
+        dataToSend.turno_id = Number(formData.turno_id)
+      } else if (usuario) {
+        dataToSend.turno_id = null
       }
 
       if (formData.fecha_ingreso) {
         dataToSend.fecha_ingreso = formData.fecha_ingreso
+      } else if (usuario) {
+        dataToSend.fecha_ingreso = null
       }
 
       if (!usuario) {
@@ -159,13 +201,15 @@ export default function UsuarioFormModal({ isOpen, onClose, onSuccess, usuario }
       onSuccess()
       onClose()
     } catch (err: any) {
-      const message = err?.message || 'Error al guardar el usuario'
+      const { message, details } = handleApiError(err)
+      const detailMessage =
+        message || (typeof details === 'string' ? details : 'Error al guardar el usuario')
       toast({
         title: 'No se pudo guardar',
-        description: message,
+        description: detailMessage,
         variant: 'destructive',
       })
-      setError(message)
+      setError(detailMessage)
     } finally {
       setLoading(false)
     }
@@ -382,37 +426,69 @@ export default function UsuarioFormModal({ isOpen, onClose, onSuccess, usuario }
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Área
+                      DNI
                     </label>
-                    <select
-                      value={formData.area}
-                      onChange={(e) => setFormData({ ...formData, area: e.target.value })}
+                    <input
+                      type="text"
+                      value={formData.dni}
+                      onChange={(e) => setFormData({ ...formData, dni: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="">Seleccionar área...</option>
-                      <option value="PRODUCCION">Producción</option>
-                      <option value="CALIDAD">Calidad</option>
-                      <option value="MANTENIMIENTO">Mantenimiento</option>
-                      <option value="ALMACEN">Almacén</option>
-                      <option value="ADMINISTRACION">Administración</option>
-                    </select>
+                      placeholder="Documento sin puntos"
+                    />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Turno Habitual
+                      Función
                     </label>
                     <select
-                      value={formData.turno_habitual}
-                      onChange={(e) => setFormData({ ...formData, turno_habitual: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      value={formData.funcion_id}
+                      onChange={(e) => setFormData({ ...formData, funcion_id: e.target.value })}
+                      disabled={loadingOptions}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:cursor-not-allowed disabled:bg-gray-100"
                     >
-                      <option value="">Seleccionar turno...</option>
-                      <option value="M">Mañana</option>
-                      <option value="T">Tarde</option>
-                      <option value="N">Noche</option>
-                      <option value="R">Rotativo</option>
+                      <option value="">Sin asignar</option>
+                      {funciones.map((funcion) => (
+                        <option key={funcion.id} value={funcion.id}>
+                          {funcion.codigo} — {funcion.nombre}
+                        </option>
+                      ))}
                     </select>
+                    {loadingOptions && funciones.length === 0 && (
+                      <p className="mt-1 flex items-center gap-2 text-xs text-gray-500">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Cargando funciones...
+                      </p>
+                    )}
+                    {!loadingOptions && funciones.length === 0 && (
+                      <p className="mt-1 text-xs text-gray-500">No hay funciones disponibles.</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Turno habitual
+                    </label>
+                    <select
+                      value={formData.turno_id}
+                      onChange={(e) => setFormData({ ...formData, turno_id: e.target.value })}
+                      disabled={loadingOptions}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:cursor-not-allowed disabled:bg-gray-100"
+                    >
+                      <option value="">Sin asignar</option>
+                      {turnos.map((turno) => (
+                        <option key={turno.id} value={turno.id}>
+                          {turno.nombre_display} ({turno.hora_inicio} - {turno.hora_fin})
+                        </option>
+                      ))}
+                    </select>
+                    {loadingOptions && turnos.length === 0 && (
+                      <p className="mt-1 flex items-center gap-2 text-xs text-gray-500">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Cargando turnos...
+                      </p>
+                    )}
+                    {!loadingOptions && turnos.length === 0 && (
+                      <p className="mt-1 text-xs text-gray-500">No hay turnos disponibles.</p>
+                    )}
                   </div>
 
                   <div>
@@ -459,7 +535,7 @@ export default function UsuarioFormModal({ isOpen, onClose, onSuccess, usuario }
                 >
                   {loading ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <Loader2 className="h-4 w-4 animate-spin" />
                       Guardando...
                     </>
                   ) : (

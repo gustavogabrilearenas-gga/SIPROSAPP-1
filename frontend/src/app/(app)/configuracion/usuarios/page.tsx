@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { api } from '@/lib/api'
+import { api, handleApiError } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -11,20 +11,22 @@ import UsuarioFormModal from '@/components/usuario-form-modal'
 import { ProtectedRoute } from '@/components/protected-route'
 import { useAuth } from '@/stores/auth-store'
 import { toast } from '@/hooks/use-toast'
-import { 
-  Users, 
-  Plus, 
-  RefreshCw, 
-  Search, 
-  Edit, 
-  Ban, 
-  CheckCircle, 
-  Key, 
+import {
+  Users,
+  Plus,
+  RefreshCw,
+  Search,
+  Edit,
+  Ban,
+  CheckCircle,
+  Key,
   ArrowLeft,
   Shield,
   Mail,
   Phone,
-  Briefcase
+  Briefcase,
+  Clock,
+  IdCard
 } from 'lucide-react'
 import type { UsuarioDetalle } from '@/types/models'
 
@@ -58,17 +60,17 @@ function UsuariosPageContent() {
     try {
       setLoading(true)
       setError(null)
-      const response = await api.getUsuarios()
-      const users = response.results || response
-      setUsuarios(Array.isArray(users) ? users : [])
+      const response = await api.getUsuarios({ page_size: 100 })
+      setUsuarios(response.results ?? [])
     } catch (error: any) {
-      const message = error?.message || 'No se pudieron cargar los usuarios'
+      const { message } = handleApiError(error)
+      const detail = message || 'No se pudieron cargar los usuarios'
       toast({
         title: 'Error al cargar usuarios',
-        description: message,
+        description: detail,
         variant: 'destructive',
       })
-      setError(`Error: ${message}`)
+      setError(`Error: ${detail}`)
     } finally {
       setLoading(false)
     }
@@ -79,12 +81,18 @@ function UsuariosPageContent() {
   }, [])
 
   // Filtrar usuarios
-  const filteredUsuarios = usuarios.filter(usuario =>
-    usuario.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    usuario.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    usuario.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    usuario.last_name.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredUsuarios = usuarios.filter((usuario) => {
+    const term = searchTerm.toLowerCase()
+    return (
+      usuario.username.toLowerCase().includes(term) ||
+      usuario.email.toLowerCase().includes(term) ||
+      usuario.first_name.toLowerCase().includes(term) ||
+      usuario.last_name.toLowerCase().includes(term) ||
+      (usuario.funcion_nombre || '').toLowerCase().includes(term) ||
+      (usuario.legajo || '').toLowerCase().includes(term) ||
+      (usuario.dni || '').toLowerCase().includes(term)
+    )
+  })
 
   const handleCreateUsuario = () => {
     setSelectedUsuario(null)
@@ -104,15 +112,24 @@ function UsuariosPageContent() {
     try {
       if (usuario.is_active) {
         await api.desactivarUsuario(usuario.id)
+        toast({
+          title: 'Usuario desactivado',
+          description: `${usuario.username} pasó a estado inactivo`,
+        })
       } else {
         await api.reactivarUsuario(usuario.id)
+        toast({
+          title: 'Usuario reactivado',
+          description: `${usuario.username} volvió a estar activo`,
+        })
       }
       fetchUsuarios()
     } catch (error: any) {
-      const message = error?.message || 'No se pudo actualizar el estado del usuario'
+      const { message } = handleApiError(error)
+      const detail = message || 'No se pudo actualizar el estado del usuario'
       toast({
         title: 'Error al actualizar usuario',
-        description: message,
+        description: detail,
         variant: 'destructive',
       })
     }
@@ -141,6 +158,7 @@ function UsuariosPageContent() {
     try {
       await api.cambiarPasswordUsuario(selectedUsuario.id, {
         password_nueva: newPassword,
+        password_confirmacion: confirmPassword,
       })
       toast({
         title: 'Contraseña actualizada',
@@ -151,10 +169,11 @@ function UsuariosPageContent() {
       setNewPassword('')
       setConfirmPassword('')
     } catch (error: any) {
-      const message = error?.message || 'No se pudo cambiar la contraseña'
+      const { message } = handleApiError(error)
+      const detail = message || 'No se pudo cambiar la contraseña'
       toast({
         title: 'Error al cambiar contraseña',
-        description: message,
+        description: detail,
         variant: 'destructive',
       })
     }
@@ -344,16 +363,28 @@ function UsuariosPageContent() {
                               <span className="truncate">{usuario.email}</span>
                             </div>
                           )}
+                          {usuario.dni && (
+                            <div className="flex items-center space-x-2 text-gray-600">
+                              <IdCard className="h-4 w-4" />
+                              <span>{usuario.dni}</span>
+                            </div>
+                          )}
                           {usuario.telefono && (
                             <div className="flex items-center space-x-2 text-gray-600">
                               <Phone className="h-4 w-4" />
                               <span>{usuario.telefono}</span>
                             </div>
                           )}
-                          {usuario.area && (
+                          {usuario.funcion_nombre && (
                             <div className="flex items-center space-x-2 text-gray-600">
                               <Briefcase className="h-4 w-4" />
-                              <span>{usuario.area}</span>
+                              <span>{usuario.funcion_nombre}</span>
+                            </div>
+                          )}
+                          {usuario.turno_nombre && (
+                            <div className="flex items-center space-x-2 text-gray-600">
+                              <Clock className="h-4 w-4" />
+                              <span>{usuario.turno_nombre}</span>
                             </div>
                           )}
                           {usuario.legajo && (
