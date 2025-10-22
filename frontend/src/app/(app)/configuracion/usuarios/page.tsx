@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { api, handleApiError } from '@/lib/api'
@@ -10,7 +10,6 @@ import { Badge } from '@/components/ui/badge'
 import UsuarioFormModal from '@/components/usuario-form-modal'
 import { ProtectedRoute } from '@/components/protected-route'
 import { useAuth } from '@/stores/auth-store'
-import { canManageUsuarios, canViewUsuarios } from '@/lib/auth-utils'
 import { toast } from '@/hooks/use-toast'
 import {
   Users,
@@ -36,19 +35,10 @@ function UsuariosPageContent() {
   const { user: currentUser } = useAuth()
   const [usuarios, setUsuarios] = useState<UsuarioDetalle[]>([])
   const [loading, setLoading] = useState(true)
-  const canViewPage = useMemo(() => canViewUsuarios(currentUser), [currentUser])
-  const canManagePage = useMemo(() => canManageUsuarios(currentUser), [currentUser])
 
-  const showPermissionDeniedToast = () =>
-    toast({
-      title: 'Permiso denegado',
-      description: 'Solo el superusuario puede modificar usuarios.',
-      variant: 'destructive',
-    })
-
-  // Redirigir si el usuario no tiene permisos para ver la página
+  // Redirigir si el usuario no es admin
   useEffect(() => {
-    if (currentUser && !canViewPage) {
+    if (currentUser && !currentUser.is_staff && !currentUser.is_superuser) {
       router.push('/dashboard')
       toast({
         title: 'Acceso denegado',
@@ -56,7 +46,7 @@ function UsuariosPageContent() {
         variant: 'destructive',
       })
     }
-  }, [canViewPage, currentUser, router])
+  }, [currentUser, router])
   const [searchTerm, setSearchTerm] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [selectedUsuario, setSelectedUsuario] = useState<UsuarioDetalle | null>(null)
@@ -66,7 +56,7 @@ function UsuariosPageContent() {
   const [confirmPassword, setConfirmPassword] = useState('')
 
   // Cargar usuarios
-  const fetchUsuarios = useCallback(async () => {
+  const fetchUsuarios = async () => {
     try {
       setLoading(true)
       setError(null)
@@ -84,21 +74,11 @@ function UsuariosPageContent() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }
 
   useEffect(() => {
-    if (!currentUser) {
-      return
-    }
-
-    if (!canViewPage) {
-      setUsuarios([])
-      setLoading(false)
-      return
-    }
-
-    void fetchUsuarios()
-  }, [canViewPage, currentUser, fetchUsuarios])
+    fetchUsuarios()
+  }, [])
 
   // Filtrar usuarios
   const filteredUsuarios = usuarios.filter((usuario) => {
@@ -115,28 +95,16 @@ function UsuariosPageContent() {
   })
 
   const handleCreateUsuario = () => {
-    if (!canManagePage) {
-      showPermissionDeniedToast()
-      return
-    }
     setSelectedUsuario(null)
     setIsFormModalOpen(true)
   }
 
   const handleEditUsuario = (usuario: UsuarioDetalle) => {
-    if (!canManagePage) {
-      showPermissionDeniedToast()
-      return
-    }
     setSelectedUsuario(usuario)
     setIsFormModalOpen(true)
   }
 
   const handleToggleActive = async (usuario: UsuarioDetalle) => {
-    if (!canManagePage) {
-      showPermissionDeniedToast()
-      return
-    }
     if (!confirm(`¿Está seguro que desea ${usuario.is_active ? 'desactivar' : 'reactivar'} al usuario ${usuario.username}?`)) {
       return
     }
@@ -155,7 +123,7 @@ function UsuariosPageContent() {
           description: `${usuario.username} volvió a estar activo`,
         })
       }
-      await fetchUsuarios()
+      fetchUsuarios()
     } catch (error: any) {
       const { message } = handleApiError(error)
       const detail = message || 'No se pudo actualizar el estado del usuario'
@@ -168,10 +136,6 @@ function UsuariosPageContent() {
   }
 
   const handleChangePassword = (usuario: UsuarioDetalle) => {
-    if (!canManagePage) {
-      showPermissionDeniedToast()
-      return
-    }
     setSelectedUsuario(usuario)
     setNewPassword('')
     setConfirmPassword('')
@@ -179,11 +143,6 @@ function UsuariosPageContent() {
   }
 
   const handleSubmitPasswordChange = async () => {
-    if (!canManagePage) {
-      showPermissionDeniedToast()
-      return
-    }
-
     if (!selectedUsuario) return
 
     if (newPassword.length < 4) {
@@ -205,7 +164,6 @@ function UsuariosPageContent() {
         title: 'Contraseña actualizada',
         description: `Se cambió la contraseña de ${selectedUsuario.username}`,
       })
-      await fetchUsuarios()
       setIsPasswordModalOpen(false)
       setSelectedUsuario(null)
       setNewPassword('')
@@ -254,22 +212,20 @@ function UsuariosPageContent() {
             </div>
             <div className="flex space-x-3">
               <Button
-                onClick={() => void fetchUsuarios()}
+                onClick={fetchUsuarios}
                 variant="outline"
                 disabled={loading}
               >
                 <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                 Recargar
               </Button>
-              {canManagePage && (
-                <Button
-                  onClick={handleCreateUsuario}
-                  className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Nuevo Usuario
-                </Button>
-              )}
+              <Button
+                onClick={handleCreateUsuario}
+                className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Nuevo Usuario
+              </Button>
             </div>
           </div>
         </div>
@@ -285,22 +241,6 @@ function UsuariosPageContent() {
             className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg"
           >
             <p>{error}</p>
-          </motion.div>
-        )}
-
-        {!canManagePage && canViewPage && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-6 flex items-start space-x-3 rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-700"
-          >
-            <Shield className="mt-1 h-5 w-5 flex-shrink-0" />
-            <div>
-              <p className="font-semibold">Vista de solo lectura</p>
-              <p className="text-sm">
-                Solo el superusuario puede crear, editar o cambiar contraseñas. Podés revisar la información de los usuarios, pero no modificarla.
-              </p>
-            </div>
           </motion.div>
         )}
 
@@ -458,50 +398,48 @@ function UsuariosPageContent() {
                     </div>
 
                     {/* Acciones */}
-                    {canManagePage && (
-                      <div className="flex items-center space-x-2 ml-4">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleEditUsuario(usuario)}
-                          className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
-                        >
-                          <Edit className="h-4 w-4 mr-1" />
-                          Editar
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleChangePassword(usuario)}
-                          className="bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200"
-                        >
-                          <Key className="h-4 w-4 mr-1" />
-                          Contraseña
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleToggleActive(usuario)}
-                          disabled={usuario.id === currentUser?.id}
-                          className={usuario.is_active
-                            ? 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200'
-                            : 'bg-green-50 hover:bg-green-100 text-green-700 border-green-200'
-                          }
-                        >
-                          {usuario.is_active ? (
-                            <>
-                              <Ban className="h-4 w-4 mr-1" />
-                              Desactivar
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle className="h-4 w-4 mr-1" />
-                              Activar
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    )}
+                    <div className="flex items-center space-x-2 ml-4">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleEditUsuario(usuario)}
+                        className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Editar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleChangePassword(usuario)}
+                        className="bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200"
+                      >
+                        <Key className="h-4 w-4 mr-1" />
+                        Contraseña
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleToggleActive(usuario)}
+                        disabled={usuario.id === currentUser?.id}
+                        className={usuario.is_active 
+                          ? 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200'
+                          : 'bg-green-50 hover:bg-green-100 text-green-700 border-green-200'
+                        }
+                      >
+                        {usuario.is_active ? (
+                          <>
+                            <Ban className="h-4 w-4 mr-1" />
+                            Desactivar
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Activar
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -511,22 +449,20 @@ function UsuariosPageContent() {
       </div>
 
       {/* Modal de Formulario */}
-      {canManagePage && (
-        <UsuarioFormModal
-          isOpen={isFormModalOpen}
-          onClose={() => {
-            setIsFormModalOpen(false)
-            setSelectedUsuario(null)
-          }}
-          onSuccess={() => {
-            void fetchUsuarios()
-          }}
-          usuario={selectedUsuario}
-        />
-      )}
+      <UsuarioFormModal
+        isOpen={isFormModalOpen}
+        onClose={() => {
+          setIsFormModalOpen(false)
+          setSelectedUsuario(null)
+        }}
+        onSuccess={() => {
+          fetchUsuarios()
+        }}
+        usuario={selectedUsuario}
+      />
 
       {/* Modal de Cambio de Contraseña */}
-      {canManagePage && isPasswordModalOpen && (
+      {isPasswordModalOpen && (
         <div
           className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           onClick={() => setIsPasswordModalOpen(false)}
