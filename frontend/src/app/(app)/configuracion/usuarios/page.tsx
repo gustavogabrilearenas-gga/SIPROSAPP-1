@@ -26,7 +26,7 @@ import {
   Phone,
   Briefcase,
   Clock,
-  IdCard
+  Contact2
 } from 'lucide-react'
 import type { UsuarioDetalle } from '@/types/models'
 
@@ -365,7 +365,7 @@ function UsuariosPageContent() {
                           )}
                           {usuario.dni && (
                             <div className="flex items-center space-x-2 text-gray-600">
-                              <IdCard className="h-4 w-4" />
+                              <Contact2 className="h-4 w-4" />
                               <span>{usuario.dni}</span>
                             </div>
                           )}
