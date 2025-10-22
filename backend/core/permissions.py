@@ -1,5 +1,5 @@
 # core/permissions.py
-from rest_framework.permissions import BasePermission
+from rest_framework.permissions import BasePermission, SAFE_METHODS
 
 def _is_in(user, group_name: str) -> bool:
     return user.is_authenticated and user.groups.filter(name=group_name).exists()
@@ -103,3 +103,18 @@ class IsAdminSupervisorOperarioOrCalidad(BasePermission):
     def has_permission(self, request, view):
         u = request.user
         return is_admin(u) or is_supervisor(u) or is_operario(u) or is_calidad(u)
+
+
+class IsSuperuserOrAdminSupervisorReadOnly(BasePermission):
+    """Permite lectura a administradores/supervisores y escritura solo al superusuario."""
+
+    def has_permission(self, request, view):
+        user = request.user
+
+        if not user.is_authenticated:
+            return False
+
+        if request.method in SAFE_METHODS:
+            return is_admin(user) or is_supervisor(user)
+
+        return is_superuser(user)

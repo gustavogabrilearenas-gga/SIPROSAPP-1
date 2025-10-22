@@ -7,9 +7,16 @@ export const isSuperuser = (user: User | null | undefined): boolean => Boolean(u
 
 export const isSupervisor = (user: User | null | undefined): boolean => hasGroup(user, 'Supervisor')
 
+export const isStaff = (user: User | null | undefined): boolean => Boolean(user?.is_staff)
+
 export const isOperario = (user: User | null | undefined): boolean => hasGroup(user, 'Operario')
 
 export const canAccessMasterConfig = (user: User | null | undefined): boolean =>
   isSuperuser(user) || isSupervisor(user)
 
 export const canEditMasterConfig = (user: User | null | undefined): boolean => isSuperuser(user)
+
+export const canViewUsuarios = (user: User | null | undefined): boolean =>
+  isSuperuser(user) || isStaff(user) || isSupervisor(user)
+
+export const canManageUsuarios = (user: User | null | undefined): boolean => isSuperuser(user)
