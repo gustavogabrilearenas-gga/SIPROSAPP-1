@@ -1,9 +1,19 @@
 'use client';
 
 import { ReactNode, useCallback } from 'react';
-import { Box, Button, Flex, HStack, IconButton, Spacer, Stack, Text } from '@chakra-ui/react';
+import {
+  Box,
+  Button,
+  Flex,
+  HStack,
+  Icon,
+  IconButton,
+  IconProps,
+  Spacer,
+  Stack,
+  Text,
+} from '@chakra-ui/react';
 import { usePathname, useRouter } from 'next/navigation';
-import { FiLogOut } from 'react-icons/fi';
 
 import Sidebar from '@/components/layout/Sidebar';
 import Spinner from '@/components/feedback/Spinner';
@@ -11,6 +21,22 @@ import StateError from '@/components/feedback/StateError';
 import { useSession } from '@/lib/auth';
 import { isApiError, toUserMessage } from '@/lib/errors';
 import { UserProvider } from '@/lib/rbac';
+
+const LogoutIcon = (props: IconProps) => (
+  <Icon
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+    <polyline points="16 17 21 12 16 7" />
+    <line x1="21" y1="12" x2="9" y2="12" />
+  </Icon>
+);
 
 const AppShell = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
@@ -79,7 +105,7 @@ const AppShell = ({ children }: { children: ReactNode }) => {
               <Button variant="ghost" onClick={() => router.push('/')}>Inicio</Button>
               <IconButton
                 aria-label="Cerrar sesión"
-                icon={<FiLogOut />}
+                icon={<LogoutIcon />}
                 colorScheme="red"
                 variant="outline"
                 onClick={handleLogout}
