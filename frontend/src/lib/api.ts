@@ -12,6 +12,7 @@ import type {
   Incidente,
   Maquina,
   ObservacionGeneral,
+  Parametro,
   Producto,
   RegistroMantenimiento,
   RegistroProduccion,
@@ -354,8 +355,16 @@ const api = {
     return get<PaginatedResponse<Funcion>>('catalogos/funciones/', { params })
   },
 
+  async getParametros(params?: Record<string, unknown>) {
+    return get<PaginatedResponse<Parametro>>('catalogos/parametros/', { params })
+  },
+
   async getProductos(params?: Record<string, unknown>) {
     return get<PaginatedResponse<Producto>>('catalogos/productos/', { params })
+  },
+
+  async getProducto(id: number | string) {
+    return get<Producto>(`catalogos/productos/${id}/`)
   },
 
   async createProducto(data: Record<string, unknown>) {
@@ -364,6 +373,10 @@ const api = {
 
   async updateProducto(id: number | string, data: Record<string, unknown>) {
     return patch(`catalogos/productos/${id}/`, data)
+  },
+
+  async deleteProducto(id: number | string) {
+    return del(`catalogos/productos/${id}/`)
   },
 
   async getFormulas(params?: Record<string, unknown>) {
@@ -382,8 +395,16 @@ const api = {
     return patch(`catalogos/formulas/${id}/`, data)
   },
 
+  async deleteFormula(id: number | string) {
+    return del(`catalogos/formulas/${id}/`)
+  },
+
   async getEtapasProduccion(params?: Record<string, unknown>) {
     return get<PaginatedResponse<EtapaProduccion>>('catalogos/etapas-produccion/', { params })
+  },
+
+  async getEtapaProduccion(id: number | string) {
+    return get<EtapaProduccion>(`catalogos/etapas-produccion/${id}/`)
   },
 
   async updateEtapaProduccion(id: number | string, data: Record<string, unknown>) {
@@ -394,8 +415,16 @@ const api = {
     return post('catalogos/etapas-produccion/', data)
   },
 
+  async deleteEtapaProduccion(id: number | string) {
+    return del(`catalogos/etapas-produccion/${id}/`)
+  },
+
   async getTurnos(params?: Record<string, unknown>) {
     return get<PaginatedResponse<Turno>>('catalogos/turnos/', { params })
+  },
+
+  async getTurno(id: number | string) {
+    return get<Turno>(`catalogos/turnos/${id}/`)
   },
 
   async createTurno(data: Record<string, unknown>) {
@@ -406,8 +435,16 @@ const api = {
     return patch(`catalogos/turnos/${id}/`, data)
   },
 
+  async deleteTurno(id: number | string) {
+    return del(`catalogos/turnos/${id}/`)
+  },
+
   async getUbicaciones(params?: Record<string, unknown>) {
     return get<PaginatedResponse<Ubicacion>>('catalogos/ubicaciones/', { params })
+  },
+
+  async getUbicacion(id: number | string) {
+    return get<Ubicacion>(`catalogos/ubicaciones/${id}/`)
   },
 
   async createUbicacion(data: Record<string, unknown>) {
@@ -416,6 +453,10 @@ const api = {
 
   async updateUbicacion(id: number | string, data: Record<string, unknown>) {
     return patch(`catalogos/ubicaciones/${id}/`, data)
+  },
+
+  async deleteUbicacion(id: number | string) {
+    return del(`catalogos/ubicaciones/${id}/`)
   },
 
   async getMaquinas(params?: Record<string, unknown>) {

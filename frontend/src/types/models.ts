@@ -40,6 +40,15 @@ export interface Funcion {
   activa: boolean
 }
 
+export interface Parametro {
+  id: number
+  codigo: string
+  nombre: string
+  descripcion: string
+  unidad: string
+  activo: boolean
+}
+
 export interface Producto {
   id: number
   codigo: string
@@ -90,10 +99,11 @@ export interface EtapaProduccion {
   codigo: string
   nombre: string
   descripcion: string
-  orden_tipico: number
-  requiere_registro_parametros: boolean
-  parametros_esperados: string
   activa: boolean
+  maquinas_permitidas: number[]
+  maquinas_permitidas_nombres?: Array<{ id: number; nombre: string }>
+  parametros: number[]
+  parametros_nombres?: string[]
 }
 
 export interface Turno {

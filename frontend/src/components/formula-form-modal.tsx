@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { X, Save, FileText } from 'lucide-react'
-import { api } from '@/lib/api'
+import { FileText, Save, X } from 'lucide-react'
+import { api, handleApiError } from '@/lib/api'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { showError, showSuccess } from '@/components/common/toast-utils'
+import type { Producto } from '@/types/models'
 
 interface FormulaFormModalProps {
   isOpen: boolean
@@ -14,291 +15,219 @@ interface FormulaFormModalProps {
   onSuccess: () => void
 }
 
-export default function FormulaFormModal({ isOpen, onClose, formulaId, onSuccess }: FormulaFormModalProps) {
-  const [formData, setFormData] = useState({
-    producto: null as number | null,
-    version: '',
-    descripcion: '',
-    instrucciones: '',
-    tiempo_total_minutos: 0,
-    temperatura_objetivo: null as number | null,
-    humedad_objetivo: null as number | null,
-    aprobada: false,
-    activa: true,
-  })
-  const [productos, setProductos] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+interface FormState {
+  codigo: string
+  version: string
+  producto: number | ''
+  descripcion: string
+  activa: boolean
+}
+
+const emptyForm: FormState = {
+  codigo: '',
+  version: '',
+  producto: '',
+  descripcion: '',
+  activa: true,
+}
+
+const FormulaFormModal = ({ isOpen, onClose, formulaId, onSuccess }: FormulaFormModalProps) => {
+  const [formState, setFormState] = useState<FormState>(emptyForm)
+  const [productos, setProductos] = useState<Producto[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
-    if (isOpen) {
-      loadProductos()
-      if (formulaId) {
-        fetchFormula()
-      } else {
-        resetForm()
-      }
+    if (!isOpen) {
+      return
+    }
+
+    void loadProductos()
+
+    if (formulaId) {
+      void loadFormula(formulaId)
+    } else {
+      setFormState(emptyForm)
     }
   }, [formulaId, isOpen])
 
   const loadProductos = async () => {
     try {
-      const response = await api.getProductos({ activo: true })
-      setProductos(response.results || [])
-    } catch (err) {
-      console.error('Error loading productos:', err)
+      const response = await api.getProductos({ page_size: 200, activo: true })
+      setProductos(response.results ?? [])
+    } catch (error) {
+      const { message } = handleApiError(error)
+      showError('No se pudieron cargar los productos', message)
     }
   }
 
-  const fetchFormula = async () => {
+  const loadFormula = async (id: number) => {
+    setIsLoading(true)
     try {
-      const data = await api.get(`/formulas/${formulaId}/`)
-      setFormData({
-        producto: data.producto ?? null,
+      const data = await api.getFormula(id)
+      setFormState({
+        codigo: data.codigo ?? '',
         version: data.version ?? '',
+        producto: data.producto ?? '',
         descripcion: data.descripcion ?? '',
-        instrucciones: data.instrucciones ?? '',
-        tiempo_total_minutos: data.tiempo_total_minutos ?? 0,
-        temperatura_objetivo: data.temperatura_objetivo ?? null,
-        humedad_objetivo: data.humedad_objetivo ?? null,
-        aprobada: data.aprobada ?? false,
-        activa: data.activa ?? true,
+        activa: Boolean(data.activa),
       })
-    } catch (err) {
-      console.error('Error fetching formula:', err)
+    } catch (error) {
+      const { message } = handleApiError(error)
+      showError('Error al cargar la fórmula', message)
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  const resetForm = () => {
-    setFormData({
-      producto: null,
-      version: '',
-      descripcion: '',
-      instrucciones: '',
-      tiempo_total_minutos: 0,
-      temperatura_objetivo: null,
-      humedad_objetivo: null,
-      aprobada: false,
-      activa: true,
-    })
-    setError(null)
+  const handleChange = <K extends keyof FormState>(field: K, value: FormState[K]) => {
+    setFormState((prev) => ({ ...prev, [field]: value }))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
 
+    if (!formState.codigo.trim() || !formState.version.trim() || !formState.producto) {
+      showError('Datos incompletos', 'Debe completar código, versión y producto asociado')
+      return
+    }
+
+    setIsSaving(true)
     try {
       const payload = {
-        ...formData,
-        temperatura_objetivo: formData.temperatura_objetivo || null,
-        humedad_objetivo: formData.humedad_objetivo || null,
+        codigo: formState.codigo.trim().toUpperCase(),
+        version: formState.version.trim(),
+        producto: formState.producto,
+        descripcion: formState.descripcion.trim(),
+        activa: formState.activa,
       }
 
       if (formulaId) {
-        await api.put(`/formulas/${formulaId}/`, payload)
+        await api.updateFormula(formulaId, payload)
+        showSuccess('Fórmula actualizada correctamente')
       } else {
-        await api.post('/formulas/', payload)
+        await api.createFormula(payload)
+        showSuccess('Fórmula creada correctamente')
       }
+
       onSuccess()
       onClose()
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Error al guardar la fórmula')
+    } catch (error) {
+      const { message } = handleApiError(error)
+      showError('No se pudo guardar la fórmula', message)
     } finally {
-      setLoading(false)
+      setIsSaving(false)
     }
   }
 
-  if (!isOpen) return null
+  if (!isOpen) {
+    return null
+  }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={onClose}>
       <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        className="bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ type: 'spring', stiffness: 200, damping: 24 }}
+        className="w-full max-w-3xl overflow-hidden rounded-xl bg-white shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
       >
-        {/* Header */}
-        <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-6">
-          <div className="flex justify-between items-start">
-            <div>
-              <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
-                <FileText className="w-6 h-6" />
-                {formulaId ? 'Editar Fórmula' : 'Nueva Fórmula'}
-              </h2>
-              <p className="text-purple-100">Complete los datos de la fórmula de producción</p>
-            </div>
-            <button onClick={onClose} className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2">
-              <X className="w-6 h-6" />
-            </button>
+        <div className="flex items-start justify-between bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-4 text-white">
+          <div>
+            <h2 className="flex items-center gap-2 text-lg font-semibold">
+              <FileText className="h-5 w-5" />
+              {formulaId ? 'Editar fórmula' : 'Nueva fórmula'}
+            </h2>
+            <p className="text-sm text-purple-100">Defina la receta maestra vinculada al producto</p>
           </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full p-1 text-white/80 transition hover:bg-white/10 hover:text-white"
+            aria-label="Cerrar"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 180px)' }}>
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-              {error}
+        <form onSubmit={handleSubmit} className="space-y-6 px-6 py-6">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">
+                Código <span className="text-red-500">*</span>
+              </label>
+              <input
+                value={formState.codigo}
+                onChange={(event) => handleChange('codigo', event.target.value.toUpperCase())}
+                placeholder="FML-001"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                disabled={isLoading || isSaving}
+              />
             </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Producto */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Producto <span className="text-red-500">*</span>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">
+                Versión <span className="text-red-500">*</span>
+              </label>
+              <input
+                value={formState.version}
+                onChange={(event) => handleChange('version', event.target.value)}
+                placeholder="1.0"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                disabled={isLoading || isSaving}
+              />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-sm font-medium text-gray-700">
+                Producto asociado <span className="text-red-500">*</span>
               </label>
               <select
-                required
-                value={formData.producto || ''}
-                onChange={(e) => setFormData({ ...formData, producto: parseInt(e.target.value) })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                value={formState.producto}
+                onChange={(event) => handleChange('producto', Number(event.target.value) || '')}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                disabled={isLoading || isSaving}
               >
-                <option value="">Seleccionar producto</option>
+                <option value="">Seleccione un producto</option>
                 {productos.map((producto) => (
                   <option key={producto.id} value={producto.id}>
-                    {producto.codigo} - {producto.nombre}
+                    {producto.codigo} — {producto.nombre}
                   </option>
                 ))}
               </select>
             </div>
-
-            {/* Versión */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Versión <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.version}
-                onChange={(e) => setFormData({ ...formData, version: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                placeholder="v1.0"
-              />
-            </div>
-
-            {/* Descripción */}
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Descripción <span className="text-red-500">*</span>
-              </label>
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-sm font-medium text-gray-700">Descripción</label>
               <textarea
-                required
-                value={formData.descripcion}
-                onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                rows={3}
-                placeholder="Descripción de la fórmula"
-              />
-            </div>
-
-            {/* Instrucciones */}
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Instrucciones <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                required
-                value={formData.instrucciones}
-                onChange={(e) => setFormData({ ...formData, instrucciones: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                value={formState.descripcion}
+                onChange={(event) => handleChange('descripcion', event.target.value)}
                 rows={4}
-                placeholder="Instrucciones detalladas de producción"
+                placeholder="Notas o alcance de la formulación"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                disabled={isLoading || isSaving}
               />
             </div>
-
-            {/* Tiempo Total */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tiempo Total (minutos) <span className="text-red-500">*</span>
-              </label>
+            <div className="flex items-center gap-2 md:col-span-2">
               <input
-                type="number"
-                required
-                min="0"
-                value={formData.tiempo_total_minutos}
-                onChange={(e) => setFormData({ ...formData, tiempo_total_minutos: parseInt(e.target.value) })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                id="formula-activa"
+                type="checkbox"
+                checked={formState.activa}
+                onChange={(event) => handleChange('activa', event.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                disabled={isLoading || isSaving}
               />
-            </div>
-
-            {/* Temperatura Objetivo */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Temperatura Objetivo (°C)
-              </label>
-              <input
-                type="number"
-                step="0.1"
-                value={formData.temperatura_objetivo || ''}
-                onChange={(e) => setFormData({ ...formData, temperatura_objetivo: parseFloat(e.target.value) || null })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                placeholder="25.0"
-              />
-            </div>
-
-            {/* Humedad Objetivo */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Humedad Objetivo (%)
-              </label>
-              <input
-                type="number"
-                step="0.1"
-                min="0"
-                max="100"
-                value={formData.humedad_objetivo || ''}
-                onChange={(e) => setFormData({ ...formData, humedad_objetivo: parseFloat(e.target.value) || null })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                placeholder="60.0"
-              />
-            </div>
-
-            {/* Checkboxes */}
-            <div className="md:col-span-2 space-y-3">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formData.aprobada}
-                  onChange={(e) => setFormData({ ...formData, aprobada: e.target.checked })}
-                  className="w-4 h-4 text-purple-600"
-                />
-                <span className="text-sm font-medium text-gray-700">Aprobada</span>
-              </label>
-
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formData.activa}
-                  onChange={(e) => setFormData({ ...formData, activa: e.target.checked })}
-                  className="w-4 h-4 text-purple-600"
-                />
-                <span className="text-sm font-medium text-gray-700">Activa</span>
+              <label htmlFor="formula-activa" className="text-sm text-gray-700">
+                Fórmula activa
               </label>
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="flex gap-3 mt-6 pt-6 border-t">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={loading}
-              className="flex-1"
-            >
+          <div className="flex justify-end gap-3 border-t pt-4">
+            <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>
               Cancelar
             </Button>
-            <Button
-              type="submit"
-              disabled={loading}
-              className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
-            >
-              <Save className="w-4 h-4 mr-2" />
-              {loading ? 'Guardando...' : 'Guardar Fórmula'}
+            <Button type="submit" disabled={isSaving || isLoading} className="bg-purple-600 text-white hover:bg-purple-700">
+              <Save className="mr-2 h-4 w-4" />
+              {isSaving ? 'Guardando...' : formulaId ? 'Actualizar fórmula' : 'Crear fórmula'}
             </Button>
           </div>
         </form>
@@ -306,3 +235,5 @@ export default function FormulaFormModal({ isOpen, onClose, formulaId, onSuccess
     </div>
   )
 }
+
+export default FormulaFormModal
