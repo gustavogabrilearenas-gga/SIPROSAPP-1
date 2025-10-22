@@ -24,7 +24,7 @@ import { toUserMessage } from '@/lib/errors';
 const LoginPage = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +42,7 @@ const LoginPage = () => {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ username, password }),
       });
 
       if (!response.ok) {
@@ -89,12 +89,12 @@ const LoginPage = () => {
 
           <Stack spacing={4}>
             <FormControl isRequired>
-              <FormLabel color="gray.300">Correo electrónico</FormLabel>
+              <FormLabel color="gray.300">Usuario</FormLabel>
               <Input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="tu.usuario@siprosa.ar"
+                type="text"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                placeholder="admin"
                 bg="gray.700"
                 border="none"
                 color="white"

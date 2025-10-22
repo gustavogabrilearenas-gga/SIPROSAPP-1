@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const PUBLIC_PREFIXES = ['/login', '/api/auth'];
+const PUBLIC_PATHS = [
+  '/login',
+  '/api/auth/login',
+  '/api/auth/refresh',
+  '/api/auth/token',
+];
 
 export function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
-  const isPublic = PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));
+  const isPublic = PUBLIC_PATHS.includes(pathname);
   const hasAccess = req.cookies.has('access');
 
   if (!isPublic && !hasAccess) {

@@ -3,7 +3,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 export type ApiError = { status: number; message: string; details?: unknown };
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_BASE ?? '/drf/api',
+  baseURL: process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:8000/api',
   withCredentials: true,
 });
 
