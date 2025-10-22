@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import Providers from './providers';
-import ClientLayout from './layout.client';
+import AppShell from './app-shell';
 
 export const metadata: Metadata = {
   title: 'SIPROSA MES - Sistema de Gestión de Manufactura',
@@ -13,7 +13,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es">
       <body>
         <Providers>
-          <ClientLayout>{children}</ClientLayout>
+          <AppShell>{children}</AppShell>
         </Providers>
       </body>
     </html>
