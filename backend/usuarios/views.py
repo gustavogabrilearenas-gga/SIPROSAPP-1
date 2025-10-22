@@ -11,7 +11,10 @@ from backend.usuarios.serializers import (
     UsuarioDetalleSerializer,
     UsuarioPerfilSerializer,
 )
-from backend.core.permissions import IsAdmin
+from backend.core.permissions import (
+    IsSuperuser,
+    IsSuperuserOrAdminSupervisorReadOnly,
+)
 
 
 UserModel = apps.get_model(settings.AUTH_USER_MODEL)
@@ -24,7 +27,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         UserModel.objects.all().select_related("user_profile").order_by("username")
     )
     serializer_class = UsuarioDetalleSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsSuperuserOrAdminSupervisorReadOnly]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = [
         "username",
@@ -44,8 +47,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             user_id = self.kwargs["pk"]
             if str(self.request.user.id) == str(user_id):
                 return [permissions.IsAuthenticated()]
-            return [IsAdmin()]
-        return [IsAdmin()]
+        return [permission() for permission in self.permission_classes]
 
     def get_serializer_class(self):
         if self.action == "create":
@@ -94,7 +96,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
 
         return Response({"message": "Contraseña cambiada exitosamente"})
 
-    @action(detail=True, methods=["post"], permission_classes=[IsAdmin])
+    @action(detail=True, methods=["post"], permission_classes=[IsSuperuser])
     def cambiar_password(self, request, pk=None):
         usuario = self.get_object()
         context = self.get_serializer_context()
@@ -116,7 +118,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
-    @action(detail=True, methods=["post"], permission_classes=[IsAdmin])
+    @action(detail=True, methods=["post"], permission_classes=[IsSuperuser])
     def reactivar(self, request, pk=None):
         usuario = self.get_object()
         usuario.is_active = True

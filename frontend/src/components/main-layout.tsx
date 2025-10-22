@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/stores/auth-store';
-import { canAccessMasterConfig } from '@/lib/auth-utils';
+import { canAccessMasterConfig, canViewUsuarios } from '@/lib/auth-utils';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -65,7 +65,7 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
           {navItems
             .filter((item) => {
               // Ocultar "Gestión de Usuarios" a los no-admin
-              if (item.href === '/configuracion/usuarios' && !user?.is_staff && !user?.is_superuser) {
+              if (item.href === '/configuracion/usuarios' && !canViewUsuarios(user)) {
                 return false;
               }
 
