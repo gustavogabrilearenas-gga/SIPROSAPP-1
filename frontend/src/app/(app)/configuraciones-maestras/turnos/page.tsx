@@ -1,347 +1,143 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { useAuth } from '@/stores/auth-store'
-import { ProtectedRoute } from '@/components/protected-route'
+import { Clock, Search } from 'lucide-react'
 import {
   Card,
   CardContent,
   CardHeader,
-  CardTitle
+  CardTitle,
 } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import {
-  Clock,
-  Plus,
-  Search,
-  Edit,
-  ArrowLeft,
-  Sun,
-  Moon,
-  Sunset,
-  Package,
-  type LucideIcon,
-} from 'lucide-react'
-import { api } from '@/lib/api'
-import TurnoFormModal from '@/components/turnos/TurnoFormModal'
 import DataState from '@/components/common/data-state'
+import { api, handleApiError } from '@/lib/api'
 import { showError } from '@/components/common/toast-utils'
+import type { Turno } from '@/types/models'
 
-interface Turno {
-  id: number
-  codigo: string
-  nombre: string
-  hora_inicio: string
-  hora_fin: string
-  activo: boolean
-  lotes_count: number
+const formatTime = (value: string) => {
+  const date = new Date(`2000-01-01T${value}`)
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+  return new Intl.DateTimeFormat('es-AR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
 }
 
-export default function TurnosPage() {
-  const router = useRouter()
-  const { user } = useAuth()
+const TurnosPage = () => {
   const [turnos, setTurnos] = useState<Turno[]>([])
+  const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [isFormOpen, setIsFormOpen] = useState(false)
-  const [selectedTurnoId, setSelectedTurnoId] = useState<number | null>(null)
 
   useEffect(() => {
-    fetchTurnos()
+    void fetchTurnos()
   }, [])
 
   const fetchTurnos = async () => {
+    setLoading(true)
+    setError(null)
     try {
-      setLoading(true)
-      setError(null)
-      const response = await api.getTurnos()
-      setTurnos(response.results || response)
-    } catch (error: any) {
-      const message = error?.message || 'No se pudieron obtener los turnos'
-      setError(message)
-      showError('Error al cargar turnos', message)
+      const response = await api.getTurnos({ page_size: 100 })
+      setTurnos(response.results ?? [])
+    } catch (err) {
+      const { message } = handleApiError(err)
+      const detail = message || 'No se pudieron obtener los turnos'
+      setError(detail)
+      showError('Error al cargar turnos', detail)
     } finally {
       setLoading(false)
     }
   }
 
-  const filteredTurnos = turnos.filter(t =>
-    t.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    t.nombre.toLowerCase().includes(searchTerm.toLowerCase())
-  )
-
-  const getTurnoIcon = (codigo: string): LucideIcon => {
-    const icons: Record<string, LucideIcon> = {
-      M: Sun,
-      T: Sunset,
-      N: Moon,
-    }
-    return icons[codigo] ?? Clock
-  }
-
-  const getTurnoColor = (codigo: string) => {
-    const colors: Record<string, string> = {
-      'M': 'bg-yellow-100 text-yellow-800',
-      'T': 'bg-orange-100 text-orange-800',
-      'N': 'bg-blue-100 text-blue-800',
-    }
-    return colors[codigo] || 'bg-gray-100 text-gray-800'
-  }
-
-  const formatTime = (time: string) => {
-    return new Date(`2000-01-01T${time}`).toLocaleTimeString('es-AR', {
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
-
-  const getCurrentTurno = () => {
-    const now = new Date()
-    const currentTime = now.getHours() * 60 + now.getMinutes()
-    
-    return turnos.find(turno => {
-      const startTime = new Date(`2000-01-01T${turno.hora_inicio}`).getHours() * 60 + 
-                       new Date(`2000-01-01T${turno.hora_inicio}`).getMinutes()
-      const endTime = new Date(`2000-01-01T${turno.hora_fin}`).getHours() * 60 + 
-                     new Date(`2000-01-01T${turno.hora_fin}`).getMinutes()
-      
-      if (startTime <= endTime) {
-        return currentTime >= startTime && currentTime < endTime
-      } else {
-        // Turno nocturno que cruza medianoche
-        return currentTime >= startTime || currentTime < endTime
-      }
-    })
-  }
-
-  const currentTurno = getCurrentTurno()
+  const filtered = turnos.filter((turno) => {
+    const term = searchTerm.toLowerCase()
+    return (
+      turno.codigo.toLowerCase().includes(term) ||
+      turno.nombre.toLowerCase().includes(term)
+    )
+  })
 
   const hasError = Boolean(error)
-  const dataStateError = hasError ? `Error al cargar turnos${error ? `: ${error}` : ''}` : null
-  const isEmptyState = !loading && !hasError && filteredTurnos.length === 0
+  const isEmpty = !loading && !hasError && filtered.length === 0
 
   return (
-    <ProtectedRoute>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-        {/* Header */}
-        <motion.header
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white/80 backdrop-blur-md shadow-lg border-b border-blue-100"
-        >
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center py-6">
-              <div className="flex items-center gap-4">
-                <Button
-                  variant="outline"
-                  onClick={() => router.push('/configuraciones-maestras')}
-                  className="flex items-center gap-2"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Volver
-                </Button>
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-                    <Clock className="w-8 h-8 text-blue-600" />
-                    Gestión de Turnos
-                  </h1>
-                  <p className="text-gray-600">Horarios de trabajo de la planta</p>
-                </div>
-              </div>
-              {(user?.is_superuser || user?.is_staff) && (
-                <Button
-                  onClick={() => {
-                    setSelectedTurnoId(null)
-                    setIsFormOpen(true)
-                  }}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Nuevo Turno
-                </Button>
-              )}
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-100">
+      <div className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-8">
+        <header className="flex items-center gap-3">
+          <div className="rounded-xl bg-indigo-600/10 p-3 text-indigo-700">
+            <Clock className="h-8 w-8" />
           </div>
-        </motion.header>
+          <div>
+            <h1 className="text-3xl font-semibold text-gray-900">Turnos operativos</h1>
+            <p className="text-sm text-gray-600">
+              Información oficial de{' '}
+              <code className="rounded bg-indigo-50 px-1.5 py-0.5 text-xs text-indigo-700">/api/catalogos/turnos/</code>
+            </p>
+          </div>
+        </header>
 
-        {/* Main Content */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Current Turno */}
-          {currentTurno && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-6"
-            >
-              <Card className="bg-gradient-to-r from-green-50 to-blue-50 border-green-200">
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-green-100 rounded-full">
-                      <Clock className="w-6 h-6 text-green-600" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-green-800">Turno Actual</h3>
-                      <p className="text-green-600">
-                        {currentTurno.nombre} ({formatTime(currentTurno.hora_inicio)} - {formatTime(currentTurno.hora_fin)})
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+          <input
+            type="text"
+            placeholder="Buscar por código o nombre"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            className="w-full rounded-lg border border-gray-300 py-3 pl-10 pr-4 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+          />
+        </div>
+
+        <DataState
+          loading={loading}
+          error={hasError ? error : null}
+          empty={isEmpty}
+          emptyMessage="No hay turnos registrados"
+        >
+          {!hasError && (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              {filtered.map((turno, index) => (
+                <motion.div
+                  key={turno.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05 * index }}
+                >
+                  <Card className="h-full border border-gray-100 shadow-sm transition hover:shadow-md">
+                    <CardHeader>
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="space-y-1">
+                          <CardTitle className="text-lg font-semibold text-gray-900">
+                            {turno.nombre}
+                          </CardTitle>
+                          <CardDescription className="text-base text-gray-700">
+                            Código interno: {turno.codigo}
+                          </CardDescription>
+                        </div>
+                        <Badge className={turno.activo ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}>
+                          {turno.activo ? 'Activo' : 'Inactivo'}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3 text-sm text-gray-700">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-indigo-600" />
+                        <span>
+                          {formatTime(turno.hora_inicio)} — {formatTime(turno.hora_fin)}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
           )}
-
-          {/* Search Bar */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="mb-6"
-          >
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Buscar por código o nombre..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-          </motion.div>
-
-          <DataState
-            loading={loading}
-            error={dataStateError}
-            empty={isEmptyState}
-            emptyMessage={
-              <div className="text-center py-12">
-                <Clock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500 text-lg">No se encontraron turnos</p>
-              </div>
-            }
-          >
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredTurnos.map((turno, index) => {
-                const TurnoIcon = getTurnoIcon(turno.codigo)
-                const isCurrent = currentTurno?.id === turno.id
-
-                return (
-                  <motion.div
-                    key={turno.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 * index }}
-                  >
-                    <Card
-                      className={`hover:shadow-xl transition-shadow duration-300 ${
-                        isCurrent ? 'ring-2 ring-green-500 bg-green-50' : ''
-                      }`}
-                    >
-                      <CardHeader>
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <TurnoIcon className="w-4 h-4 text-gray-500" />
-                              <Badge className={getTurnoColor(turno.codigo)}>
-                                {turno.codigo}
-                              </Badge>
-                              {isCurrent && (
-                                <Badge className="bg-green-100 text-green-800">
-                                  <Clock className="w-3 h-3 mr-1" />
-                                  Actual
-                                </Badge>
-                              )}
-                              {!turno.activo && (
-                                <Badge className="bg-gray-100 text-gray-800">Inactivo</Badge>
-                              )}
-                            </div>
-                            <CardTitle className="text-lg font-bold mb-1">
-                              {turno.nombre}
-                            </CardTitle>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-3">
-                          <div className="grid grid-cols-2 gap-2 text-sm">
-                            <div>
-                              <p className="text-gray-500 text-xs">Inicio</p>
-                              <p className="font-bold text-blue-600">{formatTime(turno.hora_inicio)}</p>
-                            </div>
-                            <div>
-                              <p className="text-gray-500 text-xs">Fin</p>
-                              <p className="font-bold text-blue-600">{formatTime(turno.hora_fin)}</p>
-                            </div>
-                            <div className="col-span-2">
-                              <p className="text-gray-500 text-xs">Lotes Asignados</p>
-                              <p className="font-bold text-green-600">{turno.lotes_count}</p>
-                            </div>
-                          </div>
-                          <div className="flex gap-2 pt-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="flex-1"
-                              onClick={() => router.push(`/lotes?turno=${turno.id}`)}
-                            >
-                              <Package className="w-4 h-4 mr-1" />
-                              Ver Lotes
-                            </Button>
-                            {(user?.is_superuser || user?.is_staff) && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedTurnoId(turno.id)
-                                  setIsFormOpen(true)
-                                }}
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                )
-              })}
-            </div>
-          </DataState>
-        </main>
+        </DataState>
       </div>
-      <TurnoFormModal
-        open={isFormOpen}
-        onClose={() => {
-          setIsFormOpen(false)
-          setSelectedTurnoId(null)
-        }}
-        initialData={
-          selectedTurnoId
-            ? (() => {
-                const turno = turnos.find((item) => item.id === selectedTurnoId)
-                return turno
-                  ? {
-                      id: turno.id,
-                      codigo: turno.codigo,
-                      nombre: turno.nombre,
-                      horaInicio: turno.hora_inicio?.slice(0, 5) ?? '',
-                      horaFin: turno.hora_fin?.slice(0, 5) ?? '',
-                      activo: turno.activo,
-                    }
-                  : undefined
-              })()
-            : undefined
-        }
-        onSuccess={() => {
-          fetchTurnos()
-        }}
-      />
-    </ProtectedRoute>
+    </div>
   )
 }
+
+export default TurnosPage

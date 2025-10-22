@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/stores/auth-store'
-import { api } from '@/lib/api'
+import { api, handleApiError } from '@/lib/api'
 import { toast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { User, Key, Mail, Calendar, Shield, Save, Eye, EyeOff, Edit2 } from 'lucide-react'
-import { UsuarioDetalle, CambiarPasswordRequest } from '@/types/models'
+import { User, Key, Mail, Calendar, Shield, Save, Eye, EyeOff, Edit2, Loader2 } from 'lucide-react'
+import { UsuarioDetalle, CambiarPasswordRequest, Funcion, Turno } from '@/types/models'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -49,34 +49,62 @@ export default function PerfilPage() {
     last_name: '',
     email: '',
     legajo: '',
-    area: '',
-    turno_habitual: '',
+    dni: '',
+    funcion_id: '',
+    turno_id: '',
     telefono: '',
   })
+  const [funciones, setFunciones] = useState<Funcion[]>([])
+  const [turnos, setTurnos] = useState<Turno[]>([])
+  const [catalogLoading, setCatalogLoading] = useState(false)
 
   useEffect(() => {
     fetchMiPerfil()
+    fetchCatalogos()
   }, [])
+
+  const fetchCatalogos = async () => {
+    try {
+      setCatalogLoading(true)
+      const [funcionesResponse, turnosResponse] = await Promise.all([
+        api.getFunciones({ page_size: 100 }),
+        api.getTurnos({ page_size: 100 }),
+      ])
+
+      setFunciones(funcionesResponse.results ?? [])
+      setTurnos(turnosResponse.results ?? [])
+    } catch (error) {
+      const { message } = handleApiError(error)
+      toast({
+        title: 'Error al cargar catálogos',
+        description: message || 'No se pudieron obtener las funciones y turnos.',
+        variant: 'destructive',
+      })
+    } finally {
+      setCatalogLoading(false)
+    }
+  }
 
   const fetchMiPerfil = async () => {
     try {
       setLoading(true)
       const usuario = await api.getMiPerfil()
       setUsuario(usuario)
-      // Cargar datos iniciales en el formulario de edición
       setProfileData({
         first_name: usuario.first_name || '',
         last_name: usuario.last_name || '',
         email: usuario.email || '',
         legajo: usuario.legajo || '',
-        area: usuario.area || '',
-        turno_habitual: usuario.turno_habitual || '',
+        dni: usuario.dni || '',
+        funcion_id: usuario.funcion_id ? String(usuario.funcion_id) : '',
+        turno_id: usuario.turno_id ? String(usuario.turno_id) : '',
         telefono: usuario.telefono || '',
       })
-    } catch (error: any) {
+    } catch (error) {
+      const { message } = handleApiError(error)
       toast({
         title: 'Error al cargar perfil',
-        description: error?.message || 'No se pudo obtener la información del usuario',
+        description: message || 'No se pudo obtener la información del usuario',
         variant: 'destructive',
       })
     } finally {
@@ -89,17 +117,40 @@ export default function PerfilPage() {
 
     try {
       setSavingProfile(true)
-      const updatedUsuario = await api.updateMiPerfil(profileData)
+      const payload: Record<string, unknown> = {
+        first_name: profileData.first_name.trim(),
+        last_name: profileData.last_name.trim(),
+        email: profileData.email.trim(),
+        legajo: profileData.legajo.trim(),
+        telefono: profileData.telefono.trim(),
+        dni: profileData.dni.trim(),
+      }
+
+      payload.funcion_id = profileData.funcion_id ? Number(profileData.funcion_id) : null
+      payload.turno_id = profileData.turno_id ? Number(profileData.turno_id) : null
+
+      const updatedUsuario = await api.updateMiPerfil(payload)
       setUsuario(updatedUsuario)
+      setProfileData({
+        first_name: updatedUsuario.first_name || '',
+        last_name: updatedUsuario.last_name || '',
+        email: updatedUsuario.email || '',
+        legajo: updatedUsuario.legajo || '',
+        dni: updatedUsuario.dni || '',
+        funcion_id: updatedUsuario.funcion_id ? String(updatedUsuario.funcion_id) : '',
+        turno_id: updatedUsuario.turno_id ? String(updatedUsuario.turno_id) : '',
+        telefono: updatedUsuario.telefono || '',
+      })
       setEditingProfile(false)
       toast({
         title: 'Perfil actualizado',
         description: 'Los cambios se guardaron correctamente.',
       })
-    } catch (error: any) {
+    } catch (error) {
+      const { message, details } = handleApiError(error)
       toast({
         title: 'Error al actualizar perfil',
-        description: error?.message || 'No se pudo guardar el perfil',
+        description: message || (typeof details === 'string' ? details : 'No se pudo guardar el perfil'),
         variant: 'destructive',
       })
     } finally {
@@ -119,8 +170,9 @@ export default function PerfilPage() {
         last_name: usuario.last_name || '',
         email: usuario.email || '',
         legajo: usuario.legajo || '',
-        area: usuario.area || '',
-        turno_habitual: usuario.turno_habitual || '',
+        dni: usuario.dni || '',
+        funcion_id: usuario.funcion_id ? String(usuario.funcion_id) : '',
+        turno_id: usuario.turno_id ? String(usuario.turno_id) : '',
         telefono: usuario.telefono || '',
       })
     }
@@ -161,10 +213,11 @@ export default function PerfilPage() {
         password_nueva: '',
         password_confirmacion: '',
       })
-    } catch (error: any) {
+    } catch (error) {
+      const { message, details } = handleApiError(error)
       toast({
         title: 'Error al cambiar contraseña',
-        description: error?.message || 'No se pudo cambiar la contraseña',
+        description: message || (typeof details === 'string' ? details : 'No se pudo cambiar la contraseña'),
         variant: 'destructive',
       })
     } finally {
@@ -253,12 +306,20 @@ export default function PerfilPage() {
                   <p className="text-gray-900">{usuario.legajo || '-'}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Área</label>
-                  <p className="text-gray-900">{usuario.area || '-'}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Documento</label>
+                  <p className="text-gray-900">{usuario.dni || '-'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Función</label>
+                  <p className="text-gray-900">{usuario.funcion_nombre || '-'}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
                   <p className="text-gray-900">{usuario.telefono || '-'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Turno habitual</label>
+                  <p className="text-gray-900">{usuario.turno_nombre || '-'}</p>
                 </div>
               </div>
             ) : (
@@ -317,20 +378,69 @@ export default function PerfilPage() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Área
+                      DNI
+                    </label>
+                    <input
+                      type="text"
+                      value={profileData.dni}
+                      onChange={(e) => setProfileData({...profileData, dni: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Documento sin puntos"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Función
                     </label>
                     <select
-                      value={profileData.area}
-                      onChange={(e) => setProfileData({...profileData, area: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={profileData.funcion_id}
+                      onChange={(e) => setProfileData({...profileData, funcion_id: e.target.value})}
+                      disabled={catalogLoading}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-100"
                     >
-                      <option value="">Seleccionar área...</option>
-                      <option value="PRODUCCION">Producción</option>
-                      <option value="MANTENIMIENTO">Mantenimiento</option>
-                      <option value="ALMACEN">Almacén</option>
-                      <option value="CALIDAD">Calidad</option>
-                      <option value="ADMINISTRACION">Administración</option>
+                      <option value="">Sin asignar</option>
+                      {funciones.map((funcion) => (
+                        <option key={funcion.id} value={funcion.id}>
+                          {funcion.codigo} — {funcion.nombre}
+                        </option>
+                      ))}
                     </select>
+                    {catalogLoading && funciones.length === 0 && (
+                      <p className="mt-1 flex items-center gap-2 text-xs text-gray-500">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Cargando funciones...
+                      </p>
+                    )}
+                    {!catalogLoading && funciones.length === 0 && (
+                      <p className="mt-1 text-xs text-gray-500">No hay funciones configuradas.</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Turno habitual
+                    </label>
+                    <select
+                      value={profileData.turno_id}
+                      onChange={(e) => setProfileData({...profileData, turno_id: e.target.value})}
+                      disabled={catalogLoading}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-100"
+                    >
+                      <option value="">Sin asignar</option>
+                      {turnos.map((turno) => (
+                        <option key={turno.id} value={turno.id}>
+                          {turno.nombre_display} ({turno.hora_inicio} - {turno.hora_fin})
+                        </option>
+                      ))}
+                    </select>
+                    {catalogLoading && turnos.length === 0 && (
+                      <p className="mt-1 flex items-center gap-2 text-xs text-gray-500">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Cargando turnos...
+                      </p>
+                    )}
+                    {!catalogLoading && turnos.length === 0 && (
+                      <p className="mt-1 text-xs text-gray-500">No hay turnos configurados.</p>
+                    )}
                   </div>
 
                   <div>
@@ -360,7 +470,15 @@ export default function PerfilPage() {
                     disabled={savingProfile}
                     className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
                   >
-                    {savingProfile ? 'Guardando...' : 'Guardar Cambios'}
+                    {savingProfile ? (
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Guardando...
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        <Save className="h-4 w-4" /> Guardar Cambios
+                      </span>
+                    )}
                   </Button>
                 </div>
               </form>

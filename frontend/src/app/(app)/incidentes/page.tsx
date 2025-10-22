@@ -1,431 +1,345 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
-import { AlertTriangle, Plus, Filter, Home, Loader2, Calendar, MapPin, AlertCircle } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { useEffect, useMemo, useState } from 'react'
+import { AlertTriangle, Shield } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { ProtectedRoute } from '@/components/protected-route'
-import IncidenteDetailModal from '@/components/incidente-detail-modal'
-import IncidenteFormModal from '@/components/incidente-form-modal'
-import { useAuth } from '@/stores/auth-store'
-import { api } from '@/lib/api'
-import { toast } from '@/hooks/use-toast'
-import type { IncidenteListItem } from '@/types/models'
-import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { Button } from '@/components/ui/button'
+import DataState from '@/components/common/data-state'
+import { api, handleApiError } from '@/lib/api'
+import type { Incidente, Maquina } from '@/types/models'
 
-function IncidentesContent() {
-  const router = useRouter()
-  const { user } = useAuth()
-  const [incidentes, setIncidentes] = useState<IncidenteListItem[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+const origenLabels: Record<Incidente['origen'], string> = {
+  produccion: 'Producción',
+  mantenimiento: 'Mantenimiento',
+  general: 'General',
+}
+
+interface IncidenteFormState {
+  fecha_inicio: string
+  fecha_fin: string
+  origen: Incidente['origen']
+  es_parada_no_planificada: boolean
+  maquina: string
+  descripcion: string
+  requiere_acciones_correctivas: boolean
+  acciones_correctivas: string
+  observaciones: string
+}
+
+const emptyForm: IncidenteFormState = {
+  fecha_inicio: '',
+  fecha_fin: '',
+  origen: 'produccion',
+  es_parada_no_planificada: true,
+  maquina: '',
+  descripcion: '',
+  requiere_acciones_correctivas: false,
+  acciones_correctivas: '',
+  observaciones: '',
+}
+
+const formatDateTime = (value: string) => {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return '-'
+  }
+  return new Intl.DateTimeFormat('es-AR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(date)
+}
+
+const IncidentesPage = () => {
+  const [incidentes, setIncidentes] = useState<Incidente[]>([])
+  const [maquinas, setMaquinas] = useState<Maquina[]>([])
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [filtroEstado, setFiltroEstado] = useState<string>('todos')
-  const [filtroSeveridad, setFiltroSeveridad] = useState<string>('todos')
-  const [page, setPage] = useState<number>(1)
-  const [count, setCount] = useState<number>(0)
-  const [selectedIncidenteId, setSelectedIncidenteId] = useState<number | null>(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [isFormModalOpen, setIsFormModalOpen] = useState(false)
-  const [selectedIncidenteForEdit, setSelectedIncidenteForEdit] = useState<IncidenteListItem | null>(null)
+  const [formState, setFormState] = useState<IncidenteFormState>(emptyForm)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
-    fetchIncidentes(1)
-  }, [filtroEstado, filtroSeveridad])
+    void fetchData()
+  }, [])
 
-  const fetchIncidentes = async (requestedPage: number = page) => {
-    setIsLoading(true)
+  const fetchData = async () => {
+    setLoading(true)
     setError(null)
     try {
-      const params: Record<string, any> = { page: requestedPage }
-      if (filtroEstado !== 'todos') params.estado = filtroEstado
-      if (filtroSeveridad !== 'todos') params.severidad = filtroSeveridad
-      
-      const response = await api.getIncidentes(params)
-      setIncidentes(response.results)
-      setCount(response.count)
-      setPage(requestedPage)
-    } catch (err: any) {
-      const message = err?.message || 'No se pudieron cargar los incidentes'
-      toast({
-        title: 'Error al cargar incidentes',
-        description: message,
-        variant: 'destructive',
-      })
-      setError('Error al cargar los incidentes')
+      const [incidentesResp, maquinasResp] = await Promise.all([
+        api.getIncidentes({ ordering: '-fecha_inicio', page_size: 50 }),
+        api.getMaquinas({ page_size: 100 }),
+      ])
+
+      setIncidentes(incidentesResp.results ?? [])
+      setMaquinas(maquinasResp.results ?? [])
+    } catch (err) {
+      const { message } = handleApiError(err)
+      setError(message || 'No se pudo obtener la información de incidentes')
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
-  const handleIncidenteClick = (incidenteId: number) => {
-    setSelectedIncidenteId(incidenteId)
-    setIsModalOpen(true)
-  }
+  const maquinaMap = useMemo(() => new Map(maquinas.map((item) => [item.id, item])), [maquinas])
 
-  const handleCreateIncidente = () => {
-    setSelectedIncidenteForEdit(null)
-    setIsFormModalOpen(true)
-  }
+  const resetForm = () => setFormState(emptyForm)
 
-  const handleEditIncidente = (incidente: IncidenteListItem) => {
-    setSelectedIncidenteForEdit(incidente)
-    setIsFormModalOpen(true)
-  }
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false)
-    setSelectedIncidenteId(null)
-  }
-
-  const handleCloseFormModal = () => {
-    setIsFormModalOpen(false)
-    setSelectedIncidenteForEdit(null)
-  }
-
-  const handleUpdate = () => {
-    fetchIncidentes(page)
-  }
-
-  const getSeveridadBadge = (severidad: string) => {
-    const severidades: Record<string, { bg: string, text: string, label: string }> = {
-      'CRITICA': { bg: 'bg-red-600', text: 'text-white', label: 'Crítica' },
-      'MAYOR': { bg: 'bg-red-100', text: 'text-red-800', label: 'Mayor' },
-      'MODERADA': { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Moderada' },
-      'MENOR': { bg: 'bg-green-100', text: 'text-green-800', label: 'Menor' },
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!formState.fecha_inicio || !formState.fecha_fin || !formState.descripcion.trim()) {
+      setError('Completá fechas y descripción para reportar el incidente')
+      return
     }
-    
-    const config = severidades[severidad] || severidades['MODERADA']
-    
-    return (
-      <Badge className={`${config.bg} ${config.text} border-0 font-semibold`}>
-        {config.label}
-      </Badge>
-    )
-  }
-
-  const getEstadoBadge = (estado: string) => {
-    const estados: Record<string, { bg: string, text: string, label: string }> = {
-      'ABIERTO': { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Abierto' },
-      'EN_INVESTIGACION': { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'En Investigación' },
-      'ACCION_CORRECTIVA': { bg: 'bg-orange-100', text: 'text-orange-800', label: 'Acción Correctiva' },
-      'CERRADO': { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Cerrado' },
+    if (formState.requiere_acciones_correctivas && !formState.acciones_correctivas.trim()) {
+      setError('Detallá las acciones correctivas requeridas')
+      return
     }
-    
-    const config = estados[estado] || estados['ABIERTO']
-    
-    return (
-      <Badge className={`${config.bg} ${config.text} border-0`}>
-        {config.label}
-      </Badge>
-    )
-  }
 
-  const formatFecha = (fecha: string | null | undefined) => {
-    if (!fecha) return '-'
+    setIsSubmitting(true)
+    setError(null)
     try {
-      const date = new Date(fecha)
-      if (isNaN(date.getTime())) return '-'
-      return format(date, 'dd/MM/yyyy HH:mm', { locale: es })
-    } catch {
-      return '-'
+      const payload: Record<string, unknown> = {
+        fecha_inicio: new Date(formState.fecha_inicio).toISOString(),
+        fecha_fin: new Date(formState.fecha_fin).toISOString(),
+        origen: formState.origen,
+        es_parada_no_planificada: formState.es_parada_no_planificada,
+        descripcion: formState.descripcion.trim(),
+        requiere_acciones_correctivas: formState.requiere_acciones_correctivas,
+        observaciones: formState.observaciones.trim(),
+      }
+
+      if (formState.maquina) {
+        payload.maquina = Number(formState.maquina)
+      }
+      if (formState.requiere_acciones_correctivas) {
+        payload.acciones_correctivas = formState.acciones_correctivas.trim()
+      }
+
+      await api.createIncidente(payload)
+      resetForm()
+      await fetchData()
+    } catch (err) {
+      const { message } = handleApiError(err)
+      setError(message || 'No se pudo registrar el incidente')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
-  const totalPages = Math.ceil(count / 50)
+  const hasError = Boolean(error)
+  const isEmpty = !loading && !hasError && incidentes.length === 0
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-pink-50">
-      {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-        className="bg-white/80 backdrop-blur-sm shadow-lg border-b border-gray-200"
-        >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-          <Button
-            variant="ghost"
-                size="sm"
-            onClick={() => router.push('/')}
-                className="text-gray-600 hover:text-gray-900"
-          >
-                <Home className="h-4 w-4 mr-2" />
-                Inicio
-          </Button>
-              <div className="h-6 w-px bg-gray-300" />
-              <div className="flex items-center space-x-3">
-                <AlertTriangle className="h-8 w-8 text-red-600" />
+    <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-rose-100">
+      <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-red-600/10 p-3 text-red-700">
+              <AlertTriangle className="h-8 w-8" />
+            </div>
             <div>
-                  <h1 className="text-2xl font-bold text-gray-900">Gestión de Incidentes</h1>
-                  <p className="text-sm text-gray-600">Registro y seguimiento de incidencias</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-3">
-              <Button
-                onClick={handleCreateIncidente}
-                className="bg-red-600 hover:bg-red-700 text-white"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Reportar Incidente
-              </Button>
+              <h1 className="text-3xl font-semibold text-gray-900">Gestión de Incidentes</h1>
+              <p className="text-sm text-gray-600">
+                Registro de eventos críticos conectados al endpoint oficial <code>/api/incidentes/incidentes/</code>.
+              </p>
             </div>
           </div>
-        </div>
-      </motion.div>
+          <span className="inline-flex items-center gap-2 rounded-lg bg-white/70 px-3 py-2 text-sm text-gray-600 shadow-sm">
+            <Shield className="h-4 w-4 text-red-700" />
+            Control de paradas y acciones correctivas
+          </span>
+        </header>
 
-      {/* Filtros */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="mb-6 mt-6"
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Card className="bg-white/80 backdrop-blur-sm shadow-lg border-0">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-4">
-                <Filter className="h-5 w-5 text-gray-600" />
-                
-                {/* Filtro por Estado */}
-                <div className="flex space-x-2 flex-1">
-                  <span className="text-sm font-medium text-gray-600 flex items-center">Estado:</span>
-                  {['todos', 'ABIERTO', 'EN_INVESTIGACION', 'ACCION_CORRECTIVA', 'CERRADO'].map((estado) => (
-                    <button
-                      key={estado}
-                      onClick={() => setFiltroEstado(estado)}
-                      className={`px-4 py-2 rounded-lg transition-all text-sm ${
-                        filtroEstado === estado
-                          ? 'bg-blue-600 text-white shadow-md'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {estado === 'todos' ? 'Todos' : estado.replace(/_/g, ' ')}
-                    </button>
+        <Card className="bg-white/90 shadow-lg backdrop-blur">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">Reportar incidente</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form className="grid grid-cols-1 gap-4 md:grid-cols-2" onSubmit={handleSubmit}>
+              <label className="flex flex-col gap-2 text-sm">
+                <span className="font-medium text-gray-700">Inicio *</span>
+                <input
+                  type="datetime-local"
+                  required
+                  value={formState.fecha_inicio}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, fecha_inicio: event.target.value }))}
+                  className="rounded-lg border border-gray-300 px-3 py-2 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-100"
+                />
+              </label>
+
+              <label className="flex flex-col gap-2 text-sm">
+                <span className="font-medium text-gray-700">Fin *</span>
+                <input
+                  type="datetime-local"
+                  required
+                  value={formState.fecha_fin}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, fecha_fin: event.target.value }))}
+                  className="rounded-lg border border-gray-300 px-3 py-2 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-100"
+                />
+              </label>
+
+              <label className="flex flex-col gap-2 text-sm">
+                <span className="font-medium text-gray-700">Origen *</span>
+                <select
+                  value={formState.origen}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, origen: event.target.value as Incidente['origen'] }))}
+                  className="rounded-lg border border-gray-300 px-3 py-2 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-100"
+                >
+                  {Object.entries(origenLabels).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
                   ))}
-                </div>
-                
-                {/* Filtro por Severidad */}
-                <div className="flex space-x-2">
-                  <span className="text-sm font-medium text-gray-600 flex items-center">Severidad:</span>
-                  {['todos', 'CRITICA', 'MAYOR', 'MODERADA', 'MENOR'].map((severidad) => (
-                    <button
-                      key={severidad}
-                      onClick={() => setFiltroSeveridad(severidad)}
-                      className={`px-4 py-2 rounded-lg transition-all text-sm ${
-                        filtroSeveridad === severidad
-                          ? 'bg-red-600 text-white shadow-md'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {severidad === 'todos' ? 'Todas' : severidad}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          </div>
-        </motion.div>
+                </select>
+              </label>
 
-      {/* Lista de Incidentes */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Card className="bg-white/80 backdrop-blur-sm shadow-xl border-0">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>Incidentes Registrados</span>
-                <span className="text-sm font-normal text-gray-500">
-                  {count} incidentes encontrados
-                </span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="text-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-red-600 mx-auto mb-4" />
-                  <p className="text-gray-600">Cargando incidentes...</p>
-                </div>
-              ) : error ? (
-                <div className="text-center py-12">
-                  <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                  <p className="text-red-600 mb-4">{error}</p>
-                  <Button onClick={() => fetchIncidentes(page)}>
-                    Reintentar
-                  </Button>
-                </div>
-              ) : incidentes.length === 0 ? (
-                <div className="text-center py-12">
-                  <AlertTriangle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 mb-4">No se encontraron incidentes</p>
-                  <Button onClick={handleCreateIncidente}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Reportar Primer Incidente
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {incidentes.map((incidente) => (
-                    <div
-                      key={incidente.id}
-                      className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer hover:bg-gray-50"
-                    >
-                      <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                          {/* Header del incidente */}
-                          <div className="flex items-center space-x-3 mb-2">
-                            <span className="font-mono text-sm font-semibold text-blue-600">
-                          {incidente.codigo}
-                            </span>
-                            {getSeveridadBadge(incidente.severidad)}
-                            {getEstadoBadge(incidente.estado)}
-                            {incidente.requiere_notificacion_anmat && (
-                              <Badge className="bg-purple-100 text-purple-800 border-0">
-                                ANMAT
-                              </Badge>
-                            )}
-                          </div>
-
-                          {/* Título */}
-                          <h3 className="text-lg font-bold text-gray-900 mb-2">
-                            {incidente.titulo}
-                        </h3>
-
-                          {/* Descripción */}
-                          <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-                            {incidente.descripcion}
-                          </p>
-
-                          {/* Información adicional */}
-                          <div className="flex flex-wrap gap-4 text-sm text-gray-500">
-                            <span className="flex items-center">
-                              <Calendar className="h-4 w-4 mr-1" />
-                              {formatFecha(incidente.fecha_ocurrencia)}
-                            </span>
-                            {incidente.ubicacion_nombre && (
-                              <span className="flex items-center">
-                                <MapPin className="h-4 w-4 mr-1" />
-                                {incidente.ubicacion_nombre}
-                              </span>
-                            )}
-                            {incidente.tipo_nombre && (
-                              <span className="text-gray-700 font-medium">
-                                Tipo: {incidente.tipo_nombre}
-                        </span>
-                            )}
-                          </div>
-                      </div>
-
-                        {/* Botón de acción */}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleIncidenteClick(incidente.id)}
-                        >
-                          Ver Detalles
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                  </div>
-              )}
-                </CardContent>
-              </Card>
-        </div>
-            </motion.div>
-
-      {/* Paginación */}
-      {totalPages > 1 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="mt-6 mb-8"
-        >
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-center space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => fetchIncidentes(page - 1)}
-                disabled={page === 1}
-              >
-                Anterior
-              </Button>
-              
-              <div className="flex items-center space-x-2">
-                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                  let pageNum
-                  if (totalPages <= 5) {
-                    pageNum = i + 1
-                  } else if (page <= 3) {
-                    pageNum = i + 1
-                  } else if (page >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i
-                  } else {
-                    pageNum = page - 2 + i
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={formState.es_parada_no_planificada}
+                  onChange={(event) =>
+                    setFormState((prev) => ({ ...prev, es_parada_no_planificada: event.target.checked }))
                   }
-                  
-                  return (
-                    <Button
-                      key={pageNum}
-                      variant={pageNum === page ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => fetchIncidentes(pageNum)}
-                      className={pageNum === page ? "bg-red-600 hover:bg-red-700" : ""}
-                    >
-                      {pageNum}
-                    </Button>
-                  )
-                })}
+                  className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                />
+                ¿Es una parada no planificada?
+              </label>
+
+              <label className="flex flex-col gap-2 text-sm">
+                <span className="font-medium text-gray-700">Máquina</span>
+                <select
+                  value={formState.maquina}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, maquina: event.target.value }))}
+                  className="rounded-lg border border-gray-300 px-3 py-2 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-100"
+                >
+                  <option value="">Sin asociar</option>
+                  {maquinas.map((maquina) => (
+                    <option key={maquina.id} value={maquina.id}>
+                      {maquina.codigo} — {maquina.nombre}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="md:col-span-2 flex flex-col gap-2 text-sm">
+                <span className="font-medium text-gray-700">Descripción *</span>
+                <textarea
+                  required
+                  value={formState.descripcion}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, descripcion: event.target.value }))}
+                  rows={3}
+                  className="rounded-lg border border-gray-300 px-3 py-2 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-100"
+                  placeholder="Explicá el incidente, causas, áreas involucradas y consecuencias"
+                />
+              </label>
+
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={formState.requiere_acciones_correctivas}
+                  onChange={(event) =>
+                    setFormState((prev) => ({
+                      ...prev,
+                      requiere_acciones_correctivas: event.target.checked,
+                      acciones_correctivas: event.target.checked ? prev.acciones_correctivas : '',
+                    }))
+                  }
+                  className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                />
+                ¿Requiere acciones correctivas?
+              </label>
+
+              {formState.requiere_acciones_correctivas && (
+                <label className="md:col-span-2 flex flex-col gap-2 text-sm">
+                  <span className="font-medium text-gray-700">Acciones correctivas *</span>
+                  <textarea
+                    required
+                    value={formState.acciones_correctivas}
+                    onChange={(event) => setFormState((prev) => ({ ...prev, acciones_correctivas: event.target.value }))}
+                    rows={2}
+                    className="rounded-lg border border-gray-300 px-3 py-2 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-100"
+                    placeholder="Describe las tareas a ejecutar, responsables y plazos"
+                  />
+                </label>
+              )}
+
+              <label className="md:col-span-2 flex flex-col gap-2 text-sm">
+                <span className="font-medium text-gray-700">Observaciones</span>
+                <textarea
+                  value={formState.observaciones}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, observaciones: event.target.value }))}
+                  rows={2}
+                  className="rounded-lg border border-gray-300 px-3 py-2 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-100"
+                  placeholder="Notas complementarias, seguimiento o decisiones tomadas"
+                />
+              </label>
+
+              <div className="md:col-span-2 flex flex-wrap gap-3">
+                <Button type="submit" disabled={isSubmitting} className="bg-red-600 text-white hover:bg-red-700">
+                  {isSubmitting ? 'Guardando…' : 'Registrar incidente'}
+                </Button>
+                <Button type="button" variant="outline" onClick={resetForm} disabled={isSubmitting}>
+                  Limpiar formulario
+                </Button>
               </div>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => fetchIncidentes(page + 1)}
-                disabled={page === totalPages}
-              >
-                Siguiente
-              </Button>
-        </div>
-          </div>
-        </motion.div>
-      )}
+            </form>
+          </CardContent>
+        </Card>
 
-      {/* Modales */}
-      <IncidenteDetailModal
-        incidenteId={selectedIncidenteId}
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        onEdit={handleEditIncidente}
-        onUpdate={handleUpdate}
-      />
-
-      <IncidenteFormModal
-        incidente={selectedIncidenteForEdit}
-        isOpen={isFormModalOpen}
-        onClose={handleCloseFormModal}
-        onUpdate={handleUpdate}
-      />
+        <Card className="bg-white/90 shadow-lg backdrop-blur">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">Incidentes recientes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <DataState
+              loading={loading}
+              error={hasError ? error : null}
+              empty={isEmpty}
+              emptyMessage="No hay incidentes registrados."
+            >
+              {!hasError && (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[640px] text-sm">
+                    <thead>
+                      <tr className="border-b bg-gray-100/80 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">
+                        <th className="px-4 py-3">Fecha</th>
+                        <th className="px-4 py-3">Origen</th>
+                        <th className="px-4 py-3">Máquina</th>
+                        <th className="px-4 py-3">Descripción</th>
+                        <th className="px-4 py-3">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {incidentes.map((incidente) => {
+                        const maquina = incidente.maquina ? maquinaMap.get(incidente.maquina) : incidente.maquina_detalle
+                        return (
+                          <tr key={incidente.id} className="border-b border-gray-100/80 hover:bg-red-50/60">
+                            <td className="px-4 py-3 text-gray-700">
+                              {formatDateTime(incidente.fecha_inicio)}
+                            </td>
+                            <td className="px-4 py-3 text-gray-700">{origenLabels[incidente.origen]}</td>
+                            <td className="px-4 py-3 text-gray-700">
+                              {maquina ? `${maquina.codigo} — ${maquina.nombre}` : 'No asociada'}
+                            </td>
+                            <td className="px-4 py-3 text-gray-900">{incidente.descripcion}</td>
+                            <td className="px-4 py-3 text-gray-700">
+                              {incidente.requiere_acciones_correctivas
+                                ? incidente.acciones_correctivas || 'Pendiente'
+                                : 'No requeridas'}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </DataState>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
 
-export default function IncidentesPage() {
-  return (
-    <ProtectedRoute>
-      <IncidentesContent />
-    </ProtectedRoute>
-  )
-}
+export default IncidentesPage
