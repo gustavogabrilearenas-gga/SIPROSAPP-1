@@ -1,56 +1,56 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/stores/auth-store'
-import { Loader2 } from 'lucide-react'
+import { useAuthStore } from '@/stores/auth-store'
 
-/**
- * Componente para proteger rutas que requieren autenticación
- * Redirige a /login si el usuario no está autenticado
- */
-export function ProtectedRoute({ children }: { children: React.ReactNode }) {
+interface ProtectedRouteProps {
+  children: ReactNode
+}
+
+export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const router = useRouter()
-  const { isAuthenticated, isLoading, initializeAuth, _hasHydrated } = useAuth()
-  const hasRedirectedRef = useRef(false)
+  const { user, token, hydrated, isLoading, hydrate, loadUser } = useAuthStore()
+  const requestedUser = useRef(false)
 
   useEffect(() => {
-    if (!_hasHydrated) {
-      void initializeAuth()
+    hydrate()
+  }, [hydrate])
+
+  useEffect(() => {
+    if (!hydrated) {
+      return
     }
-  }, [_hasHydrated, initializeAuth])
+
+    if (token && !user && !requestedUser.current) {
+      requestedUser.current = true
+      void loadUser()
+    }
+  }, [hydrated, token, user, loadUser])
 
   useEffect(() => {
-    if (_hasHydrated && !isLoading && !isAuthenticated && !hasRedirectedRef.current) {
-      hasRedirectedRef.current = true
+    if (!hydrated) {
+      return
+    }
+
+    if (!token && !isLoading) {
       router.replace('/login')
     }
-  }, [_hasHydrated, isAuthenticated, isLoading, router])
+  }, [hydrated, token, isLoading, router])
 
-  // Durante la hidratación, mostrar loading
-  if (!_hasHydrated || isLoading) {
+  if (!hydrated || isLoading || (token && !user)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Verificando sesión...</p>
-        </div>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 text-slate-600">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
+        <p className="mt-4 text-sm font-medium">Verificando sesión…</p>
       </div>
     )
   }
 
-  // Si no está autenticado, mostrar loading mientras redirige
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Redirigiendo a login...</p>
-        </div>
-      </div>
-    )
+  if (!user) {
+    return null
   }
 
-  // Usuario autenticado, mostrar contenido
   return <>{children}</>
 }
+
