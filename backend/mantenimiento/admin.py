@@ -23,7 +23,14 @@ class RegistroMantenimientoAdmin(admin.ModelAdmin):
         "maquina__nombre",
         "descripcion",
         "descripcion_anomalias",
-        "observaciones"
+        "observaciones",
     ]
     date_hierarchy = "hora_inicio"
-    readonly_fields = ["fecha_registro", "registrado_por"]  # No se puede editar el usuario que registró
+    readonly_fields = ["fecha_registro", "registrado_por"]  # El usuario se completa automáticamente
+
+    def save_model(self, request, obj, form, change):
+        """Asegura que el registro guarde el usuario autenticado."""
+
+        if not obj.registrado_por_id:
+            obj.registrado_por = request.user
+        super().save_model(request, obj, form, change)
