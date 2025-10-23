@@ -61,6 +61,13 @@ class RolePermissionTests(TestCase):
         self.assertTrue(permissions.is_operario(operario))
         self.assertFalse(permissions.is_operario(other_user))
 
+    def test_is_operario_group_lookup_is_case_insensitive(self):
+        group = Group.objects.create(name="OPERARIO")
+        operario = UserModel.objects.create_user("op_upper", password="pass")
+        operario.groups.add(group)
+
+        self.assertTrue(permissions.is_operario(operario))
+
     def test_is_admin_or_supervisor_permission(self):
         view = object()
 

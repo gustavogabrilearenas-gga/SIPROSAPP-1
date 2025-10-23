@@ -2,7 +2,12 @@
 from rest_framework.permissions import BasePermission
 
 def _is_in(user, group_name: str) -> bool:
-    return user.is_authenticated and user.groups.filter(name=group_name).exists()
+    """Check if the authenticated user belongs to the given group."""
+
+    if not user.is_authenticated:
+        return False
+
+    return user.groups.filter(name__iexact=group_name).exists()
 
 def is_admin(user) -> bool:
     """Determina si el usuario debe ser considerado administrador."""
