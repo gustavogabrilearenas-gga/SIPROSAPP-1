@@ -1,13 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: 'http://localhost:8000/api/:path*',
-      },
-    ]
-  },
+  // Las peticiones al backend usan NEXT_PUBLIC_API_URL, por lo que no se definen rewrites adicionales.
 }
 
 module.exports = nextConfig

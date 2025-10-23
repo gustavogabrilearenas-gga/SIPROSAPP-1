@@ -27,7 +27,10 @@ const linkClasses = (
 
 export function MainLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname()
-  const { user, logout, isLoading } = useAuthStore()
+  const { user, logout } = useAuthStore((state) => ({
+    user: state.user,
+    logout: state.logout,
+  }))
 
   return (
     <div className="flex min-h-screen bg-slate-100">
@@ -65,10 +68,10 @@ export function MainLayout({ children }: { children: ReactNode }) {
           </div>
           <button
             onClick={() => {
-              void logout()
+              logout()
             }}
-            disabled={isLoading}
-            className="rounded-md border border-slate-300 px-3 py-1 text-sm font-medium text-slate-600 transition hover:bg-slate-100 disabled:opacity-60"
+            className="rounded-md border border-slate-300 px-3 py-1 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
+            type="button"
           >
             Cerrar sesión
           </button>
@@ -80,4 +83,3 @@ export function MainLayout({ children }: { children: ReactNode }) {
 }
 
 export default MainLayout
-

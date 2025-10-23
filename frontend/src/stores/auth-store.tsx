@@ -1,7 +1,7 @@
 'use client'
 
 import { create } from 'zustand'
-import { api, AUTH_TOKEN_KEY, handleApiError } from '@/lib/api'
+import { api, AUTH_TOKEN_KEY } from '@/lib/api'
 import type { User } from '@/types/models'
 
 const USER_STORAGE_KEY = 'siprosa.auth.user'
@@ -52,108 +52,64 @@ const writeUser = (user: User | null) => {
 interface AuthState {
   user: User | null
   token: string | null
-  hydrated: boolean
-  isLoading: boolean
-  error: string | null
-  hydrate: () => void
   login: (username: string, password: string) => Promise<void>
-  logout: () => Promise<void>
-  loadUser: () => Promise<void>
-  clearError: () => void
+  logout: () => void
+  hasGroup: (groupName: string) => boolean
+  refreshUser: (username?: string) => Promise<User>
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
-  user: null,
-  token: null,
-  hydrated: false,
-  isLoading: false,
-  error: null,
+  ...readStoredAuth(),
 
-  hydrate: () => {
-    if (get().hydrated) return
-    const stored = readStoredAuth()
-    set({ user: stored.user, token: stored.token, hydrated: true })
-  },
+  async login(username, password) {
+    const response = await api.login({ username, password })
+    const accessToken = response.access
 
-  clearError: () => set({ error: null }),
+    if (!accessToken) {
+      throw new Error('No se recibió un token de acceso válido.')
+    }
 
-  login: async (username: string, password: string) => {
-    set({ isLoading: true, error: null })
+    writeToken(accessToken)
+
     try {
-      const response = await api.login({ username, password })
-      const token = (response.access || response.token || '') as string
-
-      if (token) {
-        writeToken(token)
-      } else {
-        writeToken(null)
-      }
-
-      let user = response.user ?? null
-      if (!user) {
-        user = await api.getCurrentUser()
-      }
-
+      const user = await api.fetchCurrentUser({ username })
       writeUser(user)
-
-      set({
-        user,
-        token: token || null,
-        isLoading: false,
-        hydrated: true,
-        error: null,
-      })
+      set({ user, token: accessToken })
     } catch (error) {
-      const { message } = handleApiError(error)
       writeToken(null)
       writeUser(null)
-      set({
-        user: null,
-        token: null,
-        isLoading: false,
-        hydrated: true,
-        error: message,
-      })
+      set({ user: null, token: null })
       throw error
     }
   },
 
-  logout: async () => {
-    set({ isLoading: true })
-    try {
-      await api.logout()
-    } finally {
-      writeToken(null)
-      writeUser(null)
-      set({
-        user: null,
-        token: null,
-        isLoading: false,
-        hydrated: true,
-        error: null,
-      })
-    }
+  logout() {
+    writeToken(null)
+    writeUser(null)
+    set({ user: null, token: null })
   },
 
-  loadUser: async () => {
-    const { token } = get()
-    if (!token) {
-      writeUser(null)
-      set({ user: null })
-      return
+  hasGroup(groupName) {
+    const current = get().user
+    if (!current?.groups?.length) {
+      return false
     }
+    return current.groups.some((group) => group.toLowerCase() === groupName.toLowerCase())
+  },
 
-    set({ isLoading: true })
+  async refreshUser(username) {
+    const candidateUsername = username ?? get().user?.username ?? undefined
+
     try {
-      const user = await api.getCurrentUser()
+      const user = await api.fetchCurrentUser({ username: candidateUsername })
       writeUser(user)
-      set({ user, isLoading: false, error: null })
+      set({ user })
+      return user
     } catch (error) {
-      console.warn('No se pudo cargar el usuario actual', error)
       writeToken(null)
       writeUser(null)
-      set({ user: null, token: null, isLoading: false })
+      set({ user: null, token: null })
+      throw error
     }
   },
 }))
-

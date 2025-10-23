@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth-store'
 
@@ -10,35 +10,52 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const router = useRouter()
-  const { user, token, hydrated, isLoading, hydrate, loadUser } = useAuthStore()
-  const requestedUser = useRef(false)
+  const { user, token, refreshUser, logout } = useAuthStore((state) => ({
+    user: state.user,
+    token: state.token,
+    refreshUser: state.refreshUser,
+    logout: state.logout,
+  }))
+  const [checking, setChecking] = useState(true)
 
   useEffect(() => {
-    hydrate()
-  }, [hydrate])
+    let active = true
 
-  useEffect(() => {
-    if (!hydrated) {
-      return
+    const ensureSession = async () => {
+      if (!token) {
+        if (active) {
+          setChecking(false)
+        }
+        router.replace('/login')
+        return
+      }
+
+      if (!user) {
+        try {
+          await refreshUser()
+        } catch (error) {
+          logout()
+          if (active) {
+            setChecking(false)
+          }
+          router.replace('/login')
+          return
+        }
+      }
+
+      if (active) {
+        setChecking(false)
+      }
     }
 
-    if (token && !user && !requestedUser.current) {
-      requestedUser.current = true
-      void loadUser()
-    }
-  }, [hydrated, token, user, loadUser])
+    void ensureSession()
 
-  useEffect(() => {
-    if (!hydrated) {
-      return
+    return () => {
+      active = false
     }
+  }, [token, user, refreshUser, logout, router])
 
-    if (!token && !isLoading) {
-      router.replace('/login')
-    }
-  }, [hydrated, token, isLoading, router])
-
-  if (!hydrated || isLoading || (token && !user)) {
+  if (checking || !user || !token) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 text-slate-600">
         <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
@@ -47,10 +64,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     )
   }
 
-  if (!user) {
-    return null
-  }
-
   return <>{children}</>
 }
 
+export default ProtectedRoute
