@@ -6,9 +6,7 @@ from rest_framework.parsers import FormParser, MultiPartParser
 
 from backend.core.permissions import (
     IsAdmin,
-    IsAdminOrSupervisor,
     IsSuperuser,
-    IsSuperuserOrSupervisor,
 )
 
 from .models import (
@@ -62,10 +60,8 @@ class UbicacionViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.request.method in permissions.SAFE_METHODS:
-            perm_classes = [IsSuperuserOrSupervisor]
-        else:
-            perm_classes = [IsSuperuser]
-        return [perm() for perm in perm_classes]
+            return [permissions.IsAuthenticated()]
+        return [IsSuperuser()]
 
 
 class MaquinaViewSet(viewsets.ModelViewSet):
@@ -91,11 +87,9 @@ class MaquinaViewSet(viewsets.ModelViewSet):
         return queryset
 
     def get_permissions(self):
-        if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
-            perm_classes = [IsSuperuserOrSupervisor]
-        else:
-            perm_classes = [IsSuperuser]
-        return [perm() for perm in perm_classes]
+        if self.request.method in permissions.SAFE_METHODS:
+            return [permissions.IsAuthenticated()]
+        return [IsSuperuser()]
 
 
 class MaquinaAttachmentViewSet(viewsets.ModelViewSet):
@@ -140,11 +134,9 @@ class ProductoViewSet(viewsets.ModelViewSet):
         return queryset
 
     def get_permissions(self):
-        if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
-            perm_classes = [IsSuperuserOrSupervisor]
-        else:
-            perm_classes = [IsSuperuser]
-        return [perm() for perm in perm_classes]
+        if self.request.method in permissions.SAFE_METHODS:
+            return [permissions.IsAuthenticated()]
+        return [IsSuperuser()]
 
 
 class FormulaViewSet(viewsets.ModelViewSet):
@@ -174,11 +166,9 @@ class FormulaViewSet(viewsets.ModelViewSet):
         return queryset
 
     def get_permissions(self):
-        if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
-            perm_classes = [IsSuperuserOrSupervisor]
-        else:
-            perm_classes = [IsSuperuser]
-        return [perm() for perm in perm_classes]
+        if self.request.method in permissions.SAFE_METHODS:
+            return [permissions.IsAuthenticated()]
+        return [IsSuperuser()]
 
 
 class EtapaProduccionViewSet(viewsets.ModelViewSet):
@@ -195,11 +185,9 @@ class EtapaProduccionViewSet(viewsets.ModelViewSet):
     ordering_fields = ['codigo', 'nombre']
 
     def get_permissions(self):
-        if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
-            perm_classes = [IsSuperuserOrSupervisor]
-        else:
-            perm_classes = [IsSuperuser]
-        return [perm() for perm in perm_classes]
+        if self.request.method in permissions.SAFE_METHODS:
+            return [permissions.IsAuthenticated()]
+        return [IsSuperuser()]
 
 
 class TurnoViewSet(viewsets.ModelViewSet):
@@ -210,10 +198,8 @@ class TurnoViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.request.method in permissions.SAFE_METHODS:
-            perm_classes = [IsSuperuserOrSupervisor]
-        else:
-            perm_classes = [IsSuperuser]
-        return [perm() for perm in perm_classes]
+            return [permissions.IsAuthenticated()]
+        return [IsSuperuser()]
 
 
 class FuncionViewSet(viewsets.ModelViewSet):
