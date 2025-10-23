@@ -16,12 +16,17 @@ export interface ApiErrorPayload {
   details?: unknown
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? '/api'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? ''
+
+if (!API_BASE_URL) {
+  console.warn('NEXT_PUBLIC_API_URL no está definida. Las peticiones usarán rutas relativas.')
+}
+
 export const AUTH_TOKEN_KEY = 'siprosa.auth.token'
 
 const client: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: true,
+  withCredentials: false,
 })
 
 client.interceptors.request.use((config) => {
@@ -55,6 +60,8 @@ const extractResults = <T>(payload: T[] | PaginatedResponse<T>): T[] => {
 
   return []
 }
+
+const USER_ENDPOINT_CANDIDATES = ['usuarios/me/', 'auth/me/', 'users/me/'] as const
 
 export const handleApiError = (error: unknown): ApiErrorPayload => {
   if (axios.isAxiosError(error)) {
@@ -115,7 +122,7 @@ export const api = {
   async update<T>(resource: string, id: CrudId, data: unknown) {
     const endpoint = normalizeResource(resource)
     return request<T>({
-      method: 'patch',
+      method: 'put',
       url: `${endpoint}${id}/`,
       data,
     })
@@ -130,24 +137,58 @@ export const api = {
   },
 
   async login(credentials: { username: string; password: string }) {
-    return request<{ user?: User; access?: string; token?: string } & Record<string, unknown>>({
+    return request<{ access: string; refresh?: string }>({
       method: 'post',
-      url: 'auth/login/',
+      url: 'token/',
       data: credentials,
     })
   },
 
-  async logout() {
-    try {
-      await request({ method: 'post', url: 'auth/logout/' })
-    } catch (error) {
-      // Ignorar errores de logout para no bloquear el flujo del usuario
-      console.warn('Error al cerrar sesión', error)
-    }
-  },
+  async fetchCurrentUser(options: { username?: string } = {}) {
+    const { username } = options
 
-  async getCurrentUser() {
-    return request<User>({ method: 'get', url: 'auth/me/' })
+    for (const endpoint of USER_ENDPOINT_CANDIDATES) {
+      try {
+        const user = await request<User>({ method: 'get', url: endpoint })
+        if (user) {
+          return user
+        }
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          const status = error.response?.status
+          if (status === 404) {
+            continue
+          }
+          if (status === 401 || status === 403) {
+            throw error
+          }
+        }
+        throw error
+      }
+    }
+
+    if (username) {
+      try {
+        const endpoint = normalizeResource('usuarios')
+        const payload = await request<User[] | PaginatedResponse<User>>({
+          method: 'get',
+          url: endpoint,
+          params: { username, limit: 1 },
+        })
+        const [user] = extractResults(payload)
+        if (user) {
+          return user
+        }
+      } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.status === 404) {
+          // Ignorar y continuar con el error final.
+        } else {
+          throw error
+        }
+      }
+    }
+
+    throw new Error('No se pudo obtener la información del usuario actual.')
   },
 
   async getProfile() {
@@ -174,4 +215,3 @@ export const api = {
 export const apiUtils = {
   extractResults,
 }
-

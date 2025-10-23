@@ -6,9 +6,9 @@ import { useAuthStore } from '@/stores/auth-store'
 import type { UsuarioDetalle } from '@/types/models'
 
 export default function PerfilPage() {
-  const { user, loadUser } = useAuthStore((state) => ({
+  const { user, refreshUser } = useAuthStore((state) => ({
     user: state.user,
-    loadUser: state.loadUser,
+    refreshUser: state.refreshUser,
   }))
 
   const [profile, setProfile] = useState<UsuarioDetalle | null>(null)
@@ -85,7 +85,7 @@ export default function PerfilPage() {
         email: updated.email ?? '',
         telefono: updated.telefono ?? '',
       })
-      await loadUser()
+      await refreshUser()
     } catch (err) {
       const { message } = handleApiError(err)
       setError(message)
