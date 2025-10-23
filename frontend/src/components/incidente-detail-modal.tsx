@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { X, AlertTriangle, Calendar, User, MapPin, Package, History, FileText } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence } from '@/lib/motion'
 import { Button } from '@/components/ui/button'
 import { Incidente, LogAuditoria } from '@/types/models'
 import { api } from '@/lib/api'
 import { Badge } from '@/components/ui/badge'
+import { stopClickPropagation } from '@/lib/dom'
 
 interface IncidenteDetailModalProps {
   isOpen: boolean
@@ -292,7 +293,7 @@ export default function IncidenteDetailModal({ isOpen, onClose, incidenteId, onE
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
           className="bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden"
-          onClick={(e) => e.stopPropagation()}
+          onClick={stopClickPropagation}
         >
           {/* Header */}
           <div className="bg-gradient-to-r from-red-600 to-orange-600 text-white p-6">

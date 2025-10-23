@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { motion } from 'framer-motion'
+import { motion } from '@/lib/motion'
 import {
   Package,
   Plus,
@@ -25,7 +25,7 @@ import LoteFormModal from '@/components/lote-form-modal'
 import { useAuth } from '@/stores/auth-store'
 import { api, handleApiError } from '@/lib/api'
 import { showError, showSuccess } from '@/components/common/toast-utils'
-import type { LoteListItem } from '@/types/models'
+import type { Lote, LoteListItem } from '@/types/models'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import DataState from '@/components/common/data-state'
@@ -46,7 +46,7 @@ function LotesContent() {
   const [selectedLoteId, setSelectedLoteId] = useState<number | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isFormModalOpen, setIsFormModalOpen] = useState(false)
-  const [selectedLoteForEdit, setSelectedLoteForEdit] = useState<LoteListItem | null>(null)
+  const [selectedLoteForEdit, setSelectedLoteForEdit] = useState<Lote | null>(null)
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [transitioningLoteId, setTransitioningLoteId] = useState<number | null>(null)
 
@@ -94,9 +94,16 @@ function LotesContent() {
     setIsFormModalOpen(true)
   }
 
-  const handleEditLote = (lote: LoteListItem) => {
-    setSelectedLoteForEdit(lote)
-    setIsFormModalOpen(true)
+  const handleEditLote = async (lote: LoteListItem | Lote) => {
+    try {
+      setSelectedLoteForEdit(null)
+      const detalle = await api.getLote(lote.id)
+      setSelectedLoteForEdit(detalle)
+      setIsFormModalOpen(true)
+    } catch (err) {
+      const { message } = handleApiError(err)
+      showError('No se pudo cargar el lote seleccionado', message || 'Intente nuevamente más tarde.')
+    }
   }
 
   const closeFormModal = () => {

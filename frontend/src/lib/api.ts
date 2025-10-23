@@ -6,16 +6,23 @@ import axios, {
 } from 'axios'
 import type {
   CambiarPasswordRequest,
+  ControlCalidad,
   EtapaProduccion,
   Formula,
   Funcion,
   Incidente,
+  LogAuditoria,
+  Lote,
+  LoteEtapa,
+  LoteListItem,
   Maquina,
   ObservacionGeneral,
+  OrdenTrabajo,
   Parametro,
   Producto,
   RegistroMantenimiento,
   RegistroProduccion,
+  TipoMantenimiento,
   Turno,
   Ubicacion,
   User,
@@ -275,13 +282,13 @@ const patch = async <T>(path: string, data?: unknown, config?: AxiosRequestConfi
 const del = async <T>(path: string, config?: AxiosRequestConfig): Promise<T> =>
   request<T>({ ...config, method: 'delete', url: path })
 
-export type WithResults<T> = T | PaginatedResponse<T>
+export type WithResults<T> = T[] | PaginatedResponse<T>
 
-const unpackResults = <T>(payload: WithResults<T[]>): T[] => {
+const unpackResults = <T>(payload: WithResults<T>): T[] => {
   if (Array.isArray(payload)) {
     return payload
   }
-  return payload.results
+  return Array.isArray(payload?.results) ? payload.results : []
 }
 
 const api = {
@@ -459,6 +466,10 @@ const api = {
     return del(`catalogos/ubicaciones/${id}/`)
   },
 
+  async getTiposMantenimiento(params?: Record<string, unknown>) {
+    return get<PaginatedResponse<TipoMantenimiento>>('mantenimiento/tipos/', { params })
+  },
+
   async getMaquinas(params?: Record<string, unknown>) {
     return get<PaginatedResponse<Maquina>>('catalogos/maquinas/', { params })
   },
@@ -516,11 +527,91 @@ const api = {
   },
 
   async createIncidente(data: Record<string, unknown>) {
-    return post('incidentes/incidentes/', data)
+    return post<Incidente>('incidentes/incidentes/', data)
   },
 
   async updateIncidente(id: number | string, data: Record<string, unknown>) {
-    return patch(`incidentes/incidentes/${id}/`, data)
+    return patch<Incidente>(`incidentes/incidentes/${id}/`, data)
+  },
+
+  async getLotes(params?: Record<string, unknown>) {
+    return get<PaginatedResponse<LoteListItem>>('produccion/lotes/', { params })
+  },
+
+  async getLote(id: number | string) {
+    return get<Lote>(`produccion/lotes/${id}/`)
+  },
+
+  async createLote(data: Record<string, unknown>) {
+    return post<Lote>('produccion/lotes/', data)
+  },
+
+  async updateLote(id: number | string, data: Record<string, unknown>) {
+    return patch<Lote>(`produccion/lotes/${id}/`, data)
+  },
+
+  async deleteLote(id: number | string) {
+    return del(`produccion/lotes/${id}/`)
+  },
+
+  async iniciarLote(id: number | string) {
+    return post<{ message?: string }>(`produccion/lotes/${id}/iniciar/`)
+  },
+
+  async pausarLote(id: number | string, data: Record<string, unknown>) {
+    return post<{ message?: string }>(`produccion/lotes/${id}/pausar/`, data)
+  },
+
+  async completarLote(id: number | string) {
+    return post<{ message?: string }>(`produccion/lotes/${id}/completar/`)
+  },
+
+  async cancelarLote(id: number | string, data: Record<string, unknown>) {
+    return post<{ message?: string }>(`produccion/lotes/${id}/cancelar/`, data)
+  },
+
+  async getLotesEtapas(params?: Record<string, unknown>) {
+    return get<PaginatedResponse<LoteEtapa>>('produccion/lotes-etapas/', { params })
+  },
+
+  async getControlesCalidad(params?: Record<string, unknown>) {
+    return get<PaginatedResponse<ControlCalidad>>('calidad/controles/', { params })
+  },
+
+  async getLogsAuditoria(params?: Record<string, unknown>) {
+    return get<{ logs: LogAuditoria[] }>('auditoria/logs/', { params })
+  },
+
+  async getOrdenesTrabajo(params?: Record<string, unknown>) {
+    return get<PaginatedResponse<OrdenTrabajo>>('mantenimiento/ordenes/', { params })
+  },
+
+  async getOrdenTrabajo(id: number | string) {
+    return get<OrdenTrabajo>(`mantenimiento/ordenes/${id}/`)
+  },
+
+  async createOrdenTrabajo(data: Record<string, unknown>) {
+    return post<OrdenTrabajo>('mantenimiento/ordenes/', data)
+  },
+
+  async updateOrdenTrabajo(id: number | string, data: Record<string, unknown>) {
+    return patch<OrdenTrabajo>(`mantenimiento/ordenes/${id}/`, data)
+  },
+
+  async iniciarOrdenTrabajo(id: number | string) {
+    return post<OrdenTrabajo>(`mantenimiento/ordenes/${id}/iniciar/`)
+  },
+
+  async pausarOrdenTrabajo(id: number | string) {
+    return post<OrdenTrabajo>(`mantenimiento/ordenes/${id}/pausar/`)
+  },
+
+  async completarOrdenTrabajo(id: number | string, data: Record<string, unknown>) {
+    return post<OrdenTrabajo>(`mantenimiento/ordenes/${id}/completar/`, data)
+  },
+
+  async cerrarOrdenTrabajo(id: number | string) {
+    return post<OrdenTrabajo>(`mantenimiento/ordenes/${id}/cerrar/`)
   },
 }
 

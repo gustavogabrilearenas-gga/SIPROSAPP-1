@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence } from '@/lib/motion'
 import { 
   X, 
   Wrench, 
@@ -17,16 +17,40 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { api } from '@/lib/api'
 import { useAuth } from '@/stores/auth-store'
-import type { OrdenTrabajo, OrdenTrabajoListItem, TipoMantenimiento, Maquina } from '@/types/models'
+import type { Maquina, OrdenTrabajo, TipoMantenimiento, UsuarioDetalle } from '@/types/models'
+import { stopClickPropagation } from '@/lib/dom'
 
 interface OrdenTrabajoFormModalProps {
-  orden: OrdenTrabajoListItem | null
+  orden: OrdenTrabajo | null
   isOpen: boolean
   onClose: () => void
   onUpdate: () => void
 }
 
-export default function OrdenTrabajoFormModal({ 
+const PRIORIDADES = ['BAJA', 'NORMAL', 'ALTA', 'URGENTE'] as const
+type PrioridadOrden = (typeof PRIORIDADES)[number]
+
+const ESTADOS_ORDEN = ['ABIERTA', 'ASIGNADA', 'EN_PROCESO', 'PAUSADA', 'COMPLETADA', 'CANCELADA'] as const
+type EstadoOrden = (typeof ESTADOS_ORDEN)[number]
+
+interface OrdenTrabajoFormData {
+  codigo: string
+  tipo: string
+  maquina: string
+  prioridad: PrioridadOrden
+  estado: EstadoOrden
+  titulo: string
+  descripcion: string
+  fecha_planificada: string
+  asignada_a: string
+  trabajo_realizado: string
+  observaciones: string
+  requiere_parada_produccion: boolean
+  costo_estimado: string
+  costo_real: string
+}
+
+export default function OrdenTrabajoFormModal({
   orden, 
   isOpen, 
   onClose, 
@@ -38,12 +62,12 @@ export default function OrdenTrabajoFormModal({
   const [error, setError] = useState<string | null>(null)
   
   // Estados del formulario
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<OrdenTrabajoFormData>({
     codigo: '',
     tipo: '',
     maquina: '',
-    prioridad: 'NORMAL' as 'BAJA' | 'NORMAL' | 'ALTA' | 'URGENTE',
-    estado: 'ABIERTA' as 'ABIERTA' | 'ASIGNADA' | 'EN_PROCESO' | 'PAUSADA' | 'COMPLETADA' | 'CANCELADA',
+    prioridad: 'NORMAL',
+    estado: 'ABIERTA',
     titulo: '',
     descripcion: '',
     fecha_planificada: '',
@@ -58,7 +82,7 @@ export default function OrdenTrabajoFormModal({
   // Datos de catálogos
   const [tiposMantenimiento, setTiposMantenimiento] = useState<TipoMantenimiento[]>([])
   const [maquinas, setMaquinas] = useState<Maquina[]>([])
-  const [usuarios, setUsuarios] = useState<any[]>([])
+  const [usuarios, setUsuarios] = useState<UsuarioDetalle[]>([])
 
   useEffect(() => {
     if (isOpen) {
@@ -91,12 +115,18 @@ export default function OrdenTrabajoFormModal({
   const loadOrdenData = async (ordenId: number) => {
     try {
       const ordenCompleta = await api.getOrdenTrabajo(ordenId)
+      const prioridad = PRIORIDADES.includes(ordenCompleta.prioridad as PrioridadOrden)
+        ? (ordenCompleta.prioridad as PrioridadOrden)
+        : 'NORMAL'
+      const estado = ESTADOS_ORDEN.includes(ordenCompleta.estado as EstadoOrden)
+        ? (ordenCompleta.estado as EstadoOrden)
+        : 'ABIERTA'
       setFormData({
         codigo: ordenCompleta.codigo,
-        tipo: ordenCompleta.tipo.toString(),
-        maquina: ordenCompleta.maquina.toString(),
-        prioridad: ordenCompleta.prioridad,
-        estado: ordenCompleta.estado,
+        tipo: ordenCompleta.tipo?.toString() ?? '',
+        maquina: ordenCompleta.maquina?.toString() ?? '',
+        prioridad,
+        estado,
         titulo: ordenCompleta.titulo,
         descripcion: ordenCompleta.descripcion || '',
         fecha_planificada: ordenCompleta.fecha_planificada ? new Date(ordenCompleta.fecha_planificada).toISOString().slice(0, 16) : '',
@@ -118,18 +148,11 @@ export default function OrdenTrabajoFormModal({
     try {
       const [tiposData, maquinasData, usuariosData] = await Promise.all([
         api.getTiposMantenimiento({ activo: true, page_size: 100 }),
-        api.getMaquinas(),
-        api.getUsuarios()
+        api.getMaquinas({ page_size: 100 }),
+        api.getUsuarios({ page_size: 100 })
       ])
 
-      // Asegurar que los datos sean arrays
-      if (Array.isArray((tiposData as any)?.results)) {
-        setTiposMantenimiento((tiposData as any).results)
-      } else if (Array.isArray(tiposData as any)) {
-        setTiposMantenimiento(tiposData as any)
-      } else {
-        setTiposMantenimiento([])
-      }
+      setTiposMantenimiento(Array.isArray(tiposData?.results) ? tiposData.results : [])
       setMaquinas(Array.isArray(maquinasData?.results) ? maquinasData.results : [])
       setUsuarios(Array.isArray(usuariosData?.results) ? usuariosData.results : [])
     } catch (err: any) {
@@ -144,7 +167,10 @@ export default function OrdenTrabajoFormModal({
     }
   }
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = <K extends keyof OrdenTrabajoFormData>(
+    field: K,
+    value: OrdenTrabajoFormData[K]
+  ) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -157,27 +183,32 @@ export default function OrdenTrabajoFormModal({
     setError(null)
 
     try {
-      const dataToSend: any = {
+      const tipoId = formData.tipo ? parseInt(formData.tipo, 10) : null
+      const maquinaId = formData.maquina ? parseInt(formData.maquina, 10) : null
+
+      if (tipoId == null || Number.isNaN(tipoId) || maquinaId == null || Number.isNaN(maquinaId)) {
+        throw new Error('Debes seleccionar un tipo y una máquina válidos')
+      }
+
+      const dataToSend = {
         ...formData,
-        tipo: parseInt(formData.tipo),
-        maquina: parseInt(formData.maquina),
-        asignada_a: formData.asignada_a ? parseInt(formData.asignada_a) : null,
+        tipo: tipoId,
+        maquina: maquinaId,
+        asignada_a: formData.asignada_a ? parseInt(formData.asignada_a, 10) : null,
         fecha_planificada: formData.fecha_planificada ? new Date(formData.fecha_planificada).toISOString() : null,
         costo_estimado: formData.costo_estimado ? parseFloat(formData.costo_estimado) : null,
         costo_real: formData.costo_real ? parseFloat(formData.costo_real) : null,
       }
 
-      // No enviar el código cuando estamos editando (es único y no se puede cambiar)
-      if (isEditMode) {
-        delete dataToSend.codigo
-      }
+      const { codigo: _codigo, ...updatePayload } = dataToSend
+      const payload = isEditMode ? updatePayload : dataToSend
 
       if (orden) {
         // Editar orden existente
-        await api.updateOrdenTrabajo(orden.id, dataToSend)
+        await api.updateOrdenTrabajo(orden.id, payload)
       } else {
         // Crear nueva orden
-        await api.createOrdenTrabajo(dataToSend)
+        await api.createOrdenTrabajo(payload)
       }
 
       onUpdate()
@@ -202,13 +233,13 @@ export default function OrdenTrabajoFormModal({
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
           onClick={onClose}
         >
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.95, opacity: 0 }}
+          className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col"
+          onClick={stopClickPropagation}
+        >
             {/* Header */}
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6">
               <div className="flex items-center justify-between">
@@ -338,7 +369,7 @@ export default function OrdenTrabajoFormModal({
                           </label>
                           <select
                             value={formData.prioridad}
-                            onChange={(e) => handleInputChange('prioridad', e.target.value)}
+                            onChange={(e) => handleInputChange('prioridad', e.target.value as PrioridadOrden)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           >
                             <option value="BAJA">Baja</option>
@@ -354,7 +385,7 @@ export default function OrdenTrabajoFormModal({
                           </label>
                           <select
                             value={formData.estado}
-                            onChange={(e) => handleInputChange('estado', e.target.value)}
+                            onChange={(e) => handleInputChange('estado', e.target.value as EstadoOrden)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           >
                             <option value="ABIERTA">Abierta</option>

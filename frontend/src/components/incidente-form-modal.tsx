@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { X, AlertTriangle, Save } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Incidente, Ubicacion, Maquina, Lote, User } from '@/types/models'
+import { motion, AnimatePresence } from '@/lib/motion'
+import { stopClickPropagation } from '@/lib/dom'
+import { Incidente, Ubicacion, Maquina, LoteListItem, User } from '@/types/models'
 import { api } from '@/lib/api'
 
 interface IncidenteFormModalProps {
@@ -42,7 +43,7 @@ export default function IncidenteFormModal({ isOpen, onClose, onSuccess, inciden
   const [tipos, setTipos] = useState<TipoIncidente[]>([])
   const [ubicaciones, setUbicaciones] = useState<Ubicacion[]>([])
   const [maquinas, setMaquinas] = useState<Maquina[]>([])
-  const [lotes, setLotes] = useState<Lote[]>([])
+  const [lotes, setLotes] = useState<LoteListItem[]>([])
   const [usuarios, setUsuarios] = useState<User[]>([])
   const [loading, setLoading] = useState(false)
   const [catalogLoading, setCatalogLoading] = useState(true)
@@ -219,7 +220,7 @@ export default function IncidenteFormModal({ isOpen, onClose, onSuccess, inciden
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
           className="bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden"
-          onClick={(e) => e.stopPropagation()}
+          onClick={stopClickPropagation}
         >
           {/* Header */}
           <div className="bg-gradient-to-r from-red-600 to-orange-600 text-white p-6">

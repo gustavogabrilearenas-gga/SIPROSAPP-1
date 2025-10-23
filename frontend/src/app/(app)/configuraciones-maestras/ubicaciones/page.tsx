@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Building2, Loader2, MapPin, Pencil, Plus, Search, Trash2 } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { motion } from '@/lib/motion'
 import { Button } from '@/components/ui/button'
 import {
   Card,

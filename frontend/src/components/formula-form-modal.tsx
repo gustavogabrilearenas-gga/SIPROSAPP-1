@@ -1,12 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion } from '@/lib/motion'
 import { FileText, Save, X } from 'lucide-react'
 import { api, handleApiError } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { showError, showSuccess } from '@/components/common/toast-utils'
 import type { Producto } from '@/types/models'
+import { stopClickPropagation } from '@/lib/dom'
 
 interface FormulaFormModalProps {
   isOpen: boolean
@@ -131,7 +132,7 @@ const FormulaFormModal = ({ isOpen, onClose, formulaId, onSuccess }: FormulaForm
         animate={{ opacity: 1, scale: 1 }}
         transition={{ type: 'spring', stiffness: 200, damping: 24 }}
         className="w-full max-w-3xl overflow-hidden rounded-xl bg-white shadow-2xl"
-        onClick={(event) => event.stopPropagation()}
+        onClick={stopClickPropagation}
       >
         <div className="flex items-start justify-between bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-4 text-white">
           <div>

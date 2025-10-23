@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { X, Wrench, Calendar, User, AlertTriangle, Clock, CheckCircle, History, DollarSign } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence } from '@/lib/motion'
 import { Button } from '@/components/ui/button'
 import { OrdenTrabajo, LogAuditoria } from '@/types/models'
 import { api } from '@/lib/api'
 import { Badge } from '@/components/ui/badge'
 import { showError, showSuccess } from '@/components/common/toast-utils'
+import { stopClickPropagation } from '@/lib/dom'
 
 interface OrdenTrabajoDetailModalProps {
   isOpen: boolean
@@ -394,7 +395,7 @@ export default function OrdenTrabajoDetailModal({ isOpen, onClose, ordenId, onRe
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
           className="bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden"
-          onClick={(e) => e.stopPropagation()}
+          onClick={stopClickPropagation}
         >
           {/* Header */}
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">

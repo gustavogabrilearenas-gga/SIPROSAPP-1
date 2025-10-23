@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence } from '@/lib/motion'
 import { X, Save, Loader2, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { api } from '@/lib/api'
-import type { Lote } from '@/types/models'
+import type { Formula, Lote, Producto, Turno } from '@/types/models'
+import { stopClickPropagation } from '@/lib/dom'
 
 interface LoteFormModalProps {
   isOpen: boolean
@@ -33,26 +34,6 @@ interface FormData {
   turno: number | ''
   supervisor: number | ''
   observaciones: string
-}
-
-interface Producto {
-  id: number
-  codigo: string
-  nombre: string
-  unidad_medida: string
-}
-
-interface Turno {
-  id: number
-  codigo: string
-  nombre: string
-}
-
-interface Formula {
-  id: number
-  producto: number
-  producto_nombre: string
-  version: string
 }
 
 export default function LoteFormModal({ isOpen, onClose, onSuccess, lote, completeAfterSave }: LoteFormModalProps) {
@@ -114,13 +95,13 @@ export default function LoteFormModal({ isOpen, onClose, onSuccess, lote, comple
       
       if (lote) {
         // Modo edición: cargar datos del lote
-        const initialData = {
+        const initialData: FormData = {
           codigo_lote: lote.codigo_lote,
           producto: lote.producto,
-          formula: lote.formula || '',
+          formula: lote.formula ?? '',
           cantidad_planificada: lote.cantidad_planificada,
-          cantidad_producida: lote.cantidad_producida || '',
-          cantidad_rechazada: lote.cantidad_rechazada || '',
+          cantidad_producida: lote.cantidad_producida ?? '',
+          cantidad_rechazada: lote.cantidad_rechazada ?? '',
           unidad: lote.unidad,
           estado: lote.estado,
           prioridad: lote.prioridad,
@@ -129,9 +110,9 @@ export default function LoteFormModal({ isOpen, onClose, onSuccess, lote, comple
           fecha_planificada_fin: lote.fecha_planificada_fin ? lote.fecha_planificada_fin.substring(0, 16) : '',
           fecha_real_inicio: lote.fecha_real_inicio ? lote.fecha_real_inicio.substring(0, 16) : '',
           fecha_real_fin: lote.fecha_real_fin ? lote.fecha_real_fin.substring(0, 16) : '',
-          turno: lote.turno,
-          supervisor: lote.supervisor || currentUserId,
-          observaciones: lote.observaciones || '',
+          turno: lote.turno ?? '',
+          supervisor: lote.supervisor ?? currentUserId,
+          observaciones: lote.observaciones ?? '',
         }
 
         // If the modal was opened as part of a 'completar' action, and there is no fecha_real_fin yet,
@@ -202,7 +183,7 @@ export default function LoteFormModal({ isOpen, onClose, onSuccess, lote, comple
         setFormData(prev => ({
           ...prev,
           producto: value,
-          unidad: productoSeleccionado.unidad_medida,
+          unidad: productoSeleccionado.unidad_medida ?? prev.unidad,
           formula: '', // Reset formula when product changes
         }))
       }
@@ -332,7 +313,7 @@ export default function LoteFormModal({ isOpen, onClose, onSuccess, lote, comple
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[95vh] overflow-hidden flex flex-col"
-          onClick={(e) => e.stopPropagation()}
+          onClick={stopClickPropagation}
         >
           {/* Header */}
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
