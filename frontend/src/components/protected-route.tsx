@@ -1,70 +1,56 @@
 'use client'
 
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuthStore } from '@/stores/auth-store'
+import { useAuth } from '@/stores/auth-store'
+import { Loader2 } from 'lucide-react'
 
-interface ProtectedRouteProps {
-  children: ReactNode
-}
-
-export function ProtectedRoute({ children }: ProtectedRouteProps) {
+/**
+ * Componente para proteger rutas que requieren autenticación
+ * Redirige a /login si el usuario no está autenticado
+ */
+export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const router = useRouter()
-  const { user, token, refreshUser, logout } = useAuthStore((state) => ({
-    user: state.user,
-    token: state.token,
-    refreshUser: state.refreshUser,
-    logout: state.logout,
-  }))
-  const [checking, setChecking] = useState(true)
+  const { isAuthenticated, isLoading, initializeAuth, _hasHydrated } = useAuth()
+  const hasRedirectedRef = useRef(false)
 
   useEffect(() => {
-    let active = true
-
-    const ensureSession = async () => {
-      if (!token) {
-        if (active) {
-          setChecking(false)
-        }
-        router.replace('/login')
-        return
-      }
-
-      if (!user) {
-        try {
-          await refreshUser()
-        } catch (error) {
-          logout()
-          if (active) {
-            setChecking(false)
-          }
-          router.replace('/login')
-          return
-        }
-      }
-
-      if (active) {
-        setChecking(false)
-      }
+    if (!_hasHydrated) {
+      void initializeAuth()
     }
+  }, [_hasHydrated, initializeAuth])
 
-    void ensureSession()
-
-    return () => {
-      active = false
+  useEffect(() => {
+    if (_hasHydrated && !isLoading && !isAuthenticated && !hasRedirectedRef.current) {
+      hasRedirectedRef.current = true
+      router.replace('/login')
     }
-  }, [token, user, refreshUser, logout, router])
+  }, [_hasHydrated, isAuthenticated, isLoading, router])
 
-  if (checking || !user || !token) {
+  // Durante la hidratación, mostrar loading
+  if (!_hasHydrated || isLoading) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 text-slate-600">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
-        <p className="mt-4 text-sm font-medium">Verificando sesión…</p>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">Verificando sesión...</p>
+        </div>
       </div>
     )
   }
 
+  // Si no está autenticado, mostrar loading mientras redirige
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">Redirigiendo a login...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Usuario autenticado, mostrar contenido
   return <>{children}</>
 }
-
-export default ProtectedRoute

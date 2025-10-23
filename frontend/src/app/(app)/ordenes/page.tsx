@@ -1,24 +1,29 @@
 'use client'
 
-import { ResourceCrud } from '@/components/crud/resource-crud'
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { Loader2 } from 'lucide-react'
 
-const columns = [
-  { key: 'id', label: 'ID' },
-  { key: 'maquina', label: 'Máquina' },
-  { key: 'tipo_mantenimiento', label: 'Tipo' },
-  { key: 'tiene_anomalias', label: 'Anomalías' },
-  { key: 'fecha_registro', label: 'Fecha' },
-]
-
+/**
+ * PÁGINA DEPRECADA
+ * Esta página fue reemplazada por /mantenimiento
+ * Redirige automáticamente a la nueva ubicación
+ */
 export default function OrdenesPage() {
+  const router = useRouter()
+
+  useEffect(() => {
+    // Redirigir a la nueva página de mantenimiento
+    router.replace('/mantenimiento')
+  }, [router])
+
   return (
-    <ResourceCrud
-      resource="mantenimiento/registros"
-      title="Órdenes de trabajo"
-      description="Visualiza y modifica órdenes utilizando el mismo registro operativo de mantenimiento."
-      columns={columns}
-      editor="json"
-    />
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center">
+        <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
+        <p className="text-gray-600">Redirigiendo a Mantenimiento...</p>
+      </div>
+    </div>
   )
 }
 

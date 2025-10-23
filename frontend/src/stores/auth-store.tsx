@@ -1,115 +1,140 @@
 'use client'
 
 import { create } from 'zustand'
-import { api, AUTH_TOKEN_KEY } from '@/lib/api'
+import { api } from '@/lib/api'
 import type { User } from '@/types/models'
-
-const USER_STORAGE_KEY = 'siprosa.auth.user'
-
-type StoredAuth = {
-  user: User | null
-  token: string | null
-}
-
-const readStoredAuth = (): StoredAuth => {
-  if (typeof window === 'undefined') {
-    return { user: null, token: null }
-  }
-
-  const token = window.localStorage.getItem(AUTH_TOKEN_KEY)
-  const rawUser = window.localStorage.getItem(USER_STORAGE_KEY)
-
-  if (!rawUser) {
-    return { user: null, token }
-  }
-
-  try {
-    return { user: JSON.parse(rawUser) as User, token }
-  } catch (error) {
-    console.warn('No se pudo parsear el usuario almacenado', error)
-    return { user: null, token }
-  }
-}
-
-const writeToken = (token: string | null) => {
-  if (typeof window === 'undefined') return
-  if (token) {
-    window.localStorage.setItem(AUTH_TOKEN_KEY, token)
-  } else {
-    window.localStorage.removeItem(AUTH_TOKEN_KEY)
-  }
-}
-
-const writeUser = (user: User | null) => {
-  if (typeof window === 'undefined') return
-  if (user) {
-    window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user))
-  } else {
-    window.localStorage.removeItem(USER_STORAGE_KEY)
-  }
-}
 
 interface AuthState {
   user: User | null
-  token: string | null
+  isAuthenticated: boolean
+  isLoading: boolean
+  error: string | null
+  _hasHydrated: boolean
   login: (username: string, password: string) => Promise<void>
-  logout: () => void
-  hasGroup: (groupName: string) => boolean
-  refreshUser: (username?: string) => Promise<User>
+  logout: () => Promise<void>
+  getCurrentUser: () => Promise<void>
+  initializeAuth: () => Promise<void>
+  clearError: () => void
+  setHasHydrated: (state: boolean) => void
 }
 
-export const useAuthStore = create<AuthState>((set, get) => ({
-  ...readStoredAuth(),
+// Store sin persistencia para evitar problemas de hidratación
+export const useAuth = create<AuthState>((set, get) => ({
+  user: null,
+  isAuthenticated: false,
+  isLoading: false,
+  error: null,
+  _hasHydrated: false,
 
-  async login(username, password) {
-    const response = await api.login({ username, password })
-    const accessToken = response.access
+  login: async (username: string, password: string) => {
+    set({ isLoading: true, error: null })
+    try {
+      const response = await api.login({ username, password })
+      set({
+        user: response.user,
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+      })
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error || 'Error de autenticación'
+      set({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: errorMessage,
+      })
+      throw new Error(errorMessage)
+    }
+  },
 
-    if (!accessToken) {
-      throw new Error('No se recibió un token de acceso válido.')
+  logout: async () => {
+    set({ isLoading: true })
+    try {
+      await api.logout()
+    } catch (error) {
+      console.error('Error durante logout:', error)
+    } finally {
+      set({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
+      })
+    }
+  },
+
+  getCurrentUser: async () => {
+    if (!api.isAuthenticated()) {
+      set({ isAuthenticated: false, user: null })
+      return
     }
 
-    writeToken(accessToken)
+    set({ isLoading: true })
+    try {
+      const user = await api.getCurrentUser()
+      set({
+        user,
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+      })
+    } catch (error: any) {
+      console.error('Error al obtener usuario:', error)
+      set({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: 'Sesión expirada',
+      })
+    }
+  },
+
+  // Inicializar autenticación al cargar la app
+  initializeAuth: async () => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    if (get()._hasHydrated) {
+      return
+    }
+
+    if (get().isLoading) {
+      return
+    }
+
+    const hasToken = !!localStorage.getItem('access_token')
+
+    if (!hasToken) {
+      set({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
+        _hasHydrated: true,
+      })
+      return
+    }
+
+    set({ isLoading: true, error: null })
 
     try {
-      const user = await api.fetchCurrentUser({ username })
-      writeUser(user)
-      set({ user, token: accessToken })
-    } catch (error) {
-      writeToken(null)
-      writeUser(null)
-      set({ user: null, token: null })
-      throw error
+      await get().getCurrentUser()
+    } finally {
+      set({ isLoading: false, _hasHydrated: true })
     }
   },
 
-  logout() {
-    writeToken(null)
-    writeUser(null)
-    set({ user: null, token: null })
+  clearError: () => {
+    set({ error: null })
   },
 
-  hasGroup(groupName) {
-    const current = get().user
-    if (!current?.groups?.length) {
-      return false
-    }
-    return current.groups.some((group) => group.toLowerCase() === groupName.toLowerCase())
-  },
-
-  async refreshUser(username) {
-    const candidateUsername = username ?? get().user?.username ?? undefined
-
-    try {
-      const user = await api.fetchCurrentUser({ username: candidateUsername })
-      writeUser(user)
-      set({ user })
-      return user
-    } catch (error) {
-      writeToken(null)
-      writeUser(null)
-      set({ user: null, token: null })
-      throw error
-    }
+  setHasHydrated: (state: boolean) => {
+    set({ _hasHydrated: state })
   },
 }))
+
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  return <>{children}</>
+}

@@ -4,8 +4,8 @@ services:
   # Frontend Next.js
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile.dev
+      context: .
+      dockerfile: frontend/Dockerfile
     container_name: siprosapp-frontend
     volumes:
       - ./frontend:/app

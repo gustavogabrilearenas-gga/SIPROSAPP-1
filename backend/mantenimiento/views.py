@@ -1,6 +1,5 @@
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.viewsets import ModelViewSet
-
-from backend.core.permissions import IsAdminSupervisorOrOperario
 
 from .models import RegistroMantenimiento
 from .serializers import RegistroMantenimientoSerializer
@@ -14,7 +13,7 @@ class RegistroMantenimientoViewSet(ModelViewSet):
         "registrado_por"
     ).all()
     serializer_class = RegistroMantenimientoSerializer
-    permission_classes = [IsAdminSupervisorOrOperario]
+    permission_classes = [IsAuthenticated]
     filterset_fields = {
         "maquina": ["exact"],
         "tipo_mantenimiento": ["exact", "in"],

@@ -492,9 +492,6 @@ class CrearUsuarioSerializer(serializers.ModelSerializer):
         user.set_password(password)
         user.save()
 
-        UserProfile.objects.update_or_create(
-            user=user,
-            defaults=profile_data,
-        )
+        UserProfile.objects.create(user=user, **profile_data)
 
         return user
