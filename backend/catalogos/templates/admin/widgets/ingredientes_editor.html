@@ -1,0 +1,5 @@
+{# Widget minimalista para ingredientes #}
+<div class="field-ingredientes">
+    <div class="ingredientes-container"></div>
+    <textarea name="{{ widget.name }}" {% include "django/forms/widgets/attrs.html" %}>{{ widget.value|default_if_none:"[]" }}</textarea>
+</div>

@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+
+# Django
+*.log
+db.sqlite3
+backend/logs/
+backend/staticfiles/
+media/
+
+# Environment files
+.env*
+!.env.dev
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Node.js
+node_modules/
+.next/
+
+# Documentation (no se necesita en el contenedor)
+*.md
+!requirements.txt
+
+# Deploy configs (no se necesitan en Docker)
+render.yaml
+railway.json
+Procfile
+runtime.txt
+nixpacks.toml
