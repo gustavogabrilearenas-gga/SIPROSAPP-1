@@ -1,12 +1,14 @@
 from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticated
+
+from backend.core.permissions import IsAdminSupervisorOrOperario
+
 from .models import Incidente
 from .serializers import IncidenteSerializer
 
 class IncidenteViewSet(viewsets.ModelViewSet):
     queryset = Incidente.objects.all()
     serializer_class = IncidenteSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminSupervisorOrOperario]
     filterset_fields = ['es_parada_no_planificada', 'origen', 'maquina']
     search_fields = ['descripcion', 'acciones_correctivas', 'observaciones']
     ordering_fields = ['fecha_inicio', 'fecha_fin', 'created', 'modified']
