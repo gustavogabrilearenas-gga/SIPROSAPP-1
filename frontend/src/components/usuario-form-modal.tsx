@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { X, User, Save, Eye, EyeOff, Loader2 } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence } from '@/lib/motion'
+import { stopClickPropagation } from '@/lib/dom'
 import type { Funcion, Turno, UsuarioDetalle } from '@/types/models'
 import { api, handleApiError } from '@/lib/api'
 import { toast } from '@/hooks/use-toast'
@@ -231,7 +232,7 @@ export default function UsuarioFormModal({ isOpen, onClose, onSuccess, usuario }
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
           className="bg-white rounded-lg shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden"
-          onClick={(e) => e.stopPropagation()}
+          onClick={stopClickPropagation}
         >
           {/* Header */}
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">

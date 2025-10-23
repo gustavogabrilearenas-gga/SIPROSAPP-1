@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion } from '@/lib/motion'
+import { stopClickPropagation } from '@/lib/dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { api, handleApiError } from '@/lib/api'
@@ -157,7 +158,7 @@ const EtapaProduccionFormModal = ({ isOpen, etapaId, onClose, onSuccess }: Etapa
           exit={{ scale: 0.95, opacity: 0 }}
           transition={{ type: 'spring', damping: 20, stiffness: 200 }}
           className="w-full max-w-3xl"
-          onClick={(event) => event.stopPropagation()}
+          onClick={stopClickPropagation}
         >
           <Card className="overflow-hidden">
             <div className="flex items-start justify-between bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 text-white">

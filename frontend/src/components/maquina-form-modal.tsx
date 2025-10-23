@@ -1,10 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion } from '@/lib/motion'
 import { X, Save, Settings } from 'lucide-react'
 import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
+import { stopClickPropagation } from '@/lib/dom'
+import type { Maquina, Ubicacion } from '@/types/models'
 
 interface MaquinaFormModalProps {
   isOpen: boolean
@@ -30,7 +32,7 @@ export default function MaquinaFormModal({ isOpen, onClose, maquinaId, onSuccess
     requiere_calificacion: false,
     fecha_instalacion: '',
   })
-  const [ubicaciones, setUbicaciones] = useState<any[]>([])
+  const [ubicaciones, setUbicaciones] = useState<Ubicacion[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -47,8 +49,8 @@ export default function MaquinaFormModal({ isOpen, onClose, maquinaId, onSuccess
 
   const fetchUbicaciones = async () => {
     try {
-      const response = await api.get('/ubicaciones/')
-      setUbicaciones(response.results || response)
+      const response = await api.getUbicaciones()
+      setUbicaciones(Array.isArray(response?.results) ? response.results : [])
     } catch (err) {
       console.error('Error fetching ubicaciones:', err)
     }
@@ -56,13 +58,25 @@ export default function MaquinaFormModal({ isOpen, onClose, maquinaId, onSuccess
 
   const fetchMaquina = async () => {
     try {
-      const data = await api.get(`/maquinas/${maquinaId}/`)
-      setFormData({
-        ...data,
+      if (!maquinaId) return
+      const data: Maquina = await api.getMaquina(maquinaId)
+      setFormData(prev => ({
+        ...prev,
+        codigo: data.codigo ?? '',
+        nombre: data.nombre ?? '',
+        tipo: data.tipo ?? 'COMPRESION',
+        fabricante: data.fabricante ?? '',
+        modelo: data.modelo ?? '',
+        numero_serie: data.numero_serie ?? '',
+        año_fabricacion: data.año_fabricacion ?? new Date().getFullYear(),
         ubicacion: data.ubicacion,
-        capacidad_nominal: data.capacidad_nominal || '',
-        fecha_instalacion: data.fecha_instalacion || '',
-      })
+        descripcion: data.descripcion ?? '',
+        capacidad_nominal: data.capacidad_nominal ?? '',
+        unidad_capacidad: data.unidad_capacidad ?? '',
+        activa: data.activa ?? true,
+        requiere_calificacion: data.requiere_calificacion ?? false,
+        fecha_instalacion: data.fecha_instalacion ?? '',
+      }))
     } catch (err) {
       console.error('Error fetching maquina:', err)
     }
@@ -121,7 +135,7 @@ export default function MaquinaFormModal({ isOpen, onClose, maquinaId, onSuccess
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         className="bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
+        onClick={stopClickPropagation}
       >
         <div className="bg-gradient-to-r from-gray-600 to-gray-800 text-white p-6">
           <div className="flex justify-between items-start">

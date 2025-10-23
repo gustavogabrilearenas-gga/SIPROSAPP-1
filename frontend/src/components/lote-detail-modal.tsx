@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { X, Package, Calendar, User, AlertCircle, TrendingUp, Clock, CheckCircle, XCircle, History, FileText } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence } from '@/lib/motion'
 import { Button } from '@/components/ui/button'
 import { Lote, LoteEtapa, ControlCalidad, LogAuditoria } from '@/types/models'
 import { api } from '@/lib/api'
 import { Badge } from '@/components/ui/badge'
+import { stopClickPropagation } from '@/lib/dom'
 
 interface LoteDetailModalProps {
   isOpen: boolean
@@ -32,6 +33,9 @@ export default function LoteDetailModal({ isOpen, onClose, loteId, onEdit, onUpd
   }, [isOpen, loteId])
 
   const loadLoteData = async () => {
+    if (loteId == null) {
+      return
+    }
     setLoading(true)
     setError(null)
     try {
@@ -100,7 +104,8 @@ export default function LoteDetailModal({ isOpen, onClose, loteId, onEdit, onUpd
   const calcularProgreso = () => {
     if (!lote) return 0
     if (lote.cantidad_planificada <= 0) return 0
-    return Math.min(100, (lote.cantidad_producida / lote.cantidad_planificada) * 100)
+    const producida = lote.cantidad_producida ?? 0
+    return Math.min(100, (producida / lote.cantidad_planificada) * 100)
   }
 
   const renderGeneralTab = () => (
@@ -408,7 +413,7 @@ export default function LoteDetailModal({ isOpen, onClose, loteId, onEdit, onUpd
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
           className="bg-white rounded-lg shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden"
-          onClick={(e) => e.stopPropagation()}
+          onClick={stopClickPropagation}
         >
           {/* Header */}
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">

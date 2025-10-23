@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
+import { motion } from '@/lib/motion'
 import { api, handleApiError } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -29,24 +29,44 @@ import {
   Contact2
 } from 'lucide-react'
 import type { UsuarioDetalle } from '@/types/models'
+import type { ComponentProps, MouseEventHandler } from 'react'
+
+type MotionDivProps = ComponentProps<typeof motion.div> & {
+  className?: string
+  onClick?: MouseEventHandler<HTMLDivElement>
+}
+
+const MotionDiv = motion.div as React.ComponentType<MotionDivProps>
 
 function UsuariosPageContent() {
   const router = useRouter()
   const { user: currentUser } = useAuth()
   const [usuarios, setUsuarios] = useState<UsuarioDetalle[]>([])
   const [loading, setLoading] = useState(true)
+  const deniedRef = useRef(false)
 
-  // Redirigir si el usuario no es admin
+  const handlePasswordModalClick: MouseEventHandler<HTMLDivElement> = (event) => {
+    event.stopPropagation()
+  }
+
+  const canManageUsers = Boolean(currentUser?.is_superuser)
+
+  // Redirigir si el usuario no es superusuario
   useEffect(() => {
-    if (currentUser && !currentUser.is_staff && !currentUser.is_superuser) {
-      router.push('/dashboard')
+    if (!currentUser) {
+      return
+    }
+
+    if (!canManageUsers && !deniedRef.current) {
+      deniedRef.current = true
       toast({
         title: 'Acceso denegado',
         description: 'No tienes permisos para acceder a esta página',
         variant: 'destructive',
       })
+      router.replace('/dashboard')
     }
-  }, [currentUser, router])
+  }, [canManageUsers, currentUser, router])
   const [searchTerm, setSearchTerm] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [selectedUsuario, setSelectedUsuario] = useState<UsuarioDetalle | null>(null)
@@ -56,7 +76,7 @@ function UsuariosPageContent() {
   const [confirmPassword, setConfirmPassword] = useState('')
 
   // Cargar usuarios
-  const fetchUsuarios = async () => {
+  const fetchUsuarios = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -74,11 +94,17 @@ function UsuariosPageContent() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
-    fetchUsuarios()
-  }, [])
+    if (!canManageUsers) {
+      setUsuarios([])
+      setLoading(false)
+      return
+    }
+
+    void fetchUsuarios()
+  }, [canManageUsers, fetchUsuarios])
 
   // Filtrar usuarios
   const filteredUsuarios = usuarios.filter((usuario) => {
@@ -95,16 +121,25 @@ function UsuariosPageContent() {
   })
 
   const handleCreateUsuario = () => {
+    if (!canManageUsers) {
+      return
+    }
     setSelectedUsuario(null)
     setIsFormModalOpen(true)
   }
 
   const handleEditUsuario = (usuario: UsuarioDetalle) => {
+    if (!canManageUsers) {
+      return
+    }
     setSelectedUsuario(usuario)
     setIsFormModalOpen(true)
   }
 
   const handleToggleActive = async (usuario: UsuarioDetalle) => {
+    if (!canManageUsers) {
+      return
+    }
     if (!confirm(`¿Está seguro que desea ${usuario.is_active ? 'desactivar' : 'reactivar'} al usuario ${usuario.username}?`)) {
       return
     }
@@ -136,6 +171,9 @@ function UsuariosPageContent() {
   }
 
   const handleChangePassword = (usuario: UsuarioDetalle) => {
+    if (!canManageUsers) {
+      return
+    }
     setSelectedUsuario(usuario)
     setNewPassword('')
     setConfirmPassword('')
@@ -182,7 +220,7 @@ function UsuariosPageContent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50">
       {/* Header */}
-      <motion.div
+      <MotionDiv
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className="bg-white/80 backdrop-blur-sm shadow-lg border-b border-purple-100"
@@ -222,6 +260,7 @@ function UsuariosPageContent() {
               <Button
                 onClick={handleCreateUsuario}
                 className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                disabled={!canManageUsers}
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Nuevo Usuario
@@ -229,19 +268,19 @@ function UsuariosPageContent() {
             </div>
           </div>
         </div>
-      </motion.div>
+      </MotionDiv>
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Error */}
         {error && (
-          <motion.div
+          <MotionDiv
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg"
           >
             <p>{error}</p>
-          </motion.div>
+          </MotionDiv>
         )}
 
         {/* Búsqueda y Estadísticas */}
@@ -310,7 +349,7 @@ function UsuariosPageContent() {
           )}
           
           {!loading && filteredUsuarios.map((usuario, index) => (
-            <motion.div
+            <MotionDiv
               key={usuario.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -404,6 +443,7 @@ function UsuariosPageContent() {
                         variant="outline"
                         onClick={() => handleEditUsuario(usuario)}
                         className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+                        disabled={!canManageUsers}
                       >
                         <Edit className="h-4 w-4 mr-1" />
                         Editar
@@ -413,6 +453,7 @@ function UsuariosPageContent() {
                         variant="outline"
                         onClick={() => handleChangePassword(usuario)}
                         className="bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200"
+                        disabled={!canManageUsers}
                       >
                         <Key className="h-4 w-4 mr-1" />
                         Contraseña
@@ -421,8 +462,8 @@ function UsuariosPageContent() {
                         size="sm"
                         variant="outline"
                         onClick={() => handleToggleActive(usuario)}
-                        disabled={usuario.id === currentUser?.id}
-                        className={usuario.is_active 
+                        disabled={usuario.id === currentUser?.id || !canManageUsers}
+                        className={usuario.is_active
                           ? 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200'
                           : 'bg-green-50 hover:bg-green-100 text-green-700 border-green-200'
                         }
@@ -443,7 +484,7 @@ function UsuariosPageContent() {
                   </div>
                 </CardContent>
               </Card>
-            </motion.div>
+            </MotionDiv>
           ))}
         </div>
       </div>
@@ -467,11 +508,11 @@ function UsuariosPageContent() {
           className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           onClick={() => setIsPasswordModalOpen(false)}
         >
-          <motion.div
+          <MotionDiv
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6"
-            onClick={(e) => e.stopPropagation()}
+            onClick={handlePasswordModalClick}
           >
             <h3 className="text-xl font-bold text-gray-900 mb-4">
               Cambiar Contraseña - {selectedUsuario?.username}
@@ -517,7 +558,7 @@ function UsuariosPageContent() {
                 Cambiar Contraseña
               </Button>
             </div>
-          </motion.div>
+          </MotionDiv>
         </div>
       )}
     </div>

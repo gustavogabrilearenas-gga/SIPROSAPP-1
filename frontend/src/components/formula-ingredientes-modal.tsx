@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion } from '@/lib/motion'
+import { stopClickPropagation } from '@/lib/dom'
 import { X, Package, AlertTriangle, Loader2 } from 'lucide-react'
 import { api, handleApiError } from '@/lib/api'
 import { showError } from '@/components/common/toast-utils'
@@ -95,7 +96,7 @@ export default function FormulaIngredientesModal({ isOpen, onClose, formulaId }:
           exit={{ scale: 0.92, opacity: 0 }}
           transition={{ type: 'spring', damping: 20, stiffness: 200 }}
           className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden"
-          onClick={(event) => event.stopPropagation()}
+          onClick={stopClickPropagation}
         >
           <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-5 flex justify-between items-start">
             <div>
