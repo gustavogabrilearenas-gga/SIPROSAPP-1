@@ -150,6 +150,11 @@ class CustomUserAdmin(BaseUserAdmin):
                         can_view_related=True,
                     )
 
+            if hasattr(BaseForm, "save_m2m"):
+                # Garantiza que Django admin pueda invocar save_m2m
+                def save_m2m(self, *args, **kwargs):
+                    return BaseForm.save_m2m(self, *args, **kwargs)
+
         return FormWithRelated
 
     def get_fieldsets(self, request, obj=None):
