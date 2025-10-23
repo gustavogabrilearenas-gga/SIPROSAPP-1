@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Las peticiones al backend usan NEXT_PUBLIC_API_URL, por lo que no se definen rewrites adicionales.
-}
+  reactStrictMode: true,
+  // Elimina rewrites; todo debe llamar directamente a http://localhost:8000/api/*
+};
 
-module.exports = nextConfig
+module.exports = nextConfig;
