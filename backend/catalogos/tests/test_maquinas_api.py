@@ -16,12 +16,16 @@ class MaquinaViewSetTests(TestCase):
         self.client = APIClient()
         self.supervisor_group, _ = Group.objects.get_or_create(name="Supervisor")
         self.admin_group, _ = Group.objects.get_or_create(name="Administrador")
+        self.operario_group, _ = Group.objects.get_or_create(name="Operario")
 
         self.supervisor = UserModel.objects.create_user("sup", password="pass")
         self.supervisor.groups.add(self.supervisor_group)
 
         self.admin = UserModel.objects.create_user("admin", password="pass")
         self.admin.groups.add(self.admin_group)
+
+        self.operario = UserModel.objects.create_user("ope", password="pass")
+        self.operario.groups.add(self.operario_group)
 
         self.ubicacion = Ubicacion.objects.create(
             codigo="PLT-01",
@@ -57,6 +61,26 @@ class MaquinaViewSetTests(TestCase):
         payload = response.json()
         returned_codes = {item["codigo"] for item in payload["results"]}
         self.assertEqual(returned_codes, {self.maquina_activa.codigo})
+
+    def test_operario_can_list_maquinas(self):
+        self._authenticate(self.operario)
+        url = reverse("maquina-list")
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        returned_codes = {item["codigo"] for item in payload["results"]}
+        self.assertIn(self.maquina_activa.codigo, returned_codes)
+        self.assertIn(self.maquina_inactiva.codigo, returned_codes)
+
+    def test_admin_can_list_maquinas(self):
+        self._authenticate(self.admin)
+        url = reverse("maquina-list")
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
 
     def test_filter_by_tipo_is_case_insensitive(self):
         self._authenticate(self.supervisor)
