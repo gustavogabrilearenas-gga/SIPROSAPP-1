@@ -150,12 +150,12 @@ class CustomUserAdmin(BaseUserAdmin):
                         can_view_related=True,
                     )
 
-            # Garantiza que Django admin pueda invocar save_m2m cuando esté disponible
-            if hasattr(BaseForm, "save_m2m"):
-                def save_m2m(self, *args, **kwargs):
-                    return super().save_m2m(*args, **kwargs)
+            # Garantiza que Django admin pueda invocar save_m2m
+            def save_m2m(self):
+                if hasattr(super(), 'save_m2m'):
+                    return super().save_m2m()
 
-                FormWithRelated.save_m2m = save_m2m
+            FormWithRelated.save_m2m = save_m2m
 
         return FormWithRelated
 
