@@ -7,6 +7,7 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from backend.core.permissions import (
     IsAdmin,
     IsAdminOrSupervisor,
+    IsAdminSupervisorOrOperario,
     IsSuperuser,
 )
 
@@ -61,7 +62,7 @@ class UbicacionViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.request.method in permissions.SAFE_METHODS:
-            perm_classes = [IsAdminOrSupervisor]
+            perm_classes = [IsAdminSupervisorOrOperario]
         else:
             perm_classes = [IsSuperuser]
         return [perm() for perm in perm_classes]
@@ -90,8 +91,8 @@ class MaquinaViewSet(viewsets.ModelViewSet):
         return queryset
 
     def get_permissions(self):
-        if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
-            perm_classes = [IsAdminOrSupervisor]
+        if self.request.method in ("GET", "HEAD", "OPTIONS"):
+            perm_classes = [IsAdminSupervisorOrOperario]
         else:
             perm_classes = [IsSuperuser]
         return [perm() for perm in perm_classes]
@@ -139,8 +140,8 @@ class ProductoViewSet(viewsets.ModelViewSet):
         return queryset
 
     def get_permissions(self):
-        if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
-            perm_classes = [IsAdminOrSupervisor]
+        if self.request.method in ("GET", "HEAD", "OPTIONS"):
+            perm_classes = [IsAdminSupervisorOrOperario]
         else:
             perm_classes = [IsSuperuser]
         return [perm() for perm in perm_classes]
@@ -173,8 +174,8 @@ class FormulaViewSet(viewsets.ModelViewSet):
         return queryset
 
     def get_permissions(self):
-        if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
-            perm_classes = [IsAdminOrSupervisor]
+        if self.request.method in ("GET", "HEAD", "OPTIONS"):
+            perm_classes = [IsAdminSupervisorOrOperario]
         else:
             perm_classes = [IsSuperuser]
         return [perm() for perm in perm_classes]
@@ -194,8 +195,8 @@ class EtapaProduccionViewSet(viewsets.ModelViewSet):
     ordering_fields = ['codigo', 'nombre']
 
     def get_permissions(self):
-        if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
-            perm_classes = [IsAdminOrSupervisor]
+        if self.request.method in ("GET", "HEAD", "OPTIONS"):
+            perm_classes = [IsAdminSupervisorOrOperario]
         else:
             perm_classes = [IsSuperuser]
         return [perm() for perm in perm_classes]
@@ -209,7 +210,7 @@ class TurnoViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.request.method in permissions.SAFE_METHODS:
-            perm_classes = [IsAdminOrSupervisor]
+            perm_classes = [IsAdminSupervisorOrOperario]
         else:
             perm_classes = [IsSuperuser]
         return [perm() for perm in perm_classes]
