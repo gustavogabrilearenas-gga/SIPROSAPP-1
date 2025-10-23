@@ -8,17 +8,21 @@ FROM node:18-alpine AS base
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Instalar dependencias de producción
-COPY package*.json ./
-RUN npm ci --only=production && npm cache clean --force
+# Copiar y construir la aplicación
+COPY . .
+RUN npm install
+RUN npm run build
 
 # Crear usuario no-root para seguridad
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 # Cambiar permisos del directorio
-RUN chown nextjs:nodejs /app
+RUN chown -R nextjs:nodejs /app
 USER nextjs
+
+# Limpiar caché y dependencias de desarrollo
+RUN npm prune --omit=dev && npm cache clean --force
 
 # Exponer puerto
 EXPOSE 3000
