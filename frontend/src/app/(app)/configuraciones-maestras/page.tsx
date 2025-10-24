@@ -57,6 +57,24 @@ const masterModules: MasterModule[] = [
     icon: MapPin,
     description: 'Administra las ubicaciones de la planta.',
   },
+{
+  name: 'Funciones',
+  href: '/configuraciones-maestras/funciones',
+  icon: Users2,
+  description: 'Gestiona las funciones/áreas de la organización.',
+},
+{
+  name: 'Parámetros',
+  href: '/configuraciones-maestras/parametros',
+  icon: SlidersHorizontal,
+  description: 'Define los parámetros técnicos del proceso.',
+},
+{
+  name: 'Máquinas',
+  href: '/maquinas',
+  icon: Settings,
+  description: 'Administra el inventario de máquinas.',
+},
 ]
 
 const disabledModuleHrefs = new Set(['/configuraciones-maestras/paradas'])
