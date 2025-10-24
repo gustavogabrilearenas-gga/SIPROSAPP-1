@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge'
 import DataState from '@/components/common/data-state'
 import { AccessDenied } from '@/components/access-denied'
 import FuncionFormModal from '@/components/funciones/FuncionFormModal'
-import { api, handleApiError } from '@/lib/api'
+import { api, handleApiError, unpackResults } from '@/lib/api'
 import { showError, showSuccess } from '@/components/common/toast-utils'
 import { useMasterConfigAccess } from '@/hooks/use-master-config-access'
 import type { Funcion } from '@/types/models'
@@ -24,54 +24,60 @@ const FuncionesPage = () => {
   const { status, canEdit } = useMasterConfigAccess()
   const [funciones, setFunciones] = useState<Funcion[]>([])
   const [searchTerm, setSearchTerm] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
-  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [editing, setEditing] = useState<Funcion | null>(null)
+
+  useEffect(() => {
+    if (status === 'ready') {
+      void fetchFunciones()
+    }
+  }, [status])
 
   const fetchFunciones = async () => {
     setLoading(true)
+    setError(null)
     try {
-      const { data } = await api.getFunciones({ search: searchTerm })
-      setFunciones(data.results)
-      setError(null)
+      const response = await api.getFunciones({ page_size: 200 })
+      setFunciones(unpackResults(response))
     } catch (err) {
       const { message } = handleApiError(err)
-      setError(message)
+      const detail = message || 'No se pudieron obtener las funciones'
+      setError(detail)
+      showError('Error al cargar funciones', detail)
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => {
-    void fetchFunciones()
-  }, [])
-
-  const filteredFunciones = useMemo(() => {
-    if (!searchTerm) return funciones
+  const filtered = useMemo(() => {
+    const term = searchTerm.toLowerCase().trim()
+    if (!term) return funciones
     return funciones.filter(
       (f) =>
-        f.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        f.nombre.toLowerCase().includes(searchTerm.toLowerCase()),
+        f.codigo.toLowerCase().includes(term) ||
+        f.nombre.toLowerCase().includes(term) ||
+        (f.descripcion ?? '').toLowerCase().includes(term),
     )
   }, [funciones, searchTerm])
 
   const openCreate = () => {
-    setSelectedId(null)
+    setEditing(null)
     setModalOpen(true)
   }
 
-  const openEdit = (id: number) => {
-    setSelectedId(id)
+  const openEdit = (data: Funcion) => {
+    setEditing(data)
     setModalOpen(true)
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm('¿Seguro que deseas eliminar esta función?')) return
+    if (!confirm('¿Seguro que deseas eliminar la función?')) return
     try {
       await api.deleteFuncion(id)
       showSuccess('Función eliminada')
-      await fetchFunciones()
+      void fetchFunciones()
     } catch (err) {
       const { message } = handleApiError(err)
       showError('Error', message)
@@ -93,7 +99,7 @@ const FuncionesPage = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-semibold">Funciones</h2>
         {canEdit && (
@@ -120,9 +126,9 @@ const FuncionesPage = () => {
         emptyText="No se encontraron funciones"
         retry={fetchFunciones}
       >
-        {filteredFunciones.length > 0 && (
+        {filtered.length > 0 && (
           <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-            {filteredFunciones.map((funcion) => (
+            {filtered.map((funcion) => (
               <motion.div
                 key={funcion.id}
                 initial={{ opacity: 0, y: 8 }}
@@ -135,13 +141,15 @@ const FuncionesPage = () => {
                         <Settings className="h-5 w-5 text-blue-600" />
                         {funcion.nombre}
                       </CardTitle>
-                      <CardDescription className="text-xs">Código: {funcion.codigo}</CardDescription>
+                      <CardDescription className="text-xs">
+                        Código: {funcion.codigo}
+                      </CardDescription>
                     </div>
                     {canEdit && (
                       <div className="flex items-center gap-2">
                         <Pencil
                           className="h-4 w-4 cursor-pointer text-gray-500 hover:text-blue-600"
-                          onClick={() => openEdit(funcion.id)}
+                          onClick={() => openEdit(funcion)}
                         />
                         <Trash2
                           className="h-4 w-4 cursor-pointer text-gray-500 hover:text-red-600"
@@ -153,7 +161,7 @@ const FuncionesPage = () => {
                   <CardContent>
                     <p className="font-medium">Descripción</p>
                     <p className="text-gray-700">
-                      {funcion.descripcion ? funcion.descripcion : 'Sin descripción registrada'}
+                      {funcion.descripcion || 'Sin descripción registrada'}
                     </p>
                   </CardContent>
                 </Card>
@@ -167,7 +175,7 @@ const FuncionesPage = () => {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         onSuccess={fetchFunciones}
-        initialData={selectedId ? funciones.find((f) => f.id === selectedId) || null : null}
+        initialData={editing}
       />
     </div>
   )

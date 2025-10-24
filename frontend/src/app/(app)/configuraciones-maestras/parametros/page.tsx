@@ -11,11 +11,10 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import DataState from '@/components/common/data-state'
 import { AccessDenied } from '@/components/access-denied'
 import ParametroFormModal from '@/components/parametros/ParametroFormModal'
-import { api, handleApiError } from '@/lib/api'
+import { api, handleApiError, unpackResults } from '@/lib/api'
 import { showError, showSuccess } from '@/components/common/toast-utils'
 import { useMasterConfigAccess } from '@/hooks/use-master-config-access'
 import type { Parametro } from '@/types/models'
@@ -24,54 +23,60 @@ const ParametrosPage = () => {
   const { status, canEdit } = useMasterConfigAccess()
   const [parametros, setParametros] = useState<Parametro[]>([])
   const [searchTerm, setSearchTerm] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
-  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [editing, setEditing] = useState<Parametro | null>(null)
+
+  useEffect(() => {
+    if (status === 'ready') {
+      void fetchParametros()
+    }
+  }, [status])
 
   const fetchParametros = async () => {
     setLoading(true)
+    setError(null)
     try {
-      const { data } = await api.getParametros({ search: searchTerm })
-      setParametros(data.results)
-      setError(null)
+      const response = await api.getParametros({ page_size: 200 })
+      setParametros(unpackResults(response))
     } catch (err) {
       const { message } = handleApiError(err)
-      setError(message)
+      const detail = message || 'No se pudieron obtener los parámetros'
+      setError(detail)
+      showError('Error al cargar parámetros', detail)
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => {
-    void fetchParametros()
-  }, [])
-
-  const filteredParametros = useMemo(() => {
-    if (!searchTerm) return parametros
+  const filtered = useMemo(() => {
+    const term = searchTerm.toLowerCase().trim()
+    if (!term) return parametros
     return parametros.filter(
       (p) =>
-        p.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.nombre.toLowerCase().includes(searchTerm.toLowerCase()),
+        p.codigo.toLowerCase().includes(term) ||
+        p.nombre.toLowerCase().includes(term) ||
+        (p.descripcion ?? '').toLowerCase().includes(term),
     )
   }, [parametros, searchTerm])
 
   const openCreate = () => {
-    setSelectedId(null)
+    setEditing(null)
     setModalOpen(true)
   }
 
-  const openEdit = (id: number) => {
-    setSelectedId(id)
+  const openEdit = (data: Parametro) => {
+    setEditing(data)
     setModalOpen(true)
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm('¿Seguro que deseas eliminar este parámetro?')) return
+    if (!confirm('¿Seguro que deseas eliminar el parámetro?')) return
     try {
       await api.deleteParametro(id)
       showSuccess('Parámetro eliminado')
-      await fetchParametros()
+      void fetchParametros()
     } catch (err) {
       const { message } = handleApiError(err)
       showError('Error', message)
@@ -93,7 +98,7 @@ const ParametrosPage = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-semibold">Parámetros</h2>
         {canEdit && (
@@ -120,9 +125,9 @@ const ParametrosPage = () => {
         emptyText="No se encontraron parámetros"
         retry={fetchParametros}
       >
-        {filteredParametros.length > 0 && (
+        {filtered.length > 0 && (
           <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-            {filteredParametros.map((param) => (
+            {filtered.map((param) => (
               <motion.div
                 key={param.id}
                 initial={{ opacity: 0, y: 8 }}
@@ -135,13 +140,15 @@ const ParametrosPage = () => {
                         <SlidersHorizontal className="h-5 w-5 text-blue-600" />
                         {param.nombre}
                       </CardTitle>
-                      <CardDescription className="text-xs">Código: {param.codigo}</CardDescription>
+                      <CardDescription className="text-xs">
+                        Código: {param.codigo}
+                      </CardDescription>
                     </div>
                     {canEdit && (
                       <div className="flex items-center gap-2">
                         <Pencil
                           className="h-4 w-4 cursor-pointer text-gray-500 hover:text-blue-600"
-                          onClick={() => openEdit(param.id)}
+                          onClick={() => openEdit(param)}
                         />
                         <Trash2
                           className="h-4 w-4 cursor-pointer text-gray-500 hover:text-red-600"
@@ -153,12 +160,10 @@ const ParametrosPage = () => {
                   <CardContent>
                     <p className="font-medium">Descripción</p>
                     <p className="text-gray-700">
-                      {param.descripcion ? param.descripcion : 'Sin descripción registrada'}
+                      {param.descripcion || 'Sin descripción registrada'}
                     </p>
                     <p className="font-medium pt-2">Unidad</p>
-                    <p className="text-gray-700">
-                      {param.unidad ? param.unidad : 'No especificada'}
-                    </p>
+                    <p className="text-gray-700">{param.unidad || '—'}</p>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -171,7 +176,7 @@ const ParametrosPage = () => {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         onSuccess={fetchParametros}
-        initialData={selectedId ? parametros.find((p) => p.id === selectedId) || null : null}
+        initialData={editing}
       />
     </div>
   )

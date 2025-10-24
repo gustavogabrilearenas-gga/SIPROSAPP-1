@@ -1,36 +1,45 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Cog, Search } from 'lucide-react'
+import { Cog, Pencil, Plus, Search, Trash2, Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import DataState from '@/components/common/data-state'
-import { api, handleApiError } from '@/lib/api'
-import { showError } from '@/components/common/toast-utils'
+import { AccessDenied } from '@/components/access-denied'
+import MaquinaFormModal from '@/components/maquinas/MaquinaFormModal'
+import { api, handleApiError, unpackResults } from '@/lib/api'
+import { showError, showSuccess } from '@/components/common/toast-utils'
+import { useMasterConfigAccess } from '@/hooks/use-master-config-access'
 import type { Maquina } from '@/types/models'
 
 const MaquinasPage = () => {
+  const { status, canEdit } = useMasterConfigAccess()
   const [maquinas, setMaquinas] = useState<Maquina[]>([])
   const [searchTerm, setSearchTerm] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editing, setEditing] = useState<Maquina | null>(null)
 
   useEffect(() => {
-    void fetchMaquinas()
-  }, [])
+    if (status === 'ready') {
+      void fetchMaquinas()
+    }
+  }, [status])
 
   const fetchMaquinas = async () => {
     setLoading(true)
     setError(null)
     try {
-      const response = await api.getMaquinas({ page_size: 100 })
-      setMaquinas(response.results ?? [])
+      const response = await api.getMaquinas({ page_size: 200 })
+      setMaquinas(unpackResults(response))
     } catch (err) {
       const { message } = handleApiError(err)
       const detail = message || 'No se pudieron obtener las máquinas'
@@ -41,95 +50,134 @@ const MaquinasPage = () => {
     }
   }
 
-  const filtered = maquinas.filter((maquina) => {
-    const term = searchTerm.toLowerCase()
-    return (
-      maquina.codigo.toLowerCase().includes(term) ||
-      maquina.nombre.toLowerCase().includes(term) ||
-      (maquina.descripcion || '').toLowerCase().includes(term)
+  const filtered = useMemo(() => {
+    const term = searchTerm.toLowerCase().trim()
+    if (!term) return maquinas
+    return maquinas.filter(
+      (m) =>
+        m.codigo.toLowerCase().includes(term) ||
+        m.nombre.toLowerCase().includes(term) ||
+        (m.descripcion ?? '').toLowerCase().includes(term),
     )
-  })
+  }, [maquinas, searchTerm])
 
-  const hasError = Boolean(error)
-  const isEmpty = !loading && !hasError && filtered.length === 0
+  const openCreate = () => {
+    setEditing(null)
+    setModalOpen(true)
+  }
+
+  const openEdit = (data: Maquina) => {
+    setEditing(data)
+    setModalOpen(true)
+  }
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('¿Seguro que deseas eliminar la máquina?')) return
+    try {
+      await api.deleteMaquina(id)
+      showSuccess('Máquina eliminada')
+      void fetchMaquinas()
+    } catch (err) {
+      const { message } = handleApiError(err)
+      showError('Error', message)
+    }
+  }
+
+  if (status === 'loading') {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center text-blue-600">
+        <Loader2 className="mr-2 h-6 w-6 animate-spin" /> Verificando permisos...
+      </div>
+    )
+  }
+
+  if (status === 'forbidden') {
+    return (
+      <AccessDenied description="Sólo supervisores y administradores pueden acceder a las configuraciones maestras." />
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-200">
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8">
-        <header className="flex items-center gap-3">
-          <div className="rounded-xl bg-blue-600/10 p-3 text-blue-700">
-            <Cog className="h-8 w-8" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-semibold text-gray-900">Máquinas registradas</h1>
-            <p className="text-sm text-gray-600">
-              Datos obtenidos de{' '}
-              <code className="rounded bg-blue-50 px-1.5 py-0.5 text-xs text-blue-700">/api/catalogos/maquinas/</code>
-            </p>
-          </div>
-        </header>
-
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <input
-            type="text"
-            placeholder="Buscar por código, nombre o descripción"
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-            className="w-full rounded-lg border border-gray-300 py-3 pl-10 pr-4 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-          />
-        </div>
-
-        <DataState
-          loading={loading}
-          error={hasError ? error : null}
-          empty={isEmpty}
-          emptyMessage="No hay máquinas registradas"
-        >
-          {!hasError && (
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              {filtered.map((maquina, index) => (
-                <motion.div
-                  key={maquina.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.05 * index }}
-                >
-                  <Card className="h-full border border-gray-100 shadow-sm transition hover:shadow-md">
-                    <CardHeader>
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="space-y-1">
-                          <CardTitle className="text-lg font-semibold text-gray-900">
-                            {maquina.codigo}
-                          </CardTitle>
-                          <CardDescription className="text-base text-gray-700">
-                            {maquina.nombre}
-                          </CardDescription>
-                        </div>
-                        <Badge className={maquina.activa ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}>
-                          {maquina.activa ? 'Operativa' : 'Fuera de servicio'}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3 text-sm text-gray-700">
-                      <div>
-                        <p className="text-xs uppercase tracking-wide text-gray-500">Ubicación</p>
-                        <p className="font-medium text-gray-900">
-                          {maquina.ubicacion_nombre || 'Sin ubicación asignada'}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs uppercase tracking-wide text-gray-500">Descripción</p>
-                        <p className="text-gray-700">{maquina.descripcion || 'Sin descripción registrada'}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </DataState>
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-semibold">Máquinas</h2>
+        {canEdit && (
+          <Button onClick={openCreate}>
+            <Plus className="mr-2 h-4 w-4" /> Nueva Máquina
+          </Button>
+        )}
       </div>
+
+      <div className="relative max-w-xs">
+        <input
+          type="text"
+          placeholder="Buscar..."
+          className="w-full rounded-md border border-gray-300 py-2 pl-10 pr-3 focus:border-blue-500 focus:outline-none"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+      </div>
+
+      <DataState
+        loading={loading}
+        error={error}
+        emptyText="No se encontraron máquinas"
+        retry={fetchMaquinas}
+      >
+        {filtered.length > 0 && (
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            {filtered.map((maq) => (
+              <motion.div
+                key={maq.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <Card>
+                  <CardHeader className="flex flex-row items-start justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <Cog className="h-5 w-5 text-blue-600" />
+                        {maq.nombre}
+                      </CardTitle>
+                      <CardDescription className="text-xs">
+                        Código: {maq.codigo}
+                      </CardDescription>
+                    </div>
+                    {canEdit && (
+                      <div className="flex items-center gap-2">
+                        <Pencil
+                          className="h-4 w-4 cursor-pointer text-gray-500 hover:text-blue-600"
+                          onClick={() => openEdit(maq)}
+                        />
+                        <Trash2
+                          className="h-4 w-4 cursor-pointer text-gray-500 hover:text-red-600"
+                          onClick={() => handleDelete(maq.id)}
+                        />
+                      </div>
+                    )}
+                  </CardHeader>
+                  <CardContent>
+                    <p className="font-medium">Tipo</p>
+                    <p className="text-gray-700">{maq.tipo_display}</p>
+                    <p className="font-medium pt-2">Descripción</p>
+                    <p className="text-gray-700">
+                      {maq.descripcion || 'Sin descripción registrada'}
+                    </p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </DataState>
+
+      <MaquinaFormModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSuccess={fetchMaquinas}
+        initialData={editing}
+      />
     </div>
   )
 }
