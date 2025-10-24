@@ -2,33 +2,39 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import type { ReactNode } from 'react'
 import { useAuth } from '@/stores/auth-store'
 import { isSuperuser, isSupervisor } from '@/lib/auth-utils'
 
-export default function MantenimientoLayout({ children }: { children: React.ReactNode }) {
+export default function Layout({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const { user } = useAuth()
-  const canSupervise = isSuperuser(user) || isSupervisor(user)
+
+  const canSeeSupervision = isSuperuser(user) || isSupervisor(user)
 
   const tabs = [
     { href: '/mantenimiento/crud', label: 'CRUD' },
-    ...(canSupervise ? [{ href: '/mantenimiento/supervision', label: 'Supervisión' }] : []),
-  ]
+    ...(canSeeSupervision ? [{ href: '/mantenimiento/supervision', label: 'Supervisión' }] : []),
+  ] as Array<{ href: string; label: string }>
 
   return (
     <div className="space-y-6">
       <div className="flex gap-4 border-b border-gray-200">
-        {tabs.map((tab) => (
+        {tabs.map(({ href, label }) => (
           <Link
-            key={{tab.href}}
-            href={{tab.href}}
-            className={`py-2 px-4 border-b-2 ${{pathname.startsWith(tab.href) ? 'border-blue-600 font-semibold text-blue-600' : 'border-transparent text-gray-600'}}`}
+            key={href}
+            href={href}
+            className={`py-2 px-3 -mb-px border-b-2 ${
+              pathname === href
+                ? 'border-blue-600 font-semibold'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
           >
-            {{tab.label}}
+            {label}
           </Link>
         ))}
       </div>
-      <div>{{children}}</div>
+      {children}
     </div>
   )
 }

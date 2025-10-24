@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation'
+import { redirect } from 'next/navigation';
 
-export default function Index() {
-  redirect('/observaciones/crud')
+export default function Page() {
+  redirect('/observaciones/crud');
 }
