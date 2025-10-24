@@ -1,10 +1,9 @@
-export const metadata = {{ title: 'Supervisión - En desarrollo' }};
+export const metadata = { title: 'Supervisión - En desarrollo' };
 
-export default function Page() {{
+export default function Page() {
   return (
-    <div className="prose">
-      <h1>Supervisión</h1>
-      <p>En desarrollo…</p>
+    <div className="text-gray-600 text-center py-10">
+      En desarrollo
     </div>
-  )
-}}
+  );
+}
