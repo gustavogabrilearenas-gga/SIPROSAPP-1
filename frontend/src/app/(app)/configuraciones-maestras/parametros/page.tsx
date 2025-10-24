@@ -1,9 +1,8 @@
-
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { SlidersHorizontal, Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import { SlidersHorizontal, Pencil, Plus, Search, Trash2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -12,49 +11,52 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import DataState from '@/components/common/data-state'
 import { AccessDenied } from '@/components/access-denied'
-import ParametroFormModal from '@/components/parametro-form-modal'
+import ParametroFormModal from '@/components/parametros/ParametroFormModal'
 import { api, handleApiError } from '@/lib/api'
 import { showError, showSuccess } from '@/components/common/toast-utils'
-import type { Parametro } from '@/types/models'
 import { useMasterConfigAccess } from '@/hooks/use-master-config-access'
+import type { Parametro } from '@/types/models'
 
-export default function ParametrosPage() {
+const ParametrosPage = () => {
+  const { status, canEdit } = useMasterConfigAccess()
   const [parametros, setParametros] = useState<Parametro[]>([])
+  const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [search, setSearch] = useState<string>('')
 
-  const access = useMasterConfigAccess()
-
-  const fetchData = async () => {
+  const fetchParametros = async () => {
     setLoading(true)
     try {
-      const { data } = await api.getParametros()
+      const { data } = await api.getParametros({ search: searchTerm })
       setParametros(data.results)
+      setError(null)
     } catch (err) {
-      showError('Error', handleApiError(err).message)
+      const { message } = handleApiError(err)
+      setError(message)
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    fetchData()
+    void fetchParametros()
   }, [])
 
-  const filtered = useMemo(() => {
-    const term = search.toLowerCase()
+  const filteredParametros = useMemo(() => {
+    if (!searchTerm) return parametros
     return parametros.filter(
       (p) =>
-        p.codigo.toLowerCase().includes(term) ||
-        p.nombre.toLowerCase().includes(term),
+        p.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.nombre.toLowerCase().includes(searchTerm.toLowerCase()),
     )
-  }, [parametros, search])
+  }, [parametros, searchTerm])
 
-  const openNew = () => {
+  const openCreate = () => {
     setSelectedId(null)
     setModalOpen(true)
   }
@@ -65,96 +67,114 @@ export default function ParametrosPage() {
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm('¿Confirma eliminar el parámetro?')) return
+    if (!confirm('¿Seguro que deseas eliminar este parámetro?')) return
     try {
       await api.deleteParametro(id)
-      showSuccess('Eliminado', 'El parámetro fue eliminado.')
-      fetchData()
+      showSuccess('Parámetro eliminado')
+      await fetchParametros()
     } catch (err) {
-      showError('Error', handleApiError(err).message)
+      const { message } = handleApiError(err)
+      showError('Error', message)
     }
   }
 
-  if (!access.canView) return <AccessDenied />
+  if (status === 'loading') {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center text-blue-600">
+        <Loader2 className="mr-2 h-6 w-6 animate-spin" /> Verificando permisos...
+      </div>
+    )
+  }
+
+  if (status === 'forbidden') {
+    return (
+      <AccessDenied description="Sólo supervisores y administradores pueden acceder a las configuraciones maestras." />
+    )
+  }
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader className="flex-row items-center justify-between space-y-0">
-          <div className="flex items-center space-x-2">
-            <SlidersHorizontal />
-            <CardTitle>Parámetros</CardTitle>
-          </div>
-          {access.canEdit && (
-            <Button size="sm" onClick={openNew}>
-              <Plus className="mr-1 h-4 w-4" />
-              Nuevo
-            </Button>
-          )}
-        </CardHeader>
-        <CardContent>
-          <div className="mb-4 flex items-center space-x-2">
-            <Search className="h-4 w-4" />
-            <input
-              type="text"
-              placeholder="Buscar…"
-              className="input input-bordered w-full"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-semibold">Parámetros</h2>
+        {canEdit && (
+          <Button onClick={openCreate}>
+            <Plus className="mr-2 h-4 w-4" /> Nuevo Parámetro
+          </Button>
+        )}
+      </div>
 
-          <DataState
-            loading={loading}
-            dataLength={filtered.length}
-            emptyMessage="Sin parámetros registrados."
-          >
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {filtered.map((p) => (
-                <motion.div key={p.id} layout>
-                  <Card className="relative">
-                    {access.canEdit && (
-                      <div className="absolute right-2 top-2 flex space-x-1">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => openEdit(p.id)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => handleDelete(p.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+      <div className="relative max-w-xs">
+        <input
+          type="text"
+          placeholder="Buscar..."
+          className="w-full rounded-md border border-gray-300 py-2 pl-10 pr-3 focus:border-blue-500 focus:outline-none"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+      </div>
+
+      <DataState
+        loading={loading}
+        error={error}
+        emptyText="No se encontraron parámetros"
+        retry={fetchParametros}
+      >
+        {filteredParametros.length > 0 && (
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            {filteredParametros.map((param) => (
+              <motion.div
+                key={param.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <Card>
+                  <CardHeader className="flex flex-row items-start justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <SlidersHorizontal className="h-5 w-5 text-blue-600" />
+                        {param.nombre}
+                      </CardTitle>
+                      <CardDescription className="text-xs">Código: {param.codigo}</CardDescription>
+                    </div>
+                    {canEdit && (
+                      <div className="flex items-center gap-2">
+                        <Pencil
+                          className="h-4 w-4 cursor-pointer text-gray-500 hover:text-blue-600"
+                          onClick={() => openEdit(param.id)}
+                        />
+                        <Trash2
+                          className="h-4 w-4 cursor-pointer text-gray-500 hover:text-red-600"
+                          onClick={() => handleDelete(param.id)}
+                        />
                       </div>
                     )}
-                    <CardHeader>
-                      <SlidersHorizontal className="h-8 w-8 text-gray-700" />
-                      <CardTitle>{p.nombre}</CardTitle>
-                      <CardDescription>{p.codigo}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-gray-600">
-                        {p.descripcion || 'Sin descripción.'}
-                      </p>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </div>
-          </DataState>
-        </CardContent>
-      </Card>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="font-medium">Descripción</p>
+                    <p className="text-gray-700">
+                      {param.descripcion ? param.descripcion : 'Sin descripción registrada'}
+                    </p>
+                    <p className="font-medium pt-2">Unidad</p>
+                    <p className="text-gray-700">
+                      {param.unidad ? param.unidad : 'No especificada'}
+                    </p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </DataState>
 
       <ParametroFormModal
-        isOpen={modalOpen}
+        open={modalOpen}
         onClose={() => setModalOpen(false)}
-        parametroId={selectedId}
-        onSuccess={fetchData}
+        onSuccess={fetchParametros}
+        initialData={selectedId ? parametros.find((p) => p.id === selectedId) || null : null}
       />
     </div>
   )
 }
+
+export default ParametrosPage

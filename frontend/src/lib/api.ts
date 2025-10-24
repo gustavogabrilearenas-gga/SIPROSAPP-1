@@ -354,10 +354,44 @@ const api = {
   async getFunciones(params?: Record<string, unknown>) {
     return get<PaginatedResponse<Funcion>>('catalogos/funciones/', { params })
   },
+async getFuncion(id: number | string) {
+  return get<Funcion>(`catalogos/funciones/${id}/`)
+},
+
+async createFuncion(data: Record<string, unknown>) {
+  return post('catalogos/funciones/', data)
+},
+
+async updateFuncion(id: number | string, data: Record<string, unknown>) {
+  return patch(`catalogos/funciones/${id}/`, data)
+},
+
+async deleteFuncion(id: number | string) {
+  return del(`catalogos/funciones/${id}/`)
+},
+
+
 
   async getParametros(params?: Record<string, unknown>) {
     return get<PaginatedResponse<Parametro>>('catalogos/parametros/', { params })
   },
+async getParametro(id: number | string) {
+  return get<Parametro>(`catalogos/parametros/${id}/`)
+},
+
+async createParametro(data: Record<string, unknown>) {
+  return post('catalogos/parametros/', data)
+},
+
+async updateParametro(id: number | string, data: Record<string, unknown>) {
+  return patch(`catalogos/parametros/${id}/`, data)
+},
+
+async deleteParametro(id: number | string) {
+  return del(`catalogos/parametros/${id}/`)
+},
+
+
 
   async getProductos(params?: Record<string, unknown>) {
     return get<PaginatedResponse<Producto>>('catalogos/productos/', { params })
@@ -522,48 +556,6 @@ const api = {
   async updateIncidente(id: number | string, data: Record<string, unknown>) {
     return patch(`incidentes/incidentes/${id}/`, data)
   },
-/* Funciones */
-async getFunciones(params?: Record<string, unknown>) {
-  return get<PaginatedResponse<Funcion>>('catalogos/funciones/', { params })
-},
-
-async getFuncion(id: number | string) {
-  return get<Funcion>(`catalogos/funciones/${id}/`)
-},
-
-async createFuncion(data: Record<string, unknown>) {
-  return post('catalogos/funciones/', data)
-},
-
-async updateFuncion(id: number | string, data: Record<string, unknown>) {
-  return patch(`catalogos/funciones/${id}/`, data)
-},
-
-async deleteFuncion(id: number | string) {
-  return del(`catalogos/funciones/${id}/`)
-},
-
-/* Parámetros */
-async getParametros(params?: Record<string, unknown>) {
-  return get<PaginatedResponse<Parametro>>('catalogos/parametros/', { params })
-},
-
-async getParametro(id: number | string) {
-  return get<Parametro>(`catalogos/parametros/${id}/`)
-},
-
-async createParametro(data: Record<string, unknown>) {
-  return post('catalogos/parametros/', data)
-},
-
-async updateParametro(id: number | string, data: Record<string, unknown>) {
-  return patch(`catalogos/parametros/${id}/`, data)
-},
-
-async deleteParametro(id: number | string) {
-  return del(`catalogos/parametros/${id}/`)
-},
-
 }
 
 export {

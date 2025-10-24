@@ -10,7 +10,7 @@ import {
   Layers,
   Clock,
   MapPin,
-  Loader2,
+  Loader2, Cog, SlidersHorizontal,
   type LucideIcon,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -56,24 +56,23 @@ const masterModules: MasterModule[] = [
     href: '/configuraciones-maestras/ubicaciones',
     icon: MapPin,
     description: 'Administra las ubicaciones de la planta.',
-  },
-{
+  },{
   name: 'Funciones',
   href: '/configuraciones-maestras/funciones',
-  icon: Users2,
-  description: 'Gestiona las funciones/áreas de la organización.',
+  icon: Settings,
+  description: 'Administra las funciones o áreas organizacionales.',
+},
+{
+  name: 'Máquinas',
+  href: '/maquinas',
+  icon: Cog,
+  description: 'Administra las máquinas de la planta.',
 },
 {
   name: 'Parámetros',
   href: '/configuraciones-maestras/parametros',
   icon: SlidersHorizontal,
-  description: 'Define los parámetros técnicos del proceso.',
-},
-{
-  name: 'Máquinas',
-  href: '/maquinas',
-  icon: Settings,
-  description: 'Administra el inventario de máquinas.',
+  description: 'Gestiona los parámetros de proceso y registro.',
 },
 ]
 

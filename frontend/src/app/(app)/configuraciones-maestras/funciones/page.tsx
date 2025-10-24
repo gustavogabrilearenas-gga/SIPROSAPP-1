@@ -1,9 +1,8 @@
-
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Users2, Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import { Settings, Pencil, Plus, Search, Trash2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -12,49 +11,52 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import DataState from '@/components/common/data-state'
 import { AccessDenied } from '@/components/access-denied'
-import FuncionFormModal from '@/components/funcion-form-modal'
+import FuncionFormModal from '@/components/funciones/FuncionFormModal'
 import { api, handleApiError } from '@/lib/api'
 import { showError, showSuccess } from '@/components/common/toast-utils'
-import type { Funcion } from '@/types/models'
 import { useMasterConfigAccess } from '@/hooks/use-master-config-access'
+import type { Funcion } from '@/types/models'
 
-export default function FuncionesPage() {
+const FuncionesPage = () => {
+  const { status, canEdit } = useMasterConfigAccess()
   const [funciones, setFunciones] = useState<Funcion[]>([])
+  const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [search, setSearch] = useState<string>('')
 
-  const access = useMasterConfigAccess()
-
-  const fetchData = async () => {
+  const fetchFunciones = async () => {
     setLoading(true)
     try {
-      const { data } = await api.getFunciones()
+      const { data } = await api.getFunciones({ search: searchTerm })
       setFunciones(data.results)
+      setError(null)
     } catch (err) {
-      showError('Error', handleApiError(err).message)
+      const { message } = handleApiError(err)
+      setError(message)
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    fetchData()
+    void fetchFunciones()
   }, [])
 
-  const filtered = useMemo(() => {
-    const term = search.toLowerCase()
+  const filteredFunciones = useMemo(() => {
+    if (!searchTerm) return funciones
     return funciones.filter(
       (f) =>
-        f.codigo.toLowerCase().includes(term) ||
-        f.nombre.toLowerCase().includes(term),
+        f.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        f.nombre.toLowerCase().includes(searchTerm.toLowerCase()),
     )
-  }, [funciones, search])
+  }, [funciones, searchTerm])
 
-  const openNew = () => {
+  const openCreate = () => {
     setSelectedId(null)
     setModalOpen(true)
   }
@@ -65,96 +67,110 @@ export default function FuncionesPage() {
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm('¿Confirma eliminar la función?')) return
+    if (!confirm('¿Seguro que deseas eliminar esta función?')) return
     try {
       await api.deleteFuncion(id)
-      showSuccess('Eliminado', 'La función fue eliminada.')
-      fetchData()
+      showSuccess('Función eliminada')
+      await fetchFunciones()
     } catch (err) {
-      showError('Error', handleApiError(err).message)
+      const { message } = handleApiError(err)
+      showError('Error', message)
     }
   }
 
-  if (!access.canView) return <AccessDenied />
+  if (status === 'loading') {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center text-blue-600">
+        <Loader2 className="mr-2 h-6 w-6 animate-spin" /> Verificando permisos...
+      </div>
+    )
+  }
+
+  if (status === 'forbidden') {
+    return (
+      <AccessDenied description="Sólo supervisores y administradores pueden acceder a las configuraciones maestras." />
+    )
+  }
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader className="flex-row items-center justify-between space-y-0">
-          <div className="flex items-center space-x-2">
-            <Users2 />
-            <CardTitle>Funciones</CardTitle>
-          </div>
-          {access.canEdit && (
-            <Button size="sm" onClick={openNew}>
-              <Plus className="mr-1 h-4 w-4" />
-              Nueva
-            </Button>
-          )}
-        </CardHeader>
-        <CardContent>
-          <div className="mb-4 flex items-center space-x-2">
-            <Search className="h-4 w-4" />
-            <input
-              type="text"
-              placeholder="Buscar…"
-              className="input input-bordered w-full"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-semibold">Funciones</h2>
+        {canEdit && (
+          <Button onClick={openCreate}>
+            <Plus className="mr-2 h-4 w-4" /> Nueva Función
+          </Button>
+        )}
+      </div>
 
-          <DataState
-            loading={loading}
-            dataLength={filtered.length}
-            emptyMessage="Sin funciones registradas."
-          >
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {filtered.map((f) => (
-                <motion.div key={f.id} layout>
-                  <Card className="relative">
-                    {access.canEdit && (
-                      <div className="absolute right-2 top-2 flex space-x-1">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => openEdit(f.id)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => handleDelete(f.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+      <div className="relative max-w-xs">
+        <input
+          type="text"
+          placeholder="Buscar..."
+          className="w-full rounded-md border border-gray-300 py-2 pl-10 pr-3 focus:border-blue-500 focus:outline-none"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+      </div>
+
+      <DataState
+        loading={loading}
+        error={error}
+        emptyText="No se encontraron funciones"
+        retry={fetchFunciones}
+      >
+        {filteredFunciones.length > 0 && (
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            {filteredFunciones.map((funcion) => (
+              <motion.div
+                key={funcion.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <Card>
+                  <CardHeader className="flex flex-row items-start justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <Settings className="h-5 w-5 text-blue-600" />
+                        {funcion.nombre}
+                      </CardTitle>
+                      <CardDescription className="text-xs">Código: {funcion.codigo}</CardDescription>
+                    </div>
+                    {canEdit && (
+                      <div className="flex items-center gap-2">
+                        <Pencil
+                          className="h-4 w-4 cursor-pointer text-gray-500 hover:text-blue-600"
+                          onClick={() => openEdit(funcion.id)}
+                        />
+                        <Trash2
+                          className="h-4 w-4 cursor-pointer text-gray-500 hover:text-red-600"
+                          onClick={() => handleDelete(funcion.id)}
+                        />
                       </div>
                     )}
-                    <CardHeader>
-                      <Users2 className="h-8 w-8 text-gray-700" />
-                      <CardTitle>{f.nombre}</CardTitle>
-                      <CardDescription>{f.codigo}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-gray-600">
-                        {f.descripcion || 'Sin descripción.'}
-                      </p>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </div>
-          </DataState>
-        </CardContent>
-      </Card>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="font-medium">Descripción</p>
+                    <p className="text-gray-700">
+                      {funcion.descripcion ? funcion.descripcion : 'Sin descripción registrada'}
+                    </p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </DataState>
 
       <FuncionFormModal
-        isOpen={modalOpen}
+        open={modalOpen}
         onClose={() => setModalOpen(false)}
-        funcionId={selectedId}
-        onSuccess={fetchData}
+        onSuccess={fetchFunciones}
+        initialData={selectedId ? funciones.find((f) => f.id === selectedId) || null : null}
       />
     </div>
   )
 }
+
+export default FuncionesPage
