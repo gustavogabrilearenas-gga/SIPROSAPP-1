@@ -11,23 +11,11 @@ import UsuarioFormModal from '@/components/usuario-form-modal'
 import { ProtectedRoute } from '@/components/protected-route'
 import { useAuth } from '@/stores/auth-store'
 import { toast } from '@/hooks/use-toast'
-import {
-  Users,
-  Plus,
-  RefreshCw,
-  Search,
-  Edit,
-  Ban,
-  CheckCircle,
-  Key,
-  ArrowLeft,
-  Shield,
-  Mail,
-  Phone,
-  Briefcase,
-  Clock,
-  IdCard
-} from 'lucide-react'
+import { Users, Plus, RefreshCw, Search, Edit, Ban, CheckCircle, Key, ArrowLeft, Shield, Mail, Phone, Briefcase, Clock } from 'lucide-react'
+// IdCard icon fallback for versions of lucide-react that may not include it
+import * as LucideIcons from 'lucide-react'
+const IdCard = (LucideIcons as any).IdCard || (() => null as any)
+
 import type { UsuarioDetalle } from '@/types/models'
 
 function UsuariosPageContent() {
